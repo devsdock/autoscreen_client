@@ -13,7 +13,7 @@ export const quotesData = [
     responsesCount: 3
   },
   {
-    id: "QT-12356",
+    id: "QT-1235",
     vehicleId: "VEH-002",
     vehicle: "2021 Ford Ranger",
     glassType: "Side Window (Front Right)",
