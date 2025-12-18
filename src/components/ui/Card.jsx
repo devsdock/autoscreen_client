@@ -2,7 +2,7 @@ const Card = ({ children, className = '', padding = true }) => {
   return (
     <div
       className={`
-        bg-white rounded-lg border border-slate-200 shadow-sm
+        bg-white rounded-2xl shadow-sm
         ${padding ? 'p-6' : ''}
         ${className}
       `}
@@ -25,4 +25,3 @@ export const CardContent = ({ children, className = '' }) => (
 )
 
 export default Card
-

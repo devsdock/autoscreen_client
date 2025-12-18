@@ -8,6 +8,7 @@ import { quoteResponsesData } from '../data/quoteResponses';
 import { bookingsData } from '../data/bookings';
 import { paymentsData } from '../data/payments';
 import { activitiesData } from '../data/activities';
+import { providersData } from '../data/providers';
 
 // Helper to generate IDs
 const generateId = (prefix) => `${prefix}-${Date.now().toString(36).toUpperCase()}`;
@@ -78,6 +79,9 @@ const useDashboardStore = create(
       
       // Activities
       activities: activitiesData,
+      
+      // Providers
+      providers: providersData,
       
       // UI State
       sidebarOpen: true,

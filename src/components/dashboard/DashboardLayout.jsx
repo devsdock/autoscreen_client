@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import DashboardSidebar from './DashboardSidebar';
 import DashboardTopBar from './DashboardTopBar';
+import DashboardRightSidebar from './DashboardRightSidebar';
 import ToastContainer from '../ui/Toast';
 import useDashboardStore from '../../store/useDashboardStore';
 
@@ -21,23 +22,30 @@ const DashboardLayout = () => {
   }, [setSidebarOpen]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50/50">
+      {/* Left Sidebar */}
       <DashboardSidebar />
-      <DashboardTopBar />
       
-      <main
+      {/* Main area */}
+      <div 
         className={`
-          pt-16 min-h-screen
+          min-h-screen flex flex-col
           transition-all duration-300
-          ${sidebarCollapsed ? 'lg:pl-[72px]' : 'lg:pl-[260px]'}
+          ${sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-[240px]'}
+          xl:mr-[320px]
         `}
       >
-        <div className="p-4 lg:p-6">
-          <div className="max-w-7xl mx-auto">
-            <Outlet />
-          </div>
-        </div>
-      </main>
+        {/* Top Bar */}
+        <DashboardTopBar />
+        
+        {/* Content */}
+        <main className="flex-1 p-6">
+          <Outlet />
+        </main>
+      </div>
+      
+      {/* Right Sidebar */}
+      <DashboardRightSidebar />
       
       <ToastContainer />
     </div>
@@ -45,4 +53,3 @@ const DashboardLayout = () => {
 };
 
 export default DashboardLayout;
-

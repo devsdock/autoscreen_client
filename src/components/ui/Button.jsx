@@ -1,13 +1,13 @@
 import { forwardRef } from 'react';
 
 const variants = {
-  primary: 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 shadow-sm',
+  primary: 'bg-primary text-white hover:bg-dark-blue focus:ring-primary shadow-sm',
   secondary: 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 focus:ring-slate-500',
   ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 focus:ring-slate-500',
-  danger: 'bg-danger-600 text-white hover:bg-danger-700 focus:ring-danger-500 shadow-sm',
-  success: 'bg-success-600 text-white hover:bg-success-700 focus:ring-success-500 shadow-sm',
-  outline: 'bg-transparent text-primary-600 border border-primary-300 hover:bg-primary-50 focus:ring-primary-500',
-  link: 'bg-transparent text-primary-600 hover:text-primary-700 hover:underline p-0'
+  danger: 'bg-accent-red text-white hover:bg-red-700 focus:ring-accent-red shadow-sm',
+  success: 'bg-success-green text-white hover:bg-green-700 focus:ring-success-green shadow-sm',
+  outline: 'bg-transparent text-primary border border-primary/30 hover:bg-primary/5 focus:ring-primary',
+  link: 'bg-transparent text-primary hover:text-dark-blue hover:underline p-0'
 };
 
 const sizes = {
@@ -42,7 +42,7 @@ const Button = forwardRef(({
         transition-all duration-200
         focus:outline-none focus:ring-2 focus:ring-offset-2
         disabled:opacity-50 disabled:cursor-not-allowed
-        ${!isLink ? 'rounded-lg' : ''}
+        ${!isLink ? 'rounded-xl' : ''}
         ${variants[variant]}
         ${!isLink ? sizes[size] : ''}
         ${className}
