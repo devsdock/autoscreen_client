@@ -86,12 +86,43 @@ const useDashboardStore = create(
       // UI State
       sidebarOpen: true,
       sidebarCollapsed: false,
+      theme: 'light', // 'light', 'dark', or 'system'
       toasts: [],
       
       // Sidebar actions
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       toggleSidebarCollapse: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      
+      // Theme actions
+      setTheme: (theme) => {
+        set({ theme });
+        // Apply theme to document
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else if (theme === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          // System preference
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (prefersDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        }
+      },
+      initTheme: () => {
+        const theme = get().theme;
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else if (theme === 'system') {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (prefersDark) {
+            document.documentElement.classList.add('dark');
+          }
+        }
+      },
       
       // Toast actions
       addToast: (toast) => {
@@ -520,7 +551,8 @@ const useDashboardStore = create(
         bookings: state.bookings,
         payments: state.payments,
         activities: state.activities,
-        sidebarCollapsed: state.sidebarCollapsed
+        sidebarCollapsed: state.sidebarCollapsed,
+        theme: state.theme
       })
     }
   )

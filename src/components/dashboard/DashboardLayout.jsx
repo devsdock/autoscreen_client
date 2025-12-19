@@ -7,7 +7,28 @@ import ToastContainer from '../ui/Toast';
 import useDashboardStore from '../../store/useDashboardStore';
 
 const DashboardLayout = () => {
-  const { sidebarCollapsed, setSidebarOpen } = useDashboardStore();
+  const { sidebarCollapsed, setSidebarOpen, initTheme } = useDashboardStore();
+
+  // Initialize theme on mount
+  useEffect(() => {
+    initTheme();
+    
+    // Listen for system theme changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => {
+      const theme = useDashboardStore.getState().theme;
+      if (theme === 'system') {
+        if (mediaQuery.matches) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+    };
+    
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [initTheme]);
 
   // Auto-close mobile sidebar on resize
   useEffect(() => {
@@ -22,7 +43,7 @@ const DashboardLayout = () => {
   }, [setSidebarOpen]);
 
   return (
-    <div className="min-h-screen bg-slate-50/50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
       {/* Left Sidebar */}
       <DashboardSidebar />
       

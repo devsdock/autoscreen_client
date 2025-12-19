@@ -4,6 +4,7 @@ export default {
     "./index.html",
     "./src/**/*.{js,jsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -42,6 +43,14 @@ export default {
           600: '#DC2626',
           700: '#B91C1C',
         },
+        // Dark mode specific colors
+        dark: {
+          bg: '#0f172a',
+          card: '#1e293b',
+          border: '#334155',
+          text: '#e2e8f0',
+          muted: '#94a3b8',
+        },
         // Legacy sidebar colors (for admin)
         sidebar: '#1e293b',
         'sidebar-hover': '#334155',
@@ -54,6 +63,7 @@ export default {
         'card': '0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05)',
         'card-hover': '0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07)',
         'dropdown': '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+        'dark-card': '0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3)',
       },
       transitionDuration: {
         '200': '200ms',

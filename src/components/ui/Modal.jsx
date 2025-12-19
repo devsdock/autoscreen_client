@@ -115,3 +115,4 @@ export const ModalActions = ({ children, className = '' }) => (
 
 export default Modal;
 
+

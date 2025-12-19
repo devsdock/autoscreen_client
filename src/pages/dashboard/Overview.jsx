@@ -55,13 +55,13 @@ const Overview = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Dashboard</h1>
           <div className="flex items-center gap-3 mt-2">
-            <button className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+            <button className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
               Week
               <ChevronDown size={16} />
             </button>
-            <button className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+            <button className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
               <Calendar size={16} />
               {dateRangeText}
             </button>
@@ -76,77 +76,77 @@ const Overview = () => {
       
       {/* Main Booking Card */}
       {latestBooking && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Left - Booking Info */}
             <div className="flex-1">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider">Booking ID</p>
-                  <p className="text-xl font-bold text-slate-800 mt-0.5">№ {latestBooking.id}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Booking ID</p>
+                  <p className="text-xl font-bold text-slate-800 dark:text-white mt-0.5">№ {latestBooking.id}</p>
                 </div>
               </div>
               
               {/* Info Pills */}
               <div className="flex flex-wrap gap-3 mb-6">
-                <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg">
-                  <Truck size={16} className="text-slate-500" />
-                  <span className="text-sm font-medium text-slate-700">{latestBooking.service}</span>
+                <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <Truck size={16} className="text-slate-500 dark:text-slate-400" />
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{latestBooking.service}</span>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg">
-                  <MapPin size={16} className="text-slate-500" />
-                  <span className="text-sm font-medium text-slate-700">{latestBooking.locationType}</span>
+                <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <MapPin size={16} className="text-slate-500 dark:text-slate-400" />
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{latestBooking.locationType}</span>
                 </div>
               </div>
               
               {/* Vehicle & Price Info */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                    <Package size={16} className="text-slate-500" />
+                  <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                    <Package size={16} className="text-slate-500 dark:text-slate-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">Vehicle</p>
-                    <p className="text-sm font-medium text-slate-700">{latestBooking.vehicle}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Vehicle</p>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{latestBooking.vehicle}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                    <User size={16} className="text-slate-500" />
+                  <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                    <User size={16} className="text-slate-500 dark:text-slate-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">Provider</p>
-                    <p className="text-sm font-medium text-slate-700">{latestBooking.providerName}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Provider</p>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{latestBooking.providerName}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                    <Clock size={16} className="text-slate-500" />
+                  <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                    <Clock size={16} className="text-slate-500 dark:text-slate-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">Date</p>
-                    <p className="text-sm font-medium text-slate-700">{formatDate(latestBooking.scheduledDate)}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Date</p>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(latestBooking.scheduledDate)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                    <CreditCard size={16} className="text-slate-500" />
+                  <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                    <CreditCard size={16} className="text-slate-500 dark:text-slate-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">Price</p>
-                    <p className="text-sm font-medium text-slate-700">{formatCurrency(latestBooking.price.total)}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Price</p>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatCurrency(latestBooking.price.total)}</p>
                   </div>
                 </div>
               </div>
             </div>
             
             {/* Right - Image */}
-            <div className="lg:w-72 h-44 bg-gradient-to-br from-blue-50 to-primary/10 rounded-xl flex items-center justify-center">
+            <div className="lg:w-72 h-44 bg-gradient-to-br from-blue-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 rounded-xl flex items-center justify-center">
               <div className="text-center">
-                <div className="w-20 h-20 mx-auto bg-white rounded-xl shadow-sm flex items-center justify-center mb-2">
-                  <Truck size={40} className="text-primary" />
+                <div className="w-20 h-20 mx-auto bg-white dark:bg-slate-800 rounded-xl shadow-sm flex items-center justify-center mb-2">
+                  <Truck size={40} className="text-primary-600 dark:text-primary-400" />
                 </div>
-                <p className="text-sm font-medium text-slate-600">{latestBooking.service}</p>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">{latestBooking.service}</p>
               </div>
             </div>
           </div>
@@ -155,43 +155,43 @@ const Overview = () => {
 
       {/* Route Section */}
       {latestBooking && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-slate-800">Booking Details</h2>
-            <button className="p-1.5 text-slate-400 hover:text-slate-600 rounded transition-colors">
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-white">Booking Details</h2>
+            <button className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded transition-colors">
               <MoreVertical size={18} />
             </button>
           </div>
           
           {/* Route Info Bar */}
-          <div className="flex flex-wrap items-center gap-6 pb-6 border-b border-slate-100">
+          <div className="flex flex-wrap items-center gap-6 pb-6 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                <Package size={18} className="text-primary" />
+              <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
+                <Package size={18} className="text-primary-600 dark:text-primary-400" />
               </div>
               <div>
-                <p className="text-xs text-slate-500">Booking ID</p>
-                <p className="text-sm font-semibold text-slate-800">№ {latestBooking.id}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Booking ID</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-white">№ {latestBooking.id}</p>
               </div>
             </div>
             
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
-                <User size={18} className="text-slate-600" />
+              <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+                <User size={18} className="text-slate-600 dark:text-slate-400" />
               </div>
               <div>
-                <p className="text-xs text-slate-500">Provider</p>
-                <p className="text-sm font-semibold text-slate-800">{latestBooking.providerName}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Provider</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-white">{latestBooking.providerName}</p>
               </div>
             </div>
             
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
-                <Calendar size={18} className="text-slate-600" />
+              <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+                <Calendar size={18} className="text-slate-600 dark:text-slate-400" />
               </div>
               <div>
-                <p className="text-xs text-slate-500">Scheduled Date</p>
-                <p className="text-sm font-semibold text-slate-800">{formatDate(latestBooking.scheduledDate, 'datetime')}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Scheduled Date</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-white">{formatDate(latestBooking.scheduledDate, 'datetime')}</p>
               </div>
             </div>
             
@@ -204,24 +204,24 @@ const Overview = () => {
               <div key={index} className="flex items-start gap-4">
                 <div className="flex flex-col items-center">
                   {step.completed ? (
-                    <CheckCircle size={20} className="text-success-green" />
+                    <CheckCircle size={20} className="text-success-600 dark:text-success-500" />
                   ) : (
-                    <Circle size={20} className="text-slate-300" />
+                    <Circle size={20} className="text-slate-300 dark:text-slate-600" />
                   )}
                   {index < latestBooking.timeline.length - 1 && (
-                    <div className={`w-0.5 h-8 mt-1 ${step.completed ? 'bg-success-green' : 'bg-slate-200'}`} />
+                    <div className={`w-0.5 h-8 mt-1 ${step.completed ? 'bg-success-600 dark:bg-success-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
                   )}
                 </div>
                 <div className="flex-1 flex items-center justify-between pb-2">
                   <div>
-                    <p className={`text-sm font-medium ${step.completed ? 'text-slate-800' : 'text-slate-400'}`}>
+                    <p className={`text-sm font-medium ${step.completed ? 'text-slate-800 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>
                       {step.status}
                     </p>
                     {step.date && (
-                      <p className="text-xs text-slate-500 mt-0.5">{latestBooking.address}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{latestBooking.address}</p>
                     )}
                   </div>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
                     {step.date ? formatDate(step.date, 'datetime') : '—'}
                   </p>
                 </div>
@@ -232,20 +232,20 @@ const Overview = () => {
       )}
 
       {/* History Section */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <h2 className="text-lg font-semibold text-slate-800">History</h2>
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-white">History</h2>
           
           {/* Tabs */}
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                   activeTab === tab.id
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
+                    ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
               >
                 {tab.label}
@@ -258,43 +258,43 @@ const Overview = () => {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-100">
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 uppercase tracking-wider">Booking ID</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 uppercase tracking-wider">Service</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 uppercase tracking-wider">Vehicle</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 uppercase tracking-wider">Provider</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 uppercase tracking-wider">Price</th>
-                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+              <tr className="border-b border-slate-100 dark:border-slate-800">
+                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Booking ID</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Service</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Vehicle</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Provider</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Date</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Price</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                 <th className="text-left py-3 px-4"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
               {filteredBookings.slice(0, 5).map((booking) => (
-                <tr key={booking.id} className="hover:bg-slate-50/50 transition-colors">
+                <tr key={booking.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="py-4 px-4">
-                    <span className="text-sm font-medium text-slate-800">№ {booking.id}</span>
+                    <span className="text-sm font-medium text-slate-800 dark:text-white">№ {booking.id}</span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-sm text-slate-600">{booking.service}</span>
+                    <span className="text-sm text-slate-600 dark:text-slate-400">{booking.service}</span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-sm text-slate-600">{booking.vehicle}</span>
+                    <span className="text-sm text-slate-600 dark:text-slate-400">{booking.vehicle}</span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-sm text-slate-600">{booking.providerName}</span>
+                    <span className="text-sm text-slate-600 dark:text-slate-400">{booking.providerName}</span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-sm text-slate-600">{formatDate(booking.scheduledDate)}</span>
+                    <span className="text-sm text-slate-600 dark:text-slate-400">{formatDate(booking.scheduledDate)}</span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-sm font-medium text-slate-800">{formatCurrency(booking.price.total)}</span>
+                    <span className="text-sm font-medium text-slate-800 dark:text-white">{formatCurrency(booking.price.total)}</span>
                   </td>
                   <td className="py-4 px-4">
                     <StatusBadge status={booking.status} type="booking" />
                   </td>
                   <td className="py-4 px-4">
-                    <button className="p-1.5 text-slate-400 hover:text-slate-600 rounded transition-colors">
+                    <button className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded transition-colors">
                       <MoreVertical size={16} />
                     </button>
                   </td>
@@ -306,7 +306,7 @@ const Overview = () => {
         
         {filteredBookings.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-slate-500">No bookings found</p>
+            <p className="text-slate-500 dark:text-slate-400">No bookings found</p>
           </div>
         )}
       </div>
