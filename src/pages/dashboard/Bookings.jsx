@@ -22,6 +22,9 @@ const Bookings = () => {
     id ? bookings.find(b => b.id === id) : null
   );
   
+  // Helper function to get booking status (handles both status and bookingStatus)
+  const getStatus = (b) => b.bookingStatus || b.status;
+  
   // Filter logic
   const now = new Date();
   const tabs = [
@@ -30,36 +33,42 @@ const Bookings = () => {
       value: 'upcoming', 
       label: 'Upcoming', 
       count: bookings.filter(b => 
-        b.status === 'Confirmed' && new Date(b.scheduledDate) > now
+        getStatus(b) === 'Confirmed' && new Date(b.scheduledDate) > now
       ).length 
     },
     { 
       value: 'inProgress', 
       label: 'In Progress', 
       count: bookings.filter(b => 
-        (b.status === 'Accepted' || b.status === 'Confirmed') && 
+        (getStatus(b) === 'Accepted' || getStatus(b) === 'Confirmed') && 
         new Date(b.scheduledDate).toDateString() === now.toDateString()
       ).length 
     },
-    { value: 'completed', label: 'Completed', count: bookings.filter(b => b.status === 'Completed').length },
-    { value: 'cancelled', label: 'Cancelled', count: bookings.filter(b => b.status === 'Cancelled').length },
+    { value: 'completed', label: 'Completed', count: bookings.filter(b => getStatus(b) === 'Completed').length },
+    { value: 'cancelled', label: 'Cancelled', count: bookings.filter(b => getStatus(b) === 'Cancelled').length },
   ];
   
   const filteredBookings = bookings.filter(booking => {
+    const status = getStatus(booking);
     // Tab filter
-    if (activeTab === 'upcoming' && !(booking.status === 'Confirmed' && new Date(booking.scheduledDate) > now)) return false;
-    if (activeTab === 'inProgress' && !((booking.status === 'Accepted' || booking.status === 'Confirmed') && new Date(booking.scheduledDate).toDateString() === now.toDateString())) return false;
-    if (activeTab === 'completed' && booking.status !== 'Completed') return false;
-    if (activeTab === 'cancelled' && booking.status !== 'Cancelled') return false;
+    if (activeTab === 'upcoming' && !(status === 'Confirmed' && new Date(booking.scheduledDate) > now)) return false;
+    if (activeTab === 'inProgress' && !((status === 'Accepted' || status === 'Confirmed') && new Date(booking.scheduledDate).toDateString() === now.toDateString())) return false;
+    if (activeTab === 'completed' && status !== 'Completed') return false;
+    if (activeTab === 'cancelled' && status !== 'Cancelled') return false;
     
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
+      // Handle both string and object formats for service and vehicle
+      const serviceName = typeof booking.service === 'object' ? booking.service?.name : booking.service;
+      const vehicleStr = typeof booking.vehicle === 'object' 
+        ? `${booking.vehicle.year} ${booking.vehicle.make} ${booking.vehicle.model}`
+        : booking.vehicle;
       return (
         booking.id.toLowerCase().includes(query) ||
-        booking.vehicle.toLowerCase().includes(query) ||
-        booking.providerName.toLowerCase().includes(query) ||
-        booking.service.toLowerCase().includes(query)
+        vehicleStr?.toLowerCase().includes(query) ||
+        booking.providerName?.toLowerCase().includes(query) ||
+        serviceName?.toLowerCase().includes(query)
       );
     }
     
@@ -127,15 +136,23 @@ const Bookings = () => {
                 <div className="flex-1 space-y-2">
                   <div className="flex items-start justify-between lg:justify-start gap-3 flex-wrap">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm text-slate-500">#{booking.id}</span>
-                      <StatusBadge status={booking.status} type="booking" />
+                      <span className="font-mono text-sm text-slate-500 dark:text-slate-400">
+                        #{booking.reference || booking.id}
+                      </span>
+                      <StatusBadge status={booking.bookingStatus || booking.status} type="booking" />
                       <StatusBadge status={booking.paymentStatus} type="payment" />
                     </div>
                   </div>
                   
                   <div>
-                    <h3 className="font-semibold text-slate-900">{booking.service}</h3>
-                    <p className="text-sm text-slate-500">{booking.vehicle}</p>
+                    <h3 className="font-semibold text-slate-900 dark:text-white">
+                      {typeof booking.service === 'object' ? booking.service?.name : booking.service}
+                    </h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      {typeof booking.vehicle === 'object' 
+                        ? `${booking.vehicle.year} ${booking.vehicle.make} ${booking.vehicle.model}`
+                        : booking.vehicle}
+                    </p>
                   </div>
                   
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600">
@@ -146,8 +163,8 @@ const Bookings = () => {
                       {formatDate(booking.scheduledDate, 'datetime')}
                     </span>
                     <span className="text-slate-300">•</span>
-                    <span className="font-medium text-slate-900">
-                      {formatCurrency(booking.price.total)}
+                    <span className="font-medium text-slate-900 dark:text-white">
+                      {formatCurrency(typeof booking.price === 'object' ? booking.price?.total : booking.price)}
                     </span>
                   </div>
                 </div>

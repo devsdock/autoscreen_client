@@ -10,12 +10,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Shield,
-  X
+  X,
+  Search
 } from 'lucide-react';
 import useDashboardStore from '../../store/useDashboardStore';
 
 const mainMenuItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', end: true },
+  { path: '/dashboard/book', icon: Search, label: 'Book a Service' },
   { path: '/dashboard/quotes', icon: FileText, label: 'My Quotes' },
   { path: '/dashboard/bookings', icon: Calendar, label: 'My Bookings' },
   { path: '/dashboard/payments', icon: CreditCard, label: 'Payments' },

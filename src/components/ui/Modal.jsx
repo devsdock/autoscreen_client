@@ -64,7 +64,7 @@ const Modal = ({
           aria-labelledby={title ? 'modal-title' : undefined}
           tabIndex={-1}
           className={`
-            relative w-full bg-white rounded-xl shadow-xl
+            relative w-full bg-white dark:bg-slate-900 rounded-xl shadow-xl
             animate-scale-in
             ${sizeClasses[size]}
             ${className}
@@ -72,15 +72,15 @@ const Modal = ({
         >
           {/* Header */}
           {(title || showCloseButton) && (
-            <div className="flex items-start justify-between p-5 border-b border-slate-100">
+            <div className="flex items-start justify-between p-5 border-b border-slate-100 dark:border-slate-800">
               <div>
                 {title && (
-                  <h2 id="modal-title" className="text-lg font-semibold text-slate-900">
+                  <h2 id="modal-title" className="text-lg font-semibold text-slate-900 dark:text-white">
                     {title}
                   </h2>
                 )}
                 {description && (
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     {description}
                   </p>
                 )}
@@ -88,7 +88,7 @@ const Modal = ({
               {showCloseButton && (
                 <button
                   onClick={onClose}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                   aria-label="Close modal"
                 >
                   <X size={20} />
@@ -108,7 +108,7 @@ const Modal = ({
 };
 
 export const ModalActions = ({ children, className = '' }) => (
-  <div className={`flex items-center justify-end gap-3 pt-4 border-t border-slate-100 mt-4 ${className}`}>
+  <div className={`flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 mt-4 ${className}`}>
     {children}
   </div>
 );

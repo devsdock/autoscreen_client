@@ -1,150 +1,262 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FileText, MessageSquare } from 'lucide-react';
-import useDashboardStore, { formatDate } from '../../store/useDashboardStore';
-import PageHeader from '../../components/ui/PageHeader';
-import Card from '../../components/ui/Card';
-import StatusBadge from '../../components/ui/StatusBadge';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { 
+  Search, 
+  Plus, 
+  FileText, 
+  Car, 
+  MapPin, 
+  Clock,
+  ChevronRight,
+  Filter
+} from 'lucide-react';
+import useDashboardStore, { formatDate, getRelativeTime } from '../../store/useDashboardStore';
 import Button from '../../components/ui/Button';
-import Tabs from '../../components/ui/Tabs';
-import Input from '../../components/ui/Input';
-import EmptyState from '../../components/ui/EmptyState';
-import NewQuoteModal from '../../components/dashboard/NewQuoteModal';
+import StatusBadge from '../../components/ui/StatusBadge';
+import RequestQuoteModal from '../../components/dashboard/RequestQuoteModal';
+import QuoteDetailPanel from '../../components/dashboard/QuoteDetailPanel';
+
+const statusFilters = [
+  { id: 'all', label: 'All' },
+  { id: 'Open', label: 'Open' },
+  { id: 'Responses', label: 'Responses' },
+  { id: 'Accepted', label: 'Accepted' },
+  { id: 'Closed', label: 'Closed' }
+];
 
 const Quotes = () => {
-  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { quotes } = useDashboardStore();
-  const [activeTab, setActiveTab] = useState('all');
+  
   const [searchQuery, setSearchQuery] = useState('');
-  const [showNewQuoteModal, setShowNewQuoteModal] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [selectedQuoteId, setSelectedQuoteId] = useState(null);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showMobileDetail, setShowMobileDetail] = useState(false);
   
-  const tabs = [
-    { value: 'all', label: 'All', count: quotes.length },
-    { value: 'open', label: 'Open', count: quotes.filter(q => q.status === 'Open').length },
-    { value: 'responses', label: 'Responses Received', count: quotes.filter(q => q.status === 'Received Responses').length },
-    { value: 'accepted', label: 'Accepted', count: quotes.filter(q => q.status === 'Accepted').length },
-    { value: 'closed', label: 'Expired/Closed', count: quotes.filter(q => q.status === 'Expired' || q.status === 'Closed').length },
-  ];
+  // Handle URL params for quote selection
+  useEffect(() => {
+    const quoteId = searchParams.get('id');
+    if (quoteId && quotes.find(q => q.id === quoteId)) {
+      setSelectedQuoteId(quoteId);
+    } else if (quotes.length > 0 && !selectedQuoteId) {
+      // Auto-select first quote on desktop
+      if (window.innerWidth >= 1024) {
+        setSelectedQuoteId(quotes[0].id);
+      }
+    }
+  }, [searchParams, quotes]);
   
+  // Filter quotes
   const filteredQuotes = quotes.filter(quote => {
-    // Tab filter
-    if (activeTab === 'open' && quote.status !== 'Open') return false;
-    if (activeTab === 'responses' && quote.status !== 'Received Responses') return false;
-    if (activeTab === 'accepted' && quote.status !== 'Accepted') return false;
-    if (activeTab === 'closed' && quote.status !== 'Expired' && quote.status !== 'Closed') return false;
+    // Status filter
+    if (activeFilter !== 'all' && quote.status !== activeFilter) {
+      return false;
+    }
     
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
+      const vehicleStr = `${quote.vehicle.make} ${quote.vehicle.model}`.toLowerCase();
       return (
-        quote.id.toLowerCase().includes(query) ||
-        quote.vehicle.toLowerCase().includes(query) ||
-        quote.glassType.toLowerCase().includes(query)
+        quote.reference.toLowerCase().includes(query) ||
+        vehicleStr.includes(query) ||
+        quote.location.city.toLowerCase().includes(query)
       );
     }
     
     return true;
   });
   
+  const selectedQuote = quotes.find(q => q.id === selectedQuoteId);
+  
+  const handleQuoteSelect = (quoteId) => {
+    setSelectedQuoteId(quoteId);
+    setSearchParams({ id: quoteId });
+    setShowMobileDetail(true);
+  };
+  
+  const handleRequestModalClose = (newQuoteId) => {
+    setShowRequestModal(false);
+    if (newQuoteId) {
+      setSelectedQuoteId(newQuoteId);
+      setSearchParams({ id: newQuoteId });
+    }
+  };
+  
+  const getStatusCount = (status) => {
+    if (status === 'all') return quotes.length;
+    return quotes.filter(q => q.status === status).length;
+  };
+  
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="My Quotes"
-        subtitle="Request quotes and compare provider offers"
-        actionLabel="Request New Quote"
-        actionIcon={Plus}
-        onAction={() => setShowNewQuoteModal(true)}
-      />
-      
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <Tabs 
-          tabs={tabs} 
-          activeTab={activeTab} 
-          onChange={setActiveTab}
-          variant="pills"
-          className="overflow-x-auto"
-        />
-        <Input
-          placeholder="Search by quote ID or vehicle..."
-          icon={Search}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-64"
-        />
+    <div className="h-[calc(100vh-7rem)] flex flex-col">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">My Quotes</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Request quotes and compare provider offers
+          </p>
+        </div>
+        <Button onClick={() => setShowRequestModal(true)}>
+          <Plus size={18} />
+          Request a Quote
+        </Button>
       </div>
       
-      {/* Quotes List */}
-      {filteredQuotes.length === 0 ? (
-        <EmptyState
-          iconType="quotes"
-          title="No quotes yet"
-          description="Request your first quote to compare providers and prices."
-          actionLabel="Request a Quote"
-          onAction={() => setShowNewQuoteModal(true)}
-        />
-      ) : (
-        <div className="grid gap-4">
-          {filteredQuotes.map((quote) => (
-            <Card key={quote.id} className="hover:shadow-card-hover transition-shadow">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-start justify-between lg:justify-start gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm text-slate-500">#{quote.id}</span>
-                        <StatusBadge status={quote.status} type="quote" />
+      {/* Main Content */}
+      <div className="flex-1 flex gap-6 min-h-0">
+        {/* Left Column - Quote List */}
+        <div className={`
+          w-full lg:w-[400px] flex-shrink-0 flex flex-col
+          ${showMobileDetail ? 'hidden lg:flex' : 'flex'}
+        `}>
+          {/* Search */}
+          <div className="relative mb-4">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by reference or vehicle..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400"
+            />
+          </div>
+          
+          {/* Status Filter Chips */}
+          <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 -mx-1 px-1">
+            {statusFilters.map(filter => (
+              <button
+                key={filter.id}
+                onClick={() => setActiveFilter(filter.id)}
+                className={`
+                  px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors
+                  ${activeFilter === filter.id
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  }
+                `}
+              >
+                {filter.label}
+                <span className={`ml-1.5 ${activeFilter === filter.id ? 'text-white/70' : 'text-slate-400'}`}>
+                  {getStatusCount(filter.id)}
+                </span>
+              </button>
+            ))}
+          </div>
+          
+          {/* Quote List */}
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+            {filteredQuotes.length === 0 ? (
+              <div className="text-center py-12 px-4">
+                <div className="w-16 h-16 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                  <FileText size={24} className="text-slate-400" />
+                </div>
+                {quotes.length === 0 ? (
+                  <>
+                    <h3 className="font-semibold text-slate-900 dark:text-white mb-2">No quotes yet</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                      Request your first quote to compare providers and get the best price
+                    </p>
+                    <Button onClick={() => setShowRequestModal(true)}>
+                      <Plus size={16} />
+                      Request Your First Quote
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="font-semibold text-slate-900 dark:text-white mb-2">No quotes found</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Try adjusting your search or filters
+                    </p>
+                  </>
+                )}
+              </div>
+            ) : (
+              filteredQuotes.map(quote => (
+                <button
+                  key={quote.id}
+                  onClick={() => handleQuoteSelect(quote.id)}
+                  className={`
+                    w-full text-left p-4 rounded-xl border transition-all
+                    ${selectedQuoteId === quote.id
+                      ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-800 ring-2 ring-primary-500/20'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-600 hover:shadow-sm'
+                    }
+                  `}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      {/* Reference & Status */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-semibold text-slate-900 dark:text-white text-sm">
+                          {quote.reference}
+                        </span>
+                        <StatusBadge status={quote.status} type="quote" size="sm" />
                       </div>
-                      <h3 className="font-semibold text-slate-900 mt-1">{quote.vehicle}</h3>
+                      
+                      {/* Service Type */}
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        {quote.glassType} {quote.serviceType}
+                      </p>
+                      
+                      {/* Vehicle */}
+                      <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 mb-1">
+                        <Car size={14} className="flex-shrink-0" />
+                        <span className="truncate">
+                          {quote.vehicle.year} {quote.vehicle.make} {quote.vehicle.model}
+                        </span>
+                      </div>
+                      
+                      {/* Location */}
+                      <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+                        <MapPin size={14} className="flex-shrink-0" />
+                        <span>{quote.location.city}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col items-end">
+                      <ChevronRight size={18} className="text-slate-300 dark:text-slate-600 mb-2" />
+                      
+                      {/* Responses Count */}
+                      {quote.responsesCount > 0 && quote.status !== 'Accepted' && (
+                        <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-xs font-medium rounded-full">
+                          {quote.responsesCount} offer{quote.responsesCount > 1 ? 's' : ''}
+                        </span>
+                      )}
+                      
+                      {/* Date */}
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+                        {getRelativeTime(quote.createdAt)}
+                      </p>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600">
-                    <span>{quote.glassType}</span>
-                    <span className="text-slate-300">•</span>
-                    <span>{quote.serviceType}</span>
-                    <span className="text-slate-300">•</span>
-                    <span>{quote.location}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="text-slate-500">
-                      Requested {formatDate(quote.dateRequested)}
-                    </span>
-                    {quote.responsesCount > 0 ? (
-                      <span className="flex items-center gap-1 text-primary-600 font-medium">
-                        <MessageSquare size={14} />
-                        {quote.responsesCount} provider{quote.responsesCount > 1 ? 's' : ''} responded
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">Awaiting responses</span>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2 lg:flex-shrink-0">
-                  <Button 
-                    variant="secondary"
-                    onClick={() => navigate(`/dashboard/quotes/${quote.id}`)}
-                  >
-                    View Details
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
+                </button>
+              ))
+            )}
+          </div>
         </div>
-      )}
+        
+        {/* Right Column - Quote Detail */}
+        <div className={`
+          flex-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col
+          ${showMobileDetail ? 'fixed inset-0 z-40 lg:relative lg:inset-auto' : 'hidden lg:flex'}
+        `}>
+          <QuoteDetailPanel 
+            quote={selectedQuote} 
+            onClose={() => setShowMobileDetail(false)}
+          />
+        </div>
+      </div>
       
-      {/* New Quote Modal */}
-      <NewQuoteModal 
-        isOpen={showNewQuoteModal} 
-        onClose={() => setShowNewQuoteModal(false)} 
+      {/* Request Quote Modal */}
+      <RequestQuoteModal
+        isOpen={showRequestModal}
+        onClose={handleRequestModalClose}
       />
     </div>
   );
 };
 
 export default Quotes;
-
-

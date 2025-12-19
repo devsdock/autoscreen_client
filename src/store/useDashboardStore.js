@@ -9,6 +9,7 @@ import { bookingsData } from '../data/bookings';
 import { paymentsData } from '../data/payments';
 import { activitiesData } from '../data/activities';
 import { providersData } from '../data/providers';
+import { reviewsData } from '../data/reviews';
 
 // Helper to generate IDs
 const generateId = (prefix) => `${prefix}-${Date.now().toString(36).toUpperCase()}`;
@@ -82,6 +83,12 @@ const useDashboardStore = create(
       
       // Providers
       providers: providersData,
+      
+      // Reviews
+      reviews: reviewsData,
+      
+      // Search/Booking flow state
+      searchCriteria: null,
       
       // UI State
       sidebarOpen: true,
@@ -207,16 +214,32 @@ const useDashboardStore = create(
       // Quote actions
       createQuote: (quoteData) => {
         const id = generateId('QT');
-        const vehicle = get().vehicles.find((v) => v.id === quoteData.vehicleId);
-        const address = get().addresses.find((a) => a.id === quoteData.addressId);
+        const year = new Date().getFullYear();
+        const count = get().quotes.length + 1;
+        const reference = `Q-${year}-${count.toString().padStart(5, '0')}`;
         
         const newQuote = {
           id,
-          ...quoteData,
-          vehicle: vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : quoteData.vehicle,
-          location: address ? `${address.suburb}, ${address.city}` : quoteData.location,
+          reference,
+          customerId: get().user.id,
+          createdAt: new Date().toISOString(),
           status: 'Open',
-          dateRequested: new Date().toISOString(),
+          vehicle: {
+            make: quoteData.vehicleMake,
+            model: quoteData.vehicleModel,
+            year: parseInt(quoteData.vehicleYear)
+          },
+          serviceType: quoteData.serviceType,
+          glassType: quoteData.glassType,
+          location: {
+            city: quoteData.city,
+            postcode: quoteData.postcode || '',
+            addressLine1: quoteData.addressLine1 || ''
+          },
+          preferredDate: quoteData.preferredDate || null,
+          preferredTimeSlot: quoteData.preferredTimeSlot || 'Any time',
+          notes: quoteData.notes || '',
+          images: quoteData.images || [],
           responsesCount: 0
         };
         
@@ -227,12 +250,21 @@ const useDashboardStore = create(
         // Add activity
         get().addActivity({
           type: 'quote_submitted',
-          message: `New quote request #${id} submitted`,
+          message: `New quote request ${reference} submitted`,
           relatedId: id
         });
         
-        get().addToast({ type: 'success', message: 'Quote request submitted! Providers will respond soon.' });
+        get().addToast({ type: 'success', message: 'Quote request sent successfully!' });
         return id;
+      },
+      
+      closeQuoteRequest: (quoteId) => {
+        set((state) => ({
+          quotes: state.quotes.map((q) => 
+            q.id === quoteId ? { ...q, status: 'Closed' } : q
+          )
+        }));
+        get().addToast({ type: 'info', message: 'Quote request closed' });
       },
       
       acceptQuote: (quoteId, responseId) => {
@@ -250,39 +282,57 @@ const useDashboardStore = create(
           )
         }));
         
-        // Create booking
+        // Mark selected response as accepted, others as rejected
+        set((state) => ({
+          quoteResponses: state.quoteResponses.map((r) => {
+            if (r.quoteRequestId === quoteId) {
+              return { ...r, status: r.id === responseId ? 'Accepted' : 'Rejected' };
+            }
+            return r;
+          })
+        }));
+        
+        // Create draft booking
         const bookingId = generateId('BK');
-        const vehicle = get().vehicles.find((v) => v.id === quote.vehicleId);
-        const address = get().addresses.find((a) => a.id === quote.addressId);
+        const bookingRef = `B-${new Date().getFullYear()}-${(get().bookings.length + 1).toString().padStart(5, '0')}`;
+        
+        const vehicleStr = `${quote.vehicle.year} ${quote.vehicle.make} ${quote.vehicle.model}`;
+        const addressStr = quote.location.addressLine1 
+          ? `${quote.location.addressLine1}, ${quote.location.city}` 
+          : quote.location.city;
         
         const newBooking = {
           id: bookingId,
+          reference: bookingRef,
+          source: 'QuoteAccepted',
           quoteId,
           quoteResponseId: responseId,
           customerId: get().user.id,
-          providerId: response.providerId,
-          providerName: response.providerName,
+          providerId: response.provider.id,
+          providerName: response.provider.name,
           providerPhone: '+27 11 234 5678',
-          providerRating: response.providerRating,
-          providerReviews: response.providerReviews,
+          providerRating: response.provider.rating,
+          providerReviews: response.provider.reviewsCount,
           service: `${quote.glassType} ${quote.serviceType}`,
-          vehicle: quote.vehicle,
-          scheduledDate: new Date(response.availability).toISOString(),
+          vehicle: vehicleStr,
+          scheduledDate: response.etaText.includes('Available') 
+            ? new Date(response.etaText.replace('Available ', '')).toISOString() 
+            : new Date().toISOString(),
           locationType: 'Mobile',
-          address: address ? `${address.street}, ${address.suburb}, ${address.city}` : 'Address pending',
+          address: addressStr,
           notes: quote.notes,
           status: 'Pending',
           paymentStatus: 'Unpaid',
           price: {
-            service: response.price * 0.9,
-            callout: response.price * 0.08,
-            materials: response.price * 0.02,
+            service: Math.round(response.price * 0.9),
+            callout: Math.round(response.price * 0.08),
+            materials: Math.round(response.price * 0.02),
             total: response.price
           },
           timeline: [
             { status: 'Quote Accepted', date: new Date().toISOString(), completed: true },
             { status: 'Booking Confirmed', date: null, completed: false },
-            { status: 'Appointment Scheduled', date: response.availability, completed: false },
+            { status: 'Appointment Scheduled', date: null, completed: false },
             { status: 'Job Completed', date: null, completed: false },
             { status: 'Payment Received', date: null, completed: false }
           ],
@@ -331,14 +381,7 @@ const useDashboardStore = create(
         return bookingId;
       },
       
-      closeQuote: (quoteId) => {
-        set((state) => ({
-          quotes: state.quotes.map((q) => 
-            q.id === quoteId ? { ...q, status: 'Closed' } : q
-          )
-        }));
-        get().addToast({ type: 'info', message: 'Quote closed' });
-      },
+      // Note: closeQuoteRequest is defined above in Quote actions
       
       // Booking actions
       confirmBooking: (bookingId) => {
@@ -458,6 +501,197 @@ const useDashboardStore = create(
         get().addToast({ type: 'success', message: 'Payment successful!' });
       },
       
+      // Search & Booking flow actions
+      setSearchCriteria: (criteria) => set({ searchCriteria: criteria }),
+      
+      searchProviders: (criteria) => {
+        const providers = get().providers;
+        let filtered = [...providers];
+        
+        // Filter by city/location
+        if (criteria?.city) {
+          const cityLower = criteria.city.toLowerCase();
+          filtered = filtered.filter(p => 
+            p.serviceAreas.some(area => area.toLowerCase().includes(cityLower)) ||
+            p.address.city.toLowerCase().includes(cityLower)
+          );
+        }
+        
+        // Filter by service type if specified
+        if (criteria?.serviceType) {
+          filtered = filtered.filter(p => 
+            p.services.some(s => 
+              s.name.toLowerCase().includes(criteria.serviceType.toLowerCase()) ||
+              s.name.toLowerCase().includes(criteria.glassType?.toLowerCase() || '')
+            )
+          );
+        }
+        
+        return filtered;
+      },
+      
+      getProviderById: (providerId) => {
+        return get().providers.find(p => p.id === providerId);
+      },
+      
+      getProviderReviews: (providerId) => {
+        return get().reviews.filter(r => r.providerId === providerId);
+      },
+      
+      // Create booking from the booking flow
+      createBookingFromFlow: (bookingData) => {
+        const id = generateId('BK');
+        const year = new Date().getFullYear();
+        const count = get().bookings.length + 1;
+        const reference = `B-${year}-${count.toString().padStart(5, '0')}`;
+        
+        const provider = get().providers.find(p => p.id === bookingData.providerId);
+        
+        // Calculate prices
+        const subtotal = bookingData.service.fromPrice;
+        const platformFee = Math.round(subtotal * 0.05); // 5% platform fee
+        const total = subtotal + platformFee;
+        
+        const newBooking = {
+          id,
+          reference,
+          source: 'DirectBooking',
+          customerId: get().user.id,
+          providerId: bookingData.providerId,
+          providerName: provider?.name || bookingData.providerName,
+          providerType: provider?.type || 'Business',
+          providerPhone: provider?.phone || '',
+          providerRating: provider?.rating || 0,
+          providerReviews: provider?.reviewsCount || 0,
+          vehicle: bookingData.vehicle,
+          service: {
+            id: bookingData.service.id,
+            name: bookingData.service.name,
+            fromPrice: bookingData.service.fromPrice,
+            durationMins: bookingData.service.durationMins
+          },
+          glassType: bookingData.glassType,
+          scheduledDate: bookingData.scheduledDate,
+          timeSlot: bookingData.timeSlot,
+          address: bookingData.address,
+          remarks: bookingData.remarks || '',
+          uploadedImages: bookingData.uploadedImages || [],
+          status: 'Pending',
+          paymentStatus: 'Unpaid',
+          price: {
+            subtotal,
+            platformFee,
+            total
+          },
+          timeline: [
+            { status: 'Request Sent', date: new Date().toISOString(), completed: true },
+            { status: 'Provider Accepted', date: null, completed: false },
+            { status: 'Payment Completed', date: null, completed: false },
+            { status: 'Booking Confirmed', date: null, completed: false },
+            { status: 'Job Completed', date: null, completed: false }
+          ],
+          createdAt: new Date().toISOString(),
+          acceptedAt: null,
+          paidAt: null
+        };
+        
+        set((state) => ({
+          bookings: [newBooking, ...state.bookings]
+        }));
+        
+        get().addActivity({
+          type: 'booking_created',
+          message: `Booking request ${reference} sent to ${provider?.name}`,
+          relatedId: id
+        });
+        
+        get().addToast({ type: 'success', message: 'Booking request sent successfully!' });
+        return id;
+      },
+      
+      // Simulate provider acceptance (for prototype demo)
+      simulateProviderAcceptance: (bookingId) => {
+        set((state) => ({
+          bookings: state.bookings.map(b => {
+            if (b.id !== bookingId) return b;
+            return {
+              ...b,
+              status: 'Accepted',
+              acceptedAt: new Date().toISOString(),
+              timeline: b.timeline.map((t, i) => 
+                i <= 1 ? { ...t, completed: true, date: t.date || new Date().toISOString() } : t
+              )
+            };
+          })
+        }));
+        
+        get().addActivity({
+          type: 'booking_accepted',
+          message: `Provider accepted booking #${bookingId}`,
+          relatedId: bookingId
+        });
+        
+        get().addToast({ type: 'success', message: 'Provider has accepted your booking!' });
+      },
+      
+      // Process booking payment and confirm
+      processBookingPayment: (bookingId, method) => {
+        const booking = get().bookings.find(b => b.id === bookingId);
+        if (!booking) return;
+        
+        set((state) => ({
+          bookings: state.bookings.map(b => {
+            if (b.id !== bookingId) return b;
+            return {
+              ...b,
+              status: 'Confirmed',
+              paymentStatus: 'Paid',
+              paidAt: new Date().toISOString(),
+              timeline: b.timeline.map((t, i) => 
+                i <= 3 ? { ...t, completed: true, date: t.date || new Date().toISOString() } : t
+              )
+            };
+          })
+        }));
+        
+        // Create payment record
+        const paymentId = generateId('PAY');
+        const newPayment = {
+          id: paymentId,
+          bookingId,
+          bookingRef: booking.reference,
+          customerId: get().user.id,
+          providerId: booking.providerId,
+          providerName: booking.providerName,
+          service: booking.service.name,
+          amount: booking.price.total,
+          breakdown: {
+            service: booking.price.subtotal,
+            platformFee: booking.price.platformFee
+          },
+          status: 'Paid',
+          method,
+          date: new Date().toISOString().split('T')[0]
+        };
+        
+        set((state) => ({
+          payments: [newPayment, ...state.payments]
+        }));
+        
+        get().addActivity({
+          type: 'payment_completed',
+          message: `Payment of ${formatCurrency(booking.price.total)} for booking ${booking.reference}`,
+          relatedId: bookingId
+        });
+        
+        get().addToast({ type: 'success', message: 'Payment successful! Booking confirmed.' });
+        return paymentId;
+      },
+      
+      getBookingById: (bookingId) => {
+        return get().bookings.find(b => b.id === bookingId);
+      },
+      
       // Activity actions
       addActivity: (activity) => {
         const id = generateId('ACT');
@@ -551,6 +785,8 @@ const useDashboardStore = create(
         bookings: state.bookings,
         payments: state.payments,
         activities: state.activities,
+        reviews: state.reviews,
+        searchCriteria: state.searchCriteria,
         sidebarCollapsed: state.sidebarCollapsed,
         theme: state.theme
       })

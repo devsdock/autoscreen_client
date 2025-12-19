@@ -1,37 +1,44 @@
+// Customer Addresses
 export const addressesData = [
   {
     id: "ADDR-001",
     label: "Home",
-    street: "123 Main Road",
+    line1: "123 Main Road",
     suburb: "Sandton",
     city: "Johannesburg",
-    postalCode: "2196",
-    isDefault: true
+    postcode: "2196"
   },
   {
     id: "ADDR-002",
     label: "Work",
-    street: "456 Office Park",
+    line1: "45 Oxford Street, Block B",
     suburb: "Rosebank",
     city: "Johannesburg",
-    postalCode: "2196",
-    isDefault: false
+    postcode: "2196"
   }
 ];
 
+// South African cities
 export const cities = [
   "Johannesburg",
   "Pretoria",
   "Cape Town",
   "Durban",
-  "Gqeberha",
+  "Port Elizabeth",
   "Bloemfontein",
   "East London",
   "Polokwane",
   "Nelspruit",
-  "Kimberley"
+  "Rustenburg",
+  "Kimberley",
+  "Pietermaritzburg"
 ];
 
-export const addressLabels = ["Home", "Work", "Other"];
+// Address labels
+export const addressLabels = [
+  "Home",
+  "Work",
+  "Other"
+];
 
-
+export default addressesData;
