@@ -362,3 +362,4 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
 
 export default QuoteDetailPanel;
 
+
