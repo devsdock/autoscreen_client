@@ -1,13 +1,19 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   ArrowLeft, ArrowRight, Check, Car, Calendar, MapPin, MessageSquare, 
-  FileText, Clock, Star, Shield, Building2, User, Plus, X, Upload, Trash2
+  FileText, Clock, Star, Shield, Building2, User, Plus, X, Upload, Trash2, Search
 } from 'lucide-react';
 import useDashboardStore, { formatCurrency, formatDate } from '../../store/useDashboardStore';
+import bookingService from '../../services/bookingService';
+import vehicleService from '../../services/vehicleService';
+import geocodingService from '../../services/geocodingService';
 import Button from '../../components/ui/Button';
 import Modal, { ModalActions } from '../../components/ui/Modal';
 import { glassTypes } from '../../data/providers';
+import { vehicleMakes, cities } from '../../data/quotes';
+import PremiumSelect from '../../components/ui/PremiumSelect';
+import PremiumDatePicker from '../../components/ui/PremiumDatePicker';
 
 const steps = [
   { id: 1, title: 'Service', icon: FileText },
@@ -18,19 +24,19 @@ const steps = [
 ];
 
 const BookingForm = () => {
-  const { providerId } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
   const { 
-    getProviderById, 
     searchCriteria, 
     addresses, 
-    addAddress, 
-    createBookingFromFlow,
+    vehicles,
+    addAddress,
     addToast 
   } = useDashboardStore();
   
-  const provider = getProviderById(providerId);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const provider = null; // Uber Flow: No specific provider pre-selected
   const preSelectedService = location.state?.selectedService;
   
   const [currentStep, setCurrentStep] = useState(1);
@@ -45,7 +51,8 @@ const BookingForm = () => {
   
   const [formData, setFormData] = useState({
     // Step 1: Service & Vehicle
-    service: preSelectedService || null,
+    // Service must be explicitly selected by the user
+    service: null,
     vehicle: {
       make: searchCriteria?.vehicleMake || '',
       model: searchCriteria?.vehicleModel || '',
@@ -66,34 +73,84 @@ const BookingForm = () => {
   });
   
   const [errors, setErrors] = useState({});
+  const [availableModels, setAvailableModels] = useState([]);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [modelSearchQuery, setModelSearchQuery] = useState('');
+  const [suggestedField, setSuggestedField] = useState(null);
+
+  // Pre-fill from saved details (Uber Style)
+  useEffect(() => {
+    // Fill Vehicle
+    if (!formData.vehicle.make && vehicles.length > 0) {
+      const defaultVehicle = vehicles.find(v => v.isDefault) || vehicles[0];
+      setFormData(prev => ({
+        ...prev,
+        vehicle: {
+          make: defaultVehicle.make,
+          model: defaultVehicle.model,
+          year: defaultVehicle.year.toString()
+        }
+      }));
+    }
+
+    // Fill Address
+    if (!formData.address && addresses.length > 0) {
+      const defaultAddress = addresses.find(a => a.isDefault) || addresses[0];
+      setFormData(prev => ({
+        ...prev,
+        address: defaultAddress
+      }));
+    }
+  }, [vehicles, addresses]);
   
   // Get available dates
   const availableDates = useMemo(() => {
-    if (!provider?.availability) return [];
-    const today = new Date().toISOString().split('T')[0];
-    return provider.availability.filter(a => a.date >= today);
+    if (provider?.availability) {
+      const today = new Date().toISOString().split('T')[0];
+      return provider.availability.filter(a => a.date >= today);
+    }
+    
+    // Uber Flow: Generate next 7 days as available
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      dates.push({
+        date: d.toISOString().split('T')[0],
+        slots: ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-16:00', '16:00-18:00']
+      });
+    }
+    return dates;
   }, [provider]);
   
   // Get available slots for selected date
   const availableSlots = useMemo(() => {
-    if (!formData.scheduledDate || !provider?.availability) return [];
-    const dateEntry = provider.availability.find(a => a.date === formData.scheduledDate);
-    return dateEntry?.slots || [];
+    if (!formData.scheduledDate) return [];
+    
+    if (provider?.availability) {
+      const dateEntry = provider.availability.find(a => a.date === formData.scheduledDate);
+      return dateEntry?.slots || [];
+    }
+    
+    // Uber Flow: Return standard time slots
+    return ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-16:00', '16:00-18:00'];
   }, [formData.scheduledDate, provider]);
   
-  if (!provider) {
-    return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Provider not found</h2>
-        <Button onClick={() => navigate('/dashboard/providers')}>Back to Providers</Button>
-      </div>
-    );
-  }
+  // No provider check needed for Uber style
   
   const updateFormData = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
+    }
+
+    if (field === 'scheduledDate') {
+      setFormData(prev => ({ ...prev, scheduledDate: value, timeSlot: '' }));
+      setSuggestedField('timeSlot');
+    }
+
+    if (field === 'timeSlot') {
+      setSuggestedField(null);
     }
   };
   
@@ -102,7 +159,39 @@ const BookingForm = () => {
       ...prev,
       vehicle: { ...prev.vehicle, [field]: value }
     }));
+    
+    if (field === 'make') {
+      setFormData(prev => ({
+        ...prev,
+        vehicle: { ...prev.vehicle, make: value, model: '' }
+      }));
+      setAvailableModels([]);
+      setSuggestedField('model');
+    }
+
+    if (field === 'model') {
+      setSuggestedField(null);
+    }
   };
+
+  // Fetch models dynamically
+  useEffect(() => {
+    const fetchModels = async () => {
+      if (!formData.vehicle.make) return;
+      
+      setIsFetchingModels(true);
+      try {
+        const models = await vehicleService.getModelsByMake(formData.vehicle.make);
+        setAvailableModels(models);
+      } catch (err) {
+        console.error('Failed to fetch models', err);
+      } finally {
+        setIsFetchingModels(false);
+      }
+    };
+
+    fetchModels();
+  }, [formData.vehicle.make]);
   
   const validateStep = (step) => {
     const newErrors = {};
@@ -153,35 +242,120 @@ const BookingForm = () => {
     updateFormData('uploadedImages', formData.uploadedImages.filter(img => img.id !== imageId));
   };
   
-  const handleAddAddress = () => {
+  const [isGeocoding, setIsGeocoding] = useState(false);
+
+  const handleAddAddress = async () => {
     if (!newAddress.line1 || !newAddress.city) {
       addToast({ type: 'error', message: 'Please fill in required fields' });
       return;
     }
-    const id = addAddress(newAddress);
+
+    setIsGeocoding(true);
+    let coords = null;
+    try {
+      // Construct clean address for better matching
+      const parts = [newAddress.line1, newAddress.suburb, newAddress.city, 'South Africa'].filter(Boolean);
+      const fullAddress = parts.join(', ');
+      
+      coords = await geocodingService.getCoordinates(fullAddress);
+      
+      // Fallback: Try just suburb and city if full address fails
+      if (!coords && newAddress.suburb && newAddress.city) {
+        console.log('Geocoding fallback: Suburb + City');
+        coords = await geocodingService.getCoordinates(`${newAddress.suburb}, ${newAddress.city}, South Africa`);
+      }
+      
+      // Fallback: Try just city if that fails
+      if (!coords && newAddress.city) {
+        console.log('Geocoding fallback: City only');
+        coords = await geocodingService.getCoordinates(`${newAddress.city}, South Africa`);
+      }
+    } catch (err) {
+      console.error('Geocoding failed', err);
+    } finally {
+      setIsGeocoding(false);
+    }
+
+    const addressToAdd = { ...newAddress, coordinates: coords };
+    const id = addAddress(addressToAdd);
+    
     setFormData(prev => ({
       ...prev,
-      address: { id, ...newAddress }
+      address: { id, ...addressToAdd }
     }));
     setIsAddressModalOpen(false);
     setNewAddress({ label: 'Home', line1: '', suburb: '', city: '', postcode: '' });
   };
   
-  const handleSubmit = () => {
-    const bookingId = createBookingFromFlow({
-      providerId: provider.id,
-      providerName: provider.name,
-      service: formData.service,
-      vehicle: formData.vehicle,
-      glassType: formData.glassType,
-      scheduledDate: formData.scheduledDate,
-      timeSlot: formData.timeSlot,
-      address: formData.address,
-      remarks: formData.remarks,
-      uploadedImages: formData.uploadedImages.map(img => img.url)
-    });
-    
-    navigate(`/dashboard/booking/pending/${bookingId}`);
+  const handleSubmit = async () => {
+    if (!formData.service || !formData.address || !formData.vehicle) {
+      addToast({ type: 'error', message: 'Incomplete booking details' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const bookingData = {
+        provider: provider?.id || null, // Optional for broadcast flow
+        serviceType: (formData.service.name || '').toLowerCase().includes('repair') ? 'repair' : 'replacement',
+        glassType: (formData.glassType || 'windscreen').toLowerCase().replace(' ', '_'),
+        vehicle: {
+          make: formData.vehicle.make,
+          model: formData.vehicle.model,
+          year: parseInt(formData.vehicle.year) || new Date().getFullYear()
+        },
+        scheduledDate: formData.scheduledDate,
+        scheduledTimeSlot: formData.timeSlot,
+        serviceLocationType: 'mobile',
+        city: searchCriteria?.city || 'Johannesburg', // Used for radius matching
+        serviceAddress: {
+          addressLine1: formData.address.line1,
+          city: formData.address.city,
+          province: 'Gauteng', // Hardcoded for now
+          postalCode: formData.address.postcode,
+          coordinates: formData.address.coordinates
+        },
+        price: {
+          subtotal: formData.service.fromPrice || 0,
+          total: (formData.service.fromPrice || 0) + Math.round((formData.service.fromPrice || 0) * 0.05)
+        },
+        customerNotes: formData.remarks
+      };
+
+      // Final safety net: Ensure coordinates are present
+      if (!bookingData.serviceAddress.coordinates) {
+        console.log('Coordinates missing in formData, attempting JIT geocoding...');
+        try {
+           const addrStr = `${bookingData.serviceAddress.addressLine1 || ''}, ${bookingData.serviceAddress.city}, South Africa`.replace(/^, /, '');
+           const jitCoords = await geocodingService.getCoordinates(addrStr);
+           if (jitCoords) {
+             bookingData.serviceAddress.coordinates = jitCoords;
+             console.log('JIT Geocoding successful:', jitCoords);
+           }
+        } catch (e) {
+          console.error('JIT Geocoding failed', e);
+        }
+      }
+
+      const res = await bookingService.createBookingRequest(bookingData);
+      console.log('Booking API response:', res);
+      
+      const newBookingId = res?.data?.bookingId || res?.bookingId;
+      
+      if (!newBookingId) {
+        console.error('No booking ID in response:', res);
+        addToast({ type: 'error', message: 'Booking created but no ID returned' });
+        return;
+      }
+      
+      addToast({ type: 'success', message: 'Booking request sent!' });
+      navigate(`/dashboard/booking/searching/${newBookingId}`);
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      addToast({ type: 'error', message: error?.error || error?.message || 'Failed to create booking' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   const currentYear = new Date().getFullYear();
@@ -190,30 +364,47 @@ const BookingForm = () => {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Back Button */}
-      <button 
-        onClick={() => navigate(`/dashboard/providers/${providerId}`)}
-        className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 mb-4"
-      >
-        <ArrowLeft size={16} />
-        Back to provider
-      </button>
+      <div className="mb-4">
+        <Link 
+          to="/dashboard/book"
+          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-xl transition-colors bg-transparent text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-primary-400 hover:text-primary-600"
+        >
+          <ArrowLeft size={16} />
+          Back to Search
+        </Link>
+      </div>
       
-      {/* Provider Summary */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-6 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-          {provider.name.charAt(0)}
+      {/* Search Context Summary (Uber Style) */}
+      {!provider && (
+        <div className="bg-primary-600 rounded-xl p-4 mb-6 shadow-md text-white">
+          <h2 className="font-semibold text-lg flex items-center gap-2">
+            <Search size={20} />
+            Finding best provider in {searchCriteria?.city || 'your area'}
+          </h2>
+          <p className="text-primary-100 text-sm">
+            We'll broadcast your request to all trusted providers nearby.
+          </p>
         </div>
-        <div className="flex-1">
-          <h2 className="font-semibold text-slate-900 dark:text-white">{provider.name}</h2>
-          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-            <Star size={14} className="text-amber-400" fill="currentColor" />
-            {provider.rating} ({provider.reviewsCount} reviews)
-            <span className="mx-1">•</span>
-            <MapPin size={14} />
-            {provider.address.city}
+      )}
+
+      {/* Provider Summary (Only if specific requested) */}
+      {provider && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-6 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+            {provider.name.charAt(0)}
+          </div>
+          <div className="flex-1">
+            <h2 className="font-semibold text-slate-900 dark:text-white">{provider.name}</h2>
+            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+              <Star size={14} className="text-amber-400" fill="currentColor" />
+              {provider.rating} ({provider.reviewsCount} reviews)
+              <span className="mx-1">•</span>
+              <MapPin size={14} />
+              {provider.address.city}
+            </div>
           </div>
         </div>
-      </div>
+      )}
       
       {/* Stepper */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-6">
@@ -258,14 +449,39 @@ const BookingForm = () => {
         {currentStep === 1 && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Select a Service</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Select Service Type</h3>
               <div className="space-y-3">
-                {provider.services.map(service => (
+                {(() => {
+                  // Get selected glass type or default to Windscreen
+                  const glassType = searchCriteria?.glassType || 'Windscreen';
+                  // Format glass type name for display
+                  const glassName = glassType.charAt(0).toUpperCase() + glassType.slice(1);
+                  
+                  // Dynamic services based on glass type
+                  const services = [
+                    { 
+                      id: 'SVC-REPLACE', 
+                      name: `${glassName} Replacement`, 
+                      description: `Full replacement with standard ${glassType.toLowerCase()} glass`, 
+                      fromPrice: glassType.toLowerCase().includes('windscreen') ? 1500 : 1200, 
+                      durationMins: 90 
+                    },
+                    { 
+                      id: 'SVC-REPAIR', 
+                      name: `${glassName} Repair`, 
+                      description: `Professional chip and crack repair for ${glassType.toLowerCase()}`, 
+                      fromPrice: glassType.toLowerCase().includes('windscreen') ? 450 : 350, 
+                      durationMins: 45 
+                    }
+                  ];
+                  
+                  return services;
+                })().map(service => (
                   <div 
                     key={service.id}
                     onClick={() => updateFormData('service', service)}
                     className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                      formData.service?.id === service.id
+                      formData.service?.id === service.id || formData.service?.name === service.name
                         ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-600'
                         : 'border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700'
                     }`}
@@ -274,7 +490,7 @@ const BookingForm = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <h4 className="font-semibold text-slate-900 dark:text-white">{service.name}</h4>
-                          {formData.service?.id === service.id && (
+                          {(formData.service?.id === service.id || formData.service?.name === service.name) && (
                             <Check size={18} className="text-primary-600 dark:text-primary-400" />
                           )}
                         </div>
@@ -284,7 +500,7 @@ const BookingForm = () => {
                         </p>
                       </div>
                       <div className="text-right pl-4">
-                        <p className="text-xs text-slate-500">From</p>
+                        <p className="text-xs text-slate-500">Est.</p>
                         <p className="text-lg font-bold text-primary-600 dark:text-primary-400">{formatCurrency(service.fromPrice)}</p>
                       </div>
                     </div>
@@ -297,61 +513,80 @@ const BookingForm = () => {
             <div>
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Vehicle Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Make *</label>
-                  <input
-                    type="text"
-                    value={formData.vehicle.make}
-                    onChange={(e) => updateVehicle('make', e.target.value)}
-                    placeholder="e.g. Toyota"
-                    className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 ${
-                      errors.vehicleMake ? 'border-danger-500' : 'border-slate-200 dark:border-slate-700'
-                    }`}
-                  />
-                  {errors.vehicleMake && <p className="text-xs text-danger-500 mt-1">{errors.vehicleMake}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Model *</label>
-                  <input
-                    type="text"
-                    value={formData.vehicle.model}
-                    onChange={(e) => updateVehicle('model', e.target.value)}
-                    placeholder="e.g. Corolla"
-                    className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 ${
-                      errors.vehicleModel ? 'border-danger-500' : 'border-slate-200 dark:border-slate-700'
-                    }`}
-                  />
-                  {errors.vehicleModel && <p className="text-xs text-danger-500 mt-1">{errors.vehicleModel}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Year</label>
-                  <select
-                    value={formData.vehicle.year}
-                    onChange={(e) => updateVehicle('year', e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                  >
-                    {years.map(year => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </div>
+                {vehicles.length > 0 && (
+                  <div className="md:col-span-3 mb-2">
+                    <label className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2 block">Quick Select Saved Vehicle</label>
+                    <div className="flex flex-wrap gap-2">
+                      {vehicles.map(v => (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              vehicle: { make: v.make, model: v.model, year: v.year.toString() }
+                            }));
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 ${
+                            formData.vehicle.make === v.make && formData.vehicle.model === v.model
+                              ? 'bg-primary-50 border-primary-200 text-primary-700 dark:bg-primary-900/30 dark:border-primary-800 dark:text-primary-300'
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-primary-200 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400'
+                          }`}
+                        >
+                          <Car size={12} />
+                          {v.year} {v.make} {v.model}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <PremiumSelect
+                  label="Make"
+                  required
+                  value={formData.vehicle.make}
+                  options={vehicleMakes}
+                  onChange={(val) => updateVehicle('make', val)}
+                  placeholder="Select make"
+                  error={errors.vehicleMake}
+                  searchable
+                />
+                
+                <PremiumSelect
+                  label="Model"
+                  required
+                  value={formData.vehicle.model}
+                  options={availableModels}
+                  onChange={(val) => updateVehicle('model', val)}
+                  placeholder={!formData.vehicle.make ? "Select make first" : "Search model"}
+                  error={errors.vehicleModel}
+                  searchable
+                  disabled={!formData.vehicle.make}
+                  loading={isFetchingModels}
+                  emptyMessage={!formData.vehicle.make ? "Please select a make first" : "No models found"}
+                  autoOpen={suggestedField === 'model'}
+                />
+
+                <PremiumSelect
+                  label="Year"
+                  value={formData.vehicle.year}
+                  options={years.map(String)}
+                  onChange={(val) => updateVehicle('year', val)}
+                  placeholder="Select year"
+                />
               </div>
               
               <div className="mt-4">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Glass Type *</label>
-                <select
+                <PremiumSelect
+                  label="Glass Type"
+                  required
                   value={formData.glassType}
-                  onChange={(e) => updateFormData('glassType', e.target.value)}
-                  className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 ${
-                    errors.glassType ? 'border-danger-500' : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  <option value="">Select glass type</option>
-                  {glassTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-                {errors.glassType && <p className="text-xs text-danger-500 mt-1">{errors.glassType}</p>}
+                  options={glassTypes}
+                  onChange={(val) => updateFormData('glassType', val)}
+                  placeholder="Select glass type"
+                  error={errors.glassType}
+                  searchable
+                />
               </div>
             </div>
           </div>
@@ -360,71 +595,38 @@ const BookingForm = () => {
         {/* Step 2: Date & Time */}
         {currentStep === 2 && (
           <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Select Date</h3>
-              {availableDates.length > 0 ? (
-                <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-                  {availableDates.map(({ date, slots }) => {
-                    const dateObj = new Date(date);
-                    const isSelected = formData.scheduledDate === date;
-                    return (
-                      <button
-                        key={date}
-                        onClick={() => {
-                          updateFormData('scheduledDate', date);
-                          updateFormData('timeSlot', '');
-                        }}
-                        className={`p-3 rounded-xl border text-center transition-all ${
-                          isSelected
-                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                            : 'border-slate-200 dark:border-slate-700 hover:border-primary-300'
-                        }`}
-                      >
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {dateObj.toLocaleDateString('en-ZA', { weekday: 'short' })}
-                        </p>
-                        <p className={`text-lg font-semibold ${isSelected ? 'text-primary-600 dark:text-primary-400' : 'text-slate-900 dark:text-white'}`}>
-                          {dateObj.getDate()}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {dateObj.toLocaleDateString('en-ZA', { month: 'short' })}
-                        </p>
-                        <p className="text-xs text-primary-600 dark:text-primary-400 mt-1">{slots.length} slots</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-8 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                  <p className="text-slate-500 dark:text-slate-400">No available dates</p>
-                </div>
-              )}
-              {errors.scheduledDate && <p className="text-sm text-danger-500 mt-2">{errors.scheduledDate}</p>}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <PremiumDatePicker
+                label="Select Date"
+                required
+                value={formData.scheduledDate}
+                onChange={(val) => updateFormData('scheduledDate', val)}
+                placeholder="Pick an available date"
+                minDate={new Date().toISOString().split('T')[0]}
+                availableDates={availableDates.map(d => d.date)}
+                error={errors.scheduledDate}
+              />
+              
+              <PremiumSelect
+                label="Select Time Slot"
+                required
+                icon={Clock}
+                value={formData.timeSlot}
+                options={availableSlots}
+                onChange={(val) => updateFormData('timeSlot', val)}
+                placeholder={!formData.scheduledDate ? "Select date first" : "Pick a time"}
+                disabled={!formData.scheduledDate}
+                error={errors.timeSlot}
+                autoOpen={suggestedField === 'timeSlot'}
+              />
             </div>
-            
-            {formData.scheduledDate && (
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Select Time Slot</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {availableSlots.map(slot => {
-                    const isSelected = formData.timeSlot === slot;
-                    return (
-                      <button
-                        key={slot}
-                        onClick={() => updateFormData('timeSlot', slot)}
-                        className={`px-4 py-3 rounded-xl border text-center transition-all ${
-                          isSelected
-                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 font-medium'
-                            : 'border-slate-200 dark:border-slate-700 hover:border-primary-300 text-slate-700 dark:text-slate-300'
-                        }`}
-                      >
-                        <Clock size={16} className="inline mr-2" />
-                        {slot}
-                      </button>
-                    );
-                  })}
-                </div>
-                {errors.timeSlot && <p className="text-sm text-danger-500 mt-2">{errors.timeSlot}</p>}
+
+            {!formData.scheduledDate && availableDates.length > 0 && (
+              <div className="bg-primary-50 dark:bg-primary-900/10 p-4 rounded-xl border border-primary-100 dark:border-primary-900/20">
+                <p className="text-sm text-primary-700 dark:text-primary-300 flex items-center gap-2">
+                  <Calendar size={16} />
+                  Earliest available: {new Date(availableDates[0].date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long' })}
+                </p>
               </div>
             )}
           </div>
@@ -555,19 +757,16 @@ const BookingForm = () => {
           <div className="space-y-6">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Review Your Booking</h3>
             
-            {/* Provider */}
-            <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Provider</p>
+            {/* Radios Broadcast Strategy (Uber Style) */}
+            <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 border border-primary-100">
+              <p className="text-xs text-primary-600 dark:text-primary-400 mb-2 font-medium">Matching Strategy</p>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary-500 flex items-center justify-center text-white font-bold">
-                  {provider.name.charAt(0)}
+                <div className="w-10 h-10 rounded-lg bg-primary-600 flex items-center justify-center text-white animate-pulse">
+                  <Search size={20} />
                 </div>
                 <div>
-                  <p className="font-medium text-slate-900 dark:text-white">{provider.name}</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                    <Star size={12} className="text-amber-400" fill="currentColor" />
-                    {provider.rating} • {provider.address.city}
-                  </p>
+                  <p className="font-medium text-slate-900 dark:text-white">Radius Broadcast</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Finding best available provider in {formData.address?.city || searchCriteria?.city}</p>
                 </div>
               </div>
             </div>
@@ -673,9 +872,13 @@ const BookingForm = () => {
               <ArrowRight size={18} />
             </Button>
           ) : (
-            <Button onClick={handleSubmit}>
-              <Check size={18} />
-              Send Booking Request
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? 'Sending...' : (
+                <>
+                  <Check size={18} />
+                  Send Booking Request
+                </>
+              )}
             </Button>
           )}
         </div>
@@ -689,16 +892,13 @@ const BookingForm = () => {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Label</label>
-            <select
+            <PremiumSelect
+              label="Label"
               value={newAddress.label}
-              onChange={(e) => setNewAddress(prev => ({ ...prev, label: e.target.value }))}
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-            >
-              <option value="Home">Home</option>
-              <option value="Work">Work</option>
-              <option value="Other">Other</option>
-            </select>
+              options={['Home', 'Work', 'Other']}
+              onChange={(val) => setNewAddress(prev => ({ ...prev, label: val }))}
+              placeholder="Select label"
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Street Address *</label>
@@ -722,13 +922,14 @@ const BookingForm = () => {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">City *</label>
-              <input
-                type="text"
+              <PremiumSelect
+                label="City"
+                required
                 value={newAddress.city}
-                onChange={(e) => setNewAddress(prev => ({ ...prev, city: e.target.value }))}
-                placeholder="Johannesburg"
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                options={cities}
+                onChange={(val) => setNewAddress(prev => ({ ...prev, city: val }))}
+                placeholder="Search city"
+                searchable
               />
             </div>
             <div>
@@ -745,7 +946,9 @@ const BookingForm = () => {
         </div>
         <ModalActions>
           <Button variant="secondary" onClick={() => setIsAddressModalOpen(false)}>Cancel</Button>
-          <Button onClick={handleAddAddress}>Add Address</Button>
+          <Button onClick={handleAddAddress} loading={isGeocoding} disabled={isGeocoding}>
+            {isGeocoding ? 'Verifying Location...' : 'Add Address'}
+          </Button>
         </ModalActions>
       </Modal>
     </div>

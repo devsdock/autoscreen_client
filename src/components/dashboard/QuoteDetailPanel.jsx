@@ -73,6 +73,8 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   const getStatusExplanation = () => {
     switch (quote.status) {
       case 'Open':
+      case 'Pending':
+      case 'pending':
         return 'Your quote request is live. Providers in your area will start responding soon.';
       case 'Responses':
         return 'Providers have responded! Review the offers below and accept one to proceed.';
@@ -160,7 +162,10 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
             <div>
               <p className="text-xs text-slate-500 dark:text-slate-400">Vehicle</p>
               <p className="font-medium text-slate-800 dark:text-slate-200">
-                {quote.vehicle.year} {quote.vehicle.make} {quote.vehicle.model}
+                {typeof quote.vehicle === 'object' 
+                  ? `${quote.vehicle.year || ''} ${quote.vehicle.make || ''} ${quote.vehicle.model || ''}`.trim() || 'Unknown Vehicle'
+                  : quote.vehicle || 'Unknown Vehicle'
+                }
               </p>
             </div>
           </div>
@@ -230,7 +235,11 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                   onClick={() => setSelectedImage(img)}
                   className="w-20 h-20 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 hover:border-primary-400 dark:hover:border-primary-500 transition-colors"
                 >
-                  <img src={img} alt={`Damage ${index + 1}`} className="w-full h-full object-cover" />
+                  <img 
+                    src={typeof img === 'object' ? (img.data || img.url) : img} 
+                    alt={`Damage ${index + 1}`} 
+                    className="w-full h-full object-cover" 
+                  />
                 </button>
               ))}
             </div>
@@ -349,7 +358,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
             <X size={24} />
           </button>
           <img 
-            src={selectedImage} 
+            src={typeof selectedImage === 'object' ? (selectedImage.data || selectedImage.url) : selectedImage} 
             alt="Damage" 
             className="max-w-full max-h-full rounded-lg"
             onClick={(e) => e.stopPropagation()}

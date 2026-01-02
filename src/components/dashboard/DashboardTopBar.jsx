@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Bell, HelpCircle, ChevronDown, User, LogOut, Menu, Sun, Moon, Monitor } from 'lucide-react';
 import useDashboardStore from '../../store/useDashboardStore';
+import useAuthStore from '../../store/useAuthStore';
 import Avatar from '../ui/Avatar';
 
 const ThemeToggle = () => {
@@ -70,6 +71,7 @@ const ThemeToggle = () => {
 
 const DashboardTopBar = () => {
   const { user, toggleSidebar, addToast } = useDashboardStore();
+  const logout = useAuthStore((state) => state.logout);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef(null);
@@ -84,9 +86,10 @@ const DashboardTopBar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
   
-  const handleLogout = () => {
-    addToast({ type: 'info', message: 'You have been logged out' });
+  const handleLogout = async () => {
+    addToast({ type: 'info', message: 'Logging out...' });
     setDropdownOpen(false);
+    await logout();
   };
   
   return (
@@ -140,14 +143,14 @@ const DashboardTopBar = () => {
             className="flex items-center gap-3 p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
           >
             <Avatar 
-              name={`${user.firstName} ${user.lastName}`} 
+              name={user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'User'} 
               size="sm"
             />
             <div className="hidden md:block text-left">
               <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                {user.firstName} {user.lastName}
+                {user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'User'}
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{user?.email}</p>
             </div>
             <ChevronDown size={16} className="text-slate-400 dark:text-slate-500 hidden md:block" />
           </button>
@@ -157,9 +160,9 @@ const DashboardTopBar = () => {
             <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 py-1 z-50">
               <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 md:hidden">
                 <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                  {user.firstName} {user.lastName}
+                  {user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'User'}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user?.email}</p>
               </div>
               <div className="py-1">
                 <Link 

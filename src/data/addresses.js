@@ -6,7 +6,9 @@ export const addressesData = [
     line1: "123 Main Road",
     suburb: "Sandton",
     city: "Johannesburg",
-    postcode: "2196"
+    postcode: "2196",
+    coordinates: { lat: -26.107567, lng: 28.056702 },
+    isDefault: true,
   },
   {
     id: "ADDR-002",
@@ -14,8 +16,9 @@ export const addressesData = [
     line1: "45 Oxford Street, Block B",
     suburb: "Rosebank",
     city: "Johannesburg",
-    postcode: "2196"
-  }
+    postcode: "2196",
+    coordinates: { lat: -26.145392, lng: 28.041953 },
+  },
 ];
 
 // South African cities
@@ -31,14 +34,10 @@ export const cities = [
   "Nelspruit",
   "Rustenburg",
   "Kimberley",
-  "Pietermaritzburg"
+  "Pietermaritzburg",
 ];
 
 // Address labels
-export const addressLabels = [
-  "Home",
-  "Work",
-  "Other"
-];
+export const addressLabels = ["Home", "Work", "Other"];
 
 export default addressesData;

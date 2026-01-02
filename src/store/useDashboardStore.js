@@ -1,40 +1,57 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { userData } from '../data/user';
-import { vehiclesData } from '../data/vehicles';
-import { addressesData } from '../data/addresses';
-import { quotesData } from '../data/quotes';
-import { quoteResponsesData } from '../data/quoteResponses';
-import { bookingsData } from '../data/bookings';
-import { paymentsData } from '../data/payments';
-import { activitiesData } from '../data/activities';
-import { providersData } from '../data/providers';
-import { reviewsData } from '../data/reviews';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { userData } from "../data/user";
+import { vehiclesData } from "../data/vehicles";
+import { addressesData } from "../data/addresses";
+import { quotesData } from "../data/quotes";
+import { quoteResponsesData } from "../data/quoteResponses";
+import { bookingsData } from "../data/bookings";
+import { paymentsData } from "../data/payments";
+import { activitiesData } from "../data/activities";
+import { providersData } from "../data/providers";
+import { reviewsData } from "../data/reviews";
 
 // Helper to generate IDs
-const generateId = (prefix) => `${prefix}-${Date.now().toString(36).toUpperCase()}`;
+const generateId = (prefix) =>
+  `${prefix}-${Date.now().toString(36).toUpperCase()}`;
 
 // Helper to format currency
 export const formatCurrency = (amount) => {
-  return `R ${amount.toLocaleString('en-ZA')}`;
+  return `R ${amount.toLocaleString("en-ZA")}`;
 };
 
 // Helper to format date
-export const formatDate = (dateString, format = 'short') => {
+export const formatDate = (dateString, format = "short") => {
   const date = new Date(dateString);
-  if (format === 'short') {
-    return date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' });
+  if (format === "short") {
+    return date.toLocaleDateString("en-ZA", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
   }
-  if (format === 'long') {
-    return date.toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  if (format === "long") {
+    return date.toLocaleDateString("en-ZA", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
   }
-  if (format === 'time') {
-    return date.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (format === "time") {
+    return date.toLocaleTimeString("en-ZA", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
   }
-  if (format === 'datetime') {
-    return `${formatDate(dateString, 'short')} at ${formatDate(dateString, 'time')}`;
+  if (format === "datetime") {
+    return `${formatDate(dateString, "short")} at ${formatDate(
+      dateString,
+      "time"
+    )}`;
   }
-  return date.toLocaleDateString('en-ZA');
+  return date.toLocaleDateString("en-ZA");
 };
 
 // Helper for relative time
@@ -47,12 +64,12 @@ export const getRelativeTime = (dateString) => {
   const diffDays = Math.floor(diffMs / 86400000);
   const diffWeeks = Math.floor(diffDays / 7);
 
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-  if (diffDays === 1) return 'Yesterday';
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+  if (diffDays === 1) return "Yesterday";
   if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffWeeks === 1) return '1 week ago';
+  if (diffWeeks === 1) return "1 week ago";
   return `${diffWeeks} weeks ago`;
 };
 
@@ -61,125 +78,155 @@ const useDashboardStore = create(
     (set, get) => ({
       // User data
       user: userData,
-      
+
       // Vehicles
       vehicles: vehiclesData,
-      
+
       // Addresses
       addresses: addressesData,
-      
+
       // Quotes
-      quotes: quotesData,
-      quoteResponses: quoteResponsesData,
-      
+      quotes: [],
+      quoteResponses: [],
+
       // Bookings
-      bookings: bookingsData,
-      
+      bookings: [],
+
       // Payments
-      payments: paymentsData,
-      
+      payments: [],
+
       // Activities
-      activities: activitiesData,
-      
+      activities: [],
+
       // Providers
-      providers: providersData,
-      
+      providers: providersData, // Keep providers as they are searchable/browsable
+
       // Reviews
-      reviews: reviewsData,
-      
+      reviews: [],
+
       // Search/Booking flow state
       searchCriteria: null,
-      
+
       // UI State
       sidebarOpen: true,
       sidebarCollapsed: false,
-      theme: 'light', // 'light', 'dark', or 'system'
+      theme: "light", // 'light', 'dark', or 'system'
       toasts: [],
-      
+
       // Sidebar actions
-      toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+      toggleSidebar: () =>
+        set((state) => ({ sidebarOpen: !state.sidebarOpen })),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
-      toggleSidebarCollapse: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-      
+      toggleSidebarCollapse: () =>
+        set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+
       // Theme actions
       setTheme: (theme) => {
         set({ theme });
         // Apply theme to document
-        if (theme === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else if (theme === 'light') {
-          document.documentElement.classList.remove('dark');
+        if (theme === "dark") {
+          document.documentElement.classList.add("dark");
+        } else if (theme === "light") {
+          document.documentElement.classList.remove("dark");
         } else {
           // System preference
-          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const prefersDark = window.matchMedia(
+            "(prefers-color-scheme: dark)"
+          ).matches;
           if (prefersDark) {
-            document.documentElement.classList.add('dark');
+            document.documentElement.classList.add("dark");
           } else {
-            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.remove("dark");
           }
         }
       },
       initTheme: () => {
         const theme = get().theme;
-        if (theme === 'dark') {
-          document.documentElement.classList.add('dark');
-        } else if (theme === 'system') {
-          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (theme === "dark") {
+          document.documentElement.classList.add("dark");
+        } else if (theme === "system") {
+          const prefersDark = window.matchMedia(
+            "(prefers-color-scheme: dark)"
+          ).matches;
           if (prefersDark) {
-            document.documentElement.classList.add('dark');
+            document.documentElement.classList.add("dark");
           }
         }
       },
-      
+
       // Toast actions
       addToast: (toast) => {
         const id = Date.now();
         set((state) => ({
-          toasts: [...state.toasts, { ...toast, id }]
+          toasts: [...state.toasts, { ...toast, id }],
         }));
         setTimeout(() => {
           set((state) => ({
-            toasts: state.toasts.filter((t) => t.id !== id)
+            toasts: state.toasts.filter((t) => t.id !== id),
           }));
         }, toast.duration || 4000);
         return id;
       },
-      removeToast: (id) => set((state) => ({
-        toasts: state.toasts.filter((t) => t.id !== id)
-      })),
-      
-      // User actions
-      updateUser: (updates) => set((state) => ({
-        user: { ...state.user, ...updates }
-      })),
-      
-      // Vehicle actions
-      addVehicle: (vehicle) => {
-        const id = generateId('VEH');
+      removeToast: (id) =>
         set((state) => ({
-          vehicles: [...state.vehicles, { ...vehicle, id }]
+          toasts: state.toasts.filter((t) => t.id !== id),
+        })),
+
+      // User actions
+      updateUser: (updates) =>
+        set((state) => ({
+          user: { ...state.user, ...updates },
+        })),
+
+      clearData: () =>
+        set({
+          user: null,
+          vehicles: [],
+          addresses: [],
+          quotes: [],
+          quoteResponses: [],
+          bookings: [],
+          payments: [],
+          activities: [],
+          reviews: [],
+          searchCriteria: null,
+        }),
+
+      // Vehicle actions
+      setVehicles: (vehicles) => set({ vehicles }),
+      addVehicle: (vehicle) => {
+        const id = generateId("VEH");
+        set((state) => ({
+          vehicles: [...state.vehicles, { ...vehicle, id }],
         }));
-        get().addToast({ type: 'success', message: 'Vehicle added successfully' });
+        get().addToast({
+          type: "success",
+          message: "Vehicle added successfully",
+        });
         return id;
       },
       updateVehicle: (id, updates) => {
         set((state) => ({
-          vehicles: state.vehicles.map((v) => 
+          vehicles: state.vehicles.map((v) =>
             v.id === id ? { ...v, ...updates } : v
-          )
+          ),
         }));
-        get().addToast({ type: 'success', message: 'Vehicle updated successfully' });
+        get().addToast({
+          type: "success",
+          message: "Vehicle updated successfully",
+        });
       },
       deleteVehicle: (id) => {
         set((state) => ({
-          vehicles: state.vehicles.filter((v) => v.id !== id)
+          vehicles: state.vehicles.filter((v) => v.id !== id),
         }));
-        get().addToast({ type: 'success', message: 'Vehicle removed' });
+        get().addToast({ type: "success", message: "Vehicle removed" });
       },
-      
+
       // Address actions
+      setAddresses: (addresses) => set({ addresses }),
       addAddress: (address) => {
-        const id = generateId('ADDR');
+        const id = generateId("ADDR");
         set((state) => {
           let addresses = state.addresses;
           if (address.isDefault) {
@@ -187,164 +234,203 @@ const useDashboardStore = create(
           }
           return { addresses: [...addresses, { ...address, id }] };
         });
-        get().addToast({ type: 'success', message: 'Address added successfully' });
+        get().addToast({
+          type: "success",
+          message: "Address added successfully",
+        });
         return id;
       },
       updateAddress: (id, updates) => {
         set((state) => {
           let addresses = state.addresses;
           if (updates.isDefault) {
-            addresses = addresses.map((a) => ({ ...a, isDefault: a.id === id }));
+            addresses = addresses.map((a) => ({
+              ...a,
+              isDefault: a.id === id,
+            }));
           }
           return {
-            addresses: addresses.map((a) => 
+            addresses: addresses.map((a) =>
               a.id === id ? { ...a, ...updates } : a
-            )
+            ),
           };
         });
-        get().addToast({ type: 'success', message: 'Address updated successfully' });
+        get().addToast({
+          type: "success",
+          message: "Address updated successfully",
+        });
       },
       deleteAddress: (id) => {
         set((state) => ({
-          addresses: state.addresses.filter((a) => a.id !== id)
+          addresses: state.addresses.filter((a) => a.id !== id),
         }));
-        get().addToast({ type: 'success', message: 'Address removed' });
+        get().addToast({ type: "success", message: "Address removed" });
       },
-      
+
       // Quote actions
+      setQuotes: (quotes) => set({ quotes }),
+      fetchQuotes: async () => {
+        try {
+          const quoteService = (await import("../services/quoteService"))
+            .default;
+          const response = await quoteService.getQuotes();
+          if (response.success) {
+            const { mapQuote } = await import("../utils/dataMappers");
+            const mappedQuotes = response.data.map(mapQuote);
+            set({ quotes: mappedQuotes });
+          }
+        } catch (error) {
+          console.error("Error fetching quotes:", error);
+        }
+      },
       createQuote: (quoteData) => {
-        const id = generateId('QT');
+        const id = generateId("QT");
         const year = new Date().getFullYear();
         const count = get().quotes.length + 1;
-        const reference = `Q-${year}-${count.toString().padStart(5, '0')}`;
-        
+        const reference = `Q-${year}-${count.toString().padStart(5, "0")}`;
+
         const newQuote = {
           id,
           reference,
           customerId: get().user.id,
           createdAt: new Date().toISOString(),
-          status: 'Open',
+          status: "Open",
           vehicle: {
             make: quoteData.vehicleMake,
             model: quoteData.vehicleModel,
-            year: parseInt(quoteData.vehicleYear)
+            year: parseInt(quoteData.vehicleYear),
           },
           serviceType: quoteData.serviceType,
           glassType: quoteData.glassType,
           location: {
             city: quoteData.city,
-            postcode: quoteData.postcode || '',
-            addressLine1: quoteData.addressLine1 || ''
+            postcode: quoteData.postcode || "",
+            addressLine1: quoteData.addressLine1 || "",
+            coordinates: quoteData.coordinates || null,
           },
           preferredDate: quoteData.preferredDate || null,
-          preferredTimeSlot: quoteData.preferredTimeSlot || 'Any time',
-          notes: quoteData.notes || '',
+          preferredTimeSlot: quoteData.preferredTimeSlot || "Any time",
+          notes: quoteData.notes || "",
           images: quoteData.images || [],
-          responsesCount: 0
+          responsesCount: 0,
         };
-        
+
         set((state) => ({
-          quotes: [newQuote, ...state.quotes]
+          quotes: [newQuote, ...state.quotes],
         }));
-        
+
         // Add activity
         get().addActivity({
-          type: 'quote_submitted',
+          type: "quote_submitted",
           message: `New quote request ${reference} submitted`,
-          relatedId: id
+          relatedId: id,
         });
-        
-        get().addToast({ type: 'success', message: 'Quote request sent successfully!' });
+
+        get().addToast({
+          type: "success",
+          message: "Quote request sent successfully!",
+        });
         return id;
       },
-      
+
       closeQuoteRequest: (quoteId) => {
         set((state) => ({
-          quotes: state.quotes.map((q) => 
-            q.id === quoteId ? { ...q, status: 'Closed' } : q
-          )
+          quotes: state.quotes.map((q) =>
+            q.id === quoteId ? { ...q, status: "Closed" } : q
+          ),
         }));
-        get().addToast({ type: 'info', message: 'Quote request closed' });
+        get().addToast({ type: "info", message: "Quote request closed" });
       },
-      
+
       acceptQuote: (quoteId, responseId) => {
         const quote = get().quotes.find((q) => q.id === quoteId);
         const response = get().quoteResponses.find((r) => r.id === responseId);
-        
+
         if (!quote || !response) return null;
-        
+
         // Update quote status
         set((state) => ({
-          quotes: state.quotes.map((q) => 
-            q.id === quoteId 
-              ? { ...q, status: 'Accepted', acceptedResponseId: responseId }
+          quotes: state.quotes.map((q) =>
+            q.id === quoteId
+              ? { ...q, status: "Accepted", acceptedResponseId: responseId }
               : q
-          )
+          ),
         }));
-        
+
         // Mark selected response as accepted, others as rejected
         set((state) => ({
           quoteResponses: state.quoteResponses.map((r) => {
             if (r.quoteRequestId === quoteId) {
-              return { ...r, status: r.id === responseId ? 'Accepted' : 'Rejected' };
+              return {
+                ...r,
+                status: r.id === responseId ? "Accepted" : "Rejected",
+              };
             }
             return r;
-          })
+          }),
         }));
-        
+
         // Create draft booking
-        const bookingId = generateId('BK');
-        const bookingRef = `B-${new Date().getFullYear()}-${(get().bookings.length + 1).toString().padStart(5, '0')}`;
-        
+        const bookingId = generateId("BK");
+        const bookingRef = `B-${new Date().getFullYear()}-${(
+          get().bookings.length + 1
+        )
+          .toString()
+          .padStart(5, "0")}`;
+
         const vehicleStr = `${quote.vehicle.year} ${quote.vehicle.make} ${quote.vehicle.model}`;
-        const addressStr = quote.location.addressLine1 
-          ? `${quote.location.addressLine1}, ${quote.location.city}` 
+        const addressStr = quote.location.addressLine1
+          ? `${quote.location.addressLine1}, ${quote.location.city}`
           : quote.location.city;
-        
+
         const newBooking = {
           id: bookingId,
           reference: bookingRef,
-          source: 'QuoteAccepted',
+          source: "QuoteAccepted",
           quoteId,
           quoteResponseId: responseId,
           customerId: get().user.id,
           providerId: response.provider.id,
           providerName: response.provider.name,
-          providerPhone: '+27 11 234 5678',
+          providerPhone: "+27 11 234 5678",
           providerRating: response.provider.rating,
           providerReviews: response.provider.reviewsCount,
           service: `${quote.glassType} ${quote.serviceType}`,
           vehicle: vehicleStr,
-          scheduledDate: response.etaText.includes('Available') 
-            ? new Date(response.etaText.replace('Available ', '')).toISOString() 
+          scheduledDate: response.etaText.includes("Available")
+            ? new Date(response.etaText.replace("Available ", "")).toISOString()
             : new Date().toISOString(),
-          locationType: 'Mobile',
+          locationType: "Mobile",
           address: addressStr,
           notes: quote.notes,
-          status: 'Pending',
-          paymentStatus: 'Unpaid',
+          status: "Pending",
+          paymentStatus: "Unpaid",
           price: {
             service: Math.round(response.price * 0.9),
             callout: Math.round(response.price * 0.08),
             materials: Math.round(response.price * 0.02),
-            total: response.price
+            total: response.price,
           },
           timeline: [
-            { status: 'Quote Accepted', date: new Date().toISOString(), completed: true },
-            { status: 'Booking Confirmed', date: null, completed: false },
-            { status: 'Appointment Scheduled', date: null, completed: false },
-            { status: 'Job Completed', date: null, completed: false },
-            { status: 'Payment Received', date: null, completed: false }
+            {
+              status: "Quote Accepted",
+              date: new Date().toISOString(),
+              completed: true,
+            },
+            { status: "Booking Confirmed", date: null, completed: false },
+            { status: "Appointment Scheduled", date: null, completed: false },
+            { status: "Job Completed", date: null, completed: false },
+            { status: "Payment Received", date: null, completed: false },
           ],
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
         };
-        
+
         set((state) => ({
-          bookings: [newBooking, ...state.bookings]
+          bookings: [newBooking, ...state.bookings],
         }));
-        
+
         // Create payment record
-        const paymentId = generateId('PAY');
+        const paymentId = generateId("PAY");
         const newPayment = {
           id: paymentId,
           bookingId,
@@ -358,209 +444,264 @@ const useDashboardStore = create(
             service: Math.round(response.price * 0.9),
             callout: Math.round(response.price * 0.08),
             materials: Math.round(response.price * 0.02),
-            platformFee: 0
+            platformFee: 0,
           },
-          status: 'Unpaid',
+          status: "Unpaid",
           method: null,
           date: null,
-          dueDate: response.availability.split('T')[0]
+          dueDate: response.availability.split("T")[0],
         };
-        
+
         set((state) => ({
-          payments: [newPayment, ...state.payments]
+          payments: [newPayment, ...state.payments],
         }));
-        
+
         // Add activity
         get().addActivity({
-          type: 'quote_accepted',
-          message: `Quote accepted from ${response.providerName} for ${formatCurrency(response.price)}`,
-          relatedId: quoteId
+          type: "quote_accepted",
+          message: `Quote accepted from ${
+            response.providerName
+          } for ${formatCurrency(response.price)}`,
+          relatedId: quoteId,
         });
-        
-        get().addToast({ type: 'success', message: 'Quote accepted! Booking created.' });
+
+        get().addToast({
+          type: "success",
+          message: "Quote accepted! Booking created.",
+        });
         return bookingId;
       },
-      
+
       // Note: closeQuoteRequest is defined above in Quote actions
-      
+
       // Booking actions
+      setBookings: (bookings) => set({ bookings }),
+      fetchBookings: async () => {
+        try {
+          const bookingService = (await import("../services/bookingService"))
+            .default;
+          const response = await bookingService.getBookings();
+          if (response.success) {
+            const { mapBooking } = await import("../utils/dataMappers");
+            const mappedBookings = response.data.map(mapBooking);
+            set({ bookings: mappedBookings });
+          }
+        } catch (error) {
+          console.error("Error fetching bookings:", error);
+        }
+      },
       confirmBooking: (bookingId) => {
         set((state) => ({
           bookings: state.bookings.map((b) => {
             if (b.id !== bookingId) return b;
             return {
               ...b,
-              status: 'Confirmed',
-              timeline: b.timeline.map((t, i) => 
-                i <= 1 ? { ...t, completed: true, date: t.date || new Date().toISOString() } : t
-              )
+              status: "Confirmed",
+              timeline: b.timeline.map((t, i) =>
+                i <= 1
+                  ? {
+                      ...t,
+                      completed: true,
+                      date: t.date || new Date().toISOString(),
+                    }
+                  : t
+              ),
             };
-          })
+          }),
         }));
         get().addActivity({
-          type: 'booking_confirmed',
+          type: "booking_confirmed",
           message: `Booking #${bookingId} confirmed`,
-          relatedId: bookingId
+          relatedId: bookingId,
         });
-        get().addToast({ type: 'success', message: 'Booking confirmed!' });
+        get().addToast({ type: "success", message: "Booking confirmed!" });
       },
-      
+
       cancelBooking: (bookingId, reason) => {
         set((state) => ({
           bookings: state.bookings.map((b) => {
             if (b.id !== bookingId) return b;
             return {
               ...b,
-              status: 'Cancelled',
+              status: "Cancelled",
               cancellationReason: reason,
-              timeline: [...b.timeline.slice(0, 2), { status: 'Cancelled', date: new Date().toISOString(), completed: true }]
+              timeline: [
+                ...b.timeline.slice(0, 2),
+                {
+                  status: "Cancelled",
+                  date: new Date().toISOString(),
+                  completed: true,
+                },
+              ],
             };
-          })
+          }),
         }));
-        
+
         // Also update payment status
         const booking = get().bookings.find((b) => b.id === bookingId);
         if (booking) {
           set((state) => ({
-            payments: state.payments.map((p) => 
-              p.bookingId === bookingId && p.status === 'Unpaid'
-                ? { ...p, status: 'Refunded', refundDate: new Date().toISOString().split('T')[0] }
+            payments: state.payments.map((p) =>
+              p.bookingId === bookingId && p.status === "Unpaid"
+                ? {
+                    ...p,
+                    status: "Refunded",
+                    refundDate: new Date().toISOString().split("T")[0],
+                  }
                 : p
-            )
+            ),
           }));
         }
-        
+
         get().addActivity({
-          type: 'booking_cancelled',
+          type: "booking_cancelled",
           message: `Booking #${bookingId} was cancelled`,
-          relatedId: bookingId
+          relatedId: bookingId,
         });
-        get().addToast({ type: 'info', message: 'Booking cancelled' });
+        get().addToast({ type: "info", message: "Booking cancelled" });
       },
-      
+
       completeBooking: (bookingId) => {
         set((state) => ({
           bookings: state.bookings.map((b) => {
             if (b.id !== bookingId) return b;
             return {
               ...b,
-              status: 'Completed',
-              timeline: b.timeline.map((t, i) => 
-                i <= 3 ? { ...t, completed: true, date: t.date || new Date().toISOString() } : t
-              )
+              status: "Completed",
+              timeline: b.timeline.map((t, i) =>
+                i <= 3
+                  ? {
+                      ...t,
+                      completed: true,
+                      date: t.date || new Date().toISOString(),
+                    }
+                  : t
+              ),
             };
-          })
+          }),
         }));
         get().addActivity({
-          type: 'booking_completed',
+          type: "booking_completed",
           message: `Booking #${bookingId} marked as completed`,
-          relatedId: bookingId
+          relatedId: bookingId,
         });
-        get().addToast({ type: 'success', message: 'Booking completed!' });
+        get().addToast({ type: "success", message: "Booking completed!" });
       },
-      
+
       // Payment actions
       processPayment: (paymentId, method) => {
         const payment = get().payments.find((p) => p.id === paymentId);
         if (!payment) return;
-        
+
         set((state) => ({
-          payments: state.payments.map((p) => 
-            p.id === paymentId 
-              ? { 
-                  ...p, 
-                  status: 'Paid', 
+          payments: state.payments.map((p) =>
+            p.id === paymentId
+              ? {
+                  ...p,
+                  status: "Paid",
                   method,
-                  date: new Date().toISOString().split('T')[0]
-                } 
+                  date: new Date().toISOString().split("T")[0],
+                }
               : p
-          )
+          ),
         }));
-        
+
         // Update booking payment status and timeline
         set((state) => ({
           bookings: state.bookings.map((b) => {
             if (b.id !== payment.bookingId) return b;
             return {
               ...b,
-              paymentStatus: 'Paid',
-              timeline: b.timeline.map((t) => 
-                t.status === 'Payment Received' 
+              paymentStatus: "Paid",
+              timeline: b.timeline.map((t) =>
+                t.status === "Payment Received"
                   ? { ...t, completed: true, date: new Date().toISOString() }
                   : t
-              )
+              ),
             };
-          })
+          }),
         }));
-        
+
         get().addActivity({
-          type: 'payment_completed',
-          message: `Payment of ${formatCurrency(payment.amount)} completed for booking ${payment.bookingRef}`,
-          relatedId: paymentId
+          type: "payment_completed",
+          message: `Payment of ${formatCurrency(
+            payment.amount
+          )} completed for booking ${payment.bookingRef}`,
+          relatedId: paymentId,
         });
-        get().addToast({ type: 'success', message: 'Payment successful!' });
+        get().addToast({ type: "success", message: "Payment successful!" });
       },
-      
+
       // Search & Booking flow actions
       setSearchCriteria: (criteria) => set({ searchCriteria: criteria }),
-      
+
       searchProviders: (criteria) => {
         const providers = get().providers;
-        let filtered = [...providers];
-        
+        // Uber Flow: Only show providers that are approved by admin
+        let filtered = providers.filter((p) => p.isApproved);
+
         // Filter by city/location
         if (criteria?.city) {
           const cityLower = criteria.city.toLowerCase();
-          filtered = filtered.filter(p => 
-            p.serviceAreas.some(area => area.toLowerCase().includes(cityLower)) ||
-            p.address.city.toLowerCase().includes(cityLower)
+          filtered = filtered.filter(
+            (p) =>
+              p.serviceAreas.some((area) =>
+                area.toLowerCase().includes(cityLower)
+              ) || p.address.city.toLowerCase().includes(cityLower)
           );
         }
-        
+
         // Filter by service type if specified
         if (criteria?.serviceType) {
-          filtered = filtered.filter(p => 
-            p.services.some(s => 
-              s.name.toLowerCase().includes(criteria.serviceType.toLowerCase()) ||
-              s.name.toLowerCase().includes(criteria.glassType?.toLowerCase() || '')
+          filtered = filtered.filter((p) =>
+            p.services.some(
+              (s) =>
+                s.name
+                  .toLowerCase()
+                  .includes(criteria.serviceType.toLowerCase()) ||
+                s.name
+                  .toLowerCase()
+                  .includes(criteria.glassType?.toLowerCase() || "")
             )
           );
         }
-        
+
         return filtered;
       },
-      
+
       getProviderById: (providerId) => {
-        return get().providers.find(p => p.id === providerId);
+        return get().providers.find((p) => p.id === providerId);
       },
-      
+
       getProviderReviews: (providerId) => {
-        return get().reviews.filter(r => r.providerId === providerId);
+        return get().reviews.filter((r) => r.providerId === providerId);
       },
-      
+
       // Create booking from the booking flow
       createBookingFromFlow: (bookingData) => {
-        const id = generateId('BK');
+        const id = generateId("BK");
         const year = new Date().getFullYear();
         const count = get().bookings.length + 1;
-        const reference = `B-${year}-${count.toString().padStart(5, '0')}`;
-        
-        const provider = get().providers.find(p => p.id === bookingData.providerId);
-        
+        const reference = `B-${year}-${count.toString().padStart(5, "0")}`;
+
+        const provider = get().providers.find(
+          (p) => p.id === bookingData.providerId
+        );
+
         // Calculate prices
         const subtotal = bookingData.service.fromPrice;
         const platformFee = Math.round(subtotal * 0.05); // 5% platform fee
         const total = subtotal + platformFee;
-        
+
         const newBooking = {
           id,
           reference,
-          source: 'DirectBooking',
+          source: "DirectBooking",
           customerId: get().user.id,
           providerId: bookingData.providerId,
           providerName: provider?.name || bookingData.providerName,
-          providerType: provider?.type || 'Business',
-          providerPhone: provider?.phone || '',
+          providerType: provider?.type || "Business",
+          providerPhone: provider?.phone || "",
           providerRating: provider?.rating || 0,
           providerReviews: provider?.reviewsCount || 0,
           vehicle: bookingData.vehicle,
@@ -568,94 +709,116 @@ const useDashboardStore = create(
             id: bookingData.service.id,
             name: bookingData.service.name,
             fromPrice: bookingData.service.fromPrice,
-            durationMins: bookingData.service.durationMins
+            durationMins: bookingData.service.durationMins,
           },
           glassType: bookingData.glassType,
           scheduledDate: bookingData.scheduledDate,
           timeSlot: bookingData.timeSlot,
           address: bookingData.address,
-          remarks: bookingData.remarks || '',
+          remarks: bookingData.remarks || "",
           uploadedImages: bookingData.uploadedImages || [],
-          status: 'Pending',
-          paymentStatus: 'Unpaid',
+          status: "Pending",
+          paymentStatus: "Unpaid",
           price: {
             subtotal,
             platformFee,
-            total
+            total,
           },
           timeline: [
-            { status: 'Request Sent', date: new Date().toISOString(), completed: true },
-            { status: 'Provider Accepted', date: null, completed: false },
-            { status: 'Payment Completed', date: null, completed: false },
-            { status: 'Booking Confirmed', date: null, completed: false },
-            { status: 'Job Completed', date: null, completed: false }
+            {
+              status: "Request Sent",
+              date: new Date().toISOString(),
+              completed: true,
+            },
+            { status: "Provider Accepted", date: null, completed: false },
+            { status: "Payment Completed", date: null, completed: false },
+            { status: "Booking Confirmed", date: null, completed: false },
+            { status: "Job Completed", date: null, completed: false },
           ],
           createdAt: new Date().toISOString(),
           acceptedAt: null,
-          paidAt: null
+          paidAt: null,
         };
-        
+
         set((state) => ({
-          bookings: [newBooking, ...state.bookings]
+          bookings: [newBooking, ...state.bookings],
         }));
-        
+
         get().addActivity({
-          type: 'booking_created',
+          type: "booking_created",
           message: `Booking request ${reference} sent to ${provider?.name}`,
-          relatedId: id
+          relatedId: id,
         });
-        
-        get().addToast({ type: 'success', message: 'Booking request sent successfully!' });
+
+        get().addToast({
+          type: "success",
+          message: "Booking request sent successfully!",
+        });
         return id;
       },
-      
+
       // Simulate provider acceptance (for prototype demo)
       simulateProviderAcceptance: (bookingId) => {
         set((state) => ({
-          bookings: state.bookings.map(b => {
+          bookings: state.bookings.map((b) => {
             if (b.id !== bookingId) return b;
             return {
               ...b,
-              status: 'Accepted',
+              status: "Accepted",
               acceptedAt: new Date().toISOString(),
-              timeline: b.timeline.map((t, i) => 
-                i <= 1 ? { ...t, completed: true, date: t.date || new Date().toISOString() } : t
-              )
+              timeline: b.timeline.map((t, i) =>
+                i <= 1
+                  ? {
+                      ...t,
+                      completed: true,
+                      date: t.date || new Date().toISOString(),
+                    }
+                  : t
+              ),
             };
-          })
+          }),
         }));
-        
+
         get().addActivity({
-          type: 'booking_accepted',
+          type: "booking_accepted",
           message: `Provider accepted booking #${bookingId}`,
-          relatedId: bookingId
+          relatedId: bookingId,
         });
-        
-        get().addToast({ type: 'success', message: 'Provider has accepted your booking!' });
+
+        get().addToast({
+          type: "success",
+          message: "Provider has accepted your booking!",
+        });
       },
-      
+
       // Process booking payment and confirm
       processBookingPayment: (bookingId, method) => {
-        const booking = get().bookings.find(b => b.id === bookingId);
+        const booking = get().bookings.find((b) => b.id === bookingId);
         if (!booking) return;
-        
+
         set((state) => ({
-          bookings: state.bookings.map(b => {
+          bookings: state.bookings.map((b) => {
             if (b.id !== bookingId) return b;
             return {
               ...b,
-              status: 'Confirmed',
-              paymentStatus: 'Paid',
+              status: "Confirmed",
+              paymentStatus: "Paid",
               paidAt: new Date().toISOString(),
-              timeline: b.timeline.map((t, i) => 
-                i <= 3 ? { ...t, completed: true, date: t.date || new Date().toISOString() } : t
-              )
+              timeline: b.timeline.map((t, i) =>
+                i <= 3
+                  ? {
+                      ...t,
+                      completed: true,
+                      date: t.date || new Date().toISOString(),
+                    }
+                  : t
+              ),
             };
-          })
+          }),
         }));
-        
+
         // Create payment record
-        const paymentId = generateId('PAY');
+        const paymentId = generateId("PAY");
         const newPayment = {
           id: paymentId,
           bookingId,
@@ -667,115 +830,146 @@ const useDashboardStore = create(
           amount: booking.price.total,
           breakdown: {
             service: booking.price.subtotal,
-            platformFee: booking.price.platformFee
+            platformFee: booking.price.platformFee,
           },
-          status: 'Paid',
+          status: "Paid",
           method,
-          date: new Date().toISOString().split('T')[0]
+          date: new Date().toISOString().split("T")[0],
         };
-        
+
         set((state) => ({
-          payments: [newPayment, ...state.payments]
+          payments: [newPayment, ...state.payments],
         }));
-        
+
         get().addActivity({
-          type: 'payment_completed',
-          message: `Payment of ${formatCurrency(booking.price.total)} for booking ${booking.reference}`,
-          relatedId: bookingId
+          type: "payment_completed",
+          message: `Payment of ${formatCurrency(
+            booking.price.total
+          )} for booking ${booking.reference}`,
+          relatedId: bookingId,
         });
-        
-        get().addToast({ type: 'success', message: 'Payment successful! Booking confirmed.' });
+
+        get().addToast({
+          type: "success",
+          message: "Payment successful! Booking confirmed.",
+        });
         return paymentId;
       },
-      
+
       getBookingById: (bookingId) => {
-        return get().bookings.find(b => b.id === bookingId);
+        return get().bookings.find((b) => b.id === bookingId);
       },
-      
+
       // Activity actions
       addActivity: (activity) => {
-        const id = generateId('ACT');
+        const id = generateId("ACT");
         set((state) => ({
-          activities: [{ ...activity, id, timestamp: new Date().toISOString() }, ...state.activities]
+          activities: [
+            { ...activity, id, timestamp: new Date().toISOString() },
+            ...state.activities,
+          ],
         }));
       },
-      
+
       // Computed values
       getStats: () => {
         const state = get();
-        
+
         const activeQuotes = state.quotes.filter(
-          (q) => q.status === 'Open' || q.status === 'Received Responses'
+          (q) => q.status === "Open" || q.status === "Received Responses"
         ).length;
-        
+
         const upcomingBookings = state.bookings.filter(
-          (b) => b.status === 'Confirmed' && new Date(b.scheduledDate) > new Date()
+          (b) =>
+            b.status === "Confirmed" && new Date(b.scheduledDate) > new Date()
         ).length;
-        
+
         const completedJobs = state.bookings.filter(
-          (b) => b.status === 'Completed'
+          (b) => b.status === "Completed"
         ).length;
-        
-        const pendingPayments = state.payments.filter((p) => p.status === 'Unpaid');
-        const pendingPaymentsTotal = pendingPayments.reduce((sum, p) => sum + p.amount, 0);
-        
+
+        const pendingPayments = state.payments.filter(
+          (p) => p.status === "Unpaid"
+        );
+        const pendingPaymentsTotal = pendingPayments.reduce(
+          (sum, p) => sum + p.amount,
+          0
+        );
+
         return {
           activeQuotes,
           upcomingBookings,
           completedJobs,
           pendingPaymentsCount: pendingPayments.length,
-          pendingPaymentsTotal
+          pendingPaymentsTotal,
         };
       },
-      
+
       getBookingStatusCounts: () => {
         const bookings = get().bookings;
         return {
-          pending: bookings.filter((b) => b.status === 'Pending').length,
-          accepted: bookings.filter((b) => b.status === 'Accepted').length,
-          confirmed: bookings.filter((b) => b.status === 'Confirmed').length,
-          completed: bookings.filter((b) => b.status === 'Completed').length,
-          cancelled: bookings.filter((b) => b.status === 'Cancelled').length
+          pending: bookings.filter((b) => b.status === "Pending").length,
+          accepted: bookings.filter((b) => b.status === "Accepted").length,
+          confirmed: bookings.filter((b) => b.status === "Confirmed").length,
+          completed: bookings.filter((b) => b.status === "Completed").length,
+          cancelled: bookings.filter((b) => b.status === "Cancelled").length,
         };
       },
-      
+
       getPaymentSummary: () => {
         const payments = get().payments;
-        const unpaid = payments.filter((p) => p.status === 'Unpaid');
-        const pending = payments.filter((p) => p.status === 'Pending');
-        const paid = payments.filter((p) => p.status === 'Paid');
-        const refunded = payments.filter((p) => p.status === 'Refunded');
-        
+        const unpaid = payments.filter((p) => p.status === "Unpaid");
+        const pending = payments.filter((p) => p.status === "Pending");
+        const paid = payments.filter((p) => p.status === "Paid");
+        const refunded = payments.filter((p) => p.status === "Refunded");
+
         return {
-          unpaid: { count: unpaid.length, total: unpaid.reduce((s, p) => s + p.amount, 0) },
-          pending: { count: pending.length, total: pending.reduce((s, p) => s + p.amount, 0) },
-          paid: { count: paid.length, total: paid.reduce((s, p) => s + p.amount, 0) },
-          refunded: { count: refunded.length, total: refunded.reduce((s, p) => s + p.amount, 0) }
+          unpaid: {
+            count: unpaid.length,
+            total: unpaid.reduce((s, p) => s + p.amount, 0),
+          },
+          pending: {
+            count: pending.length,
+            total: pending.reduce((s, p) => s + p.amount, 0),
+          },
+          paid: {
+            count: paid.length,
+            total: paid.reduce((s, p) => s + p.amount, 0),
+          },
+          refunded: {
+            count: refunded.length,
+            total: refunded.reduce((s, p) => s + p.amount, 0),
+          },
         };
       },
-      
+
       getNextUpcomingBooking: () => {
         const bookings = get().bookings;
         const upcoming = bookings
-          .filter((b) => b.status === 'Confirmed' && new Date(b.scheduledDate) > new Date())
-          .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+          .filter(
+            (b) =>
+              b.status === "Confirmed" && new Date(b.scheduledDate) > new Date()
+          )
+          .sort(
+            (a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate)
+          );
         return upcoming[0] || null;
       },
-      
+
       getQuoteResponses: (quoteId) => {
         return get().quoteResponses.filter((r) => r.quoteId === quoteId);
       },
-      
+
       getQuotesNeedingAction: () => {
-        return get().quotes.filter((q) => q.status === 'Received Responses');
+        return get().quotes.filter((q) => q.status === "Received Responses");
       },
-      
+
       getUnpaidPayments: () => {
-        return get().payments.filter((p) => p.status === 'Unpaid');
-      }
+        return get().payments.filter((p) => p.status === "Unpaid");
+      },
     }),
     {
-      name: 'autoscreen-dashboard',
+      name: "autoscreen-dashboard-v3",
       partialize: (state) => ({
         user: state.user,
         vehicles: state.vehicles,
@@ -788,11 +982,10 @@ const useDashboardStore = create(
         reviews: state.reviews,
         searchCriteria: state.searchCriteria,
         sidebarCollapsed: state.sidebarCollapsed,
-        theme: state.theme
-      })
+        theme: state.theme,
+      }),
     }
   )
 );
 
 export default useDashboardStore;
-

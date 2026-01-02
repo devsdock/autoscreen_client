@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Search, Calendar, Filter } from 'lucide-react';
+import { Search, Calendar, Filter, Loader2 } from 'lucide-react';
 import useDashboardStore, { formatDate, formatCurrency } from '../../store/useDashboardStore';
+import bookingService from '../../services/bookingService';
+import { mapBooking } from '../../utils/dataMappers';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -14,16 +16,50 @@ import BookingDetailDrawer from '../../components/dashboard/BookingDetailDrawer'
 const Bookings = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { bookings } = useDashboardStore();
   
+  const [bookings, setBookings] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedBooking, setSelectedBooking] = useState(
-    id ? bookings.find(b => b.id === id) : null
-  );
-  
-  // Helper function to get booking status (handles both status and bookingStatus)
-  const getStatus = (b) => b.bookingStatus || b.status;
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [error, setError] = useState(null);
+
+  const fetchBookings = async () => {
+    try {
+      setIsLoading(true);
+      const res = await bookingService.getBookings();
+      if (res.success) {
+        // Use data mappers to format backend data for components
+        const mappedBookings = res.data.map(mapBooking);
+        setBookings(mappedBookings);
+        
+        // If there's an ID in URL, select that booking
+        if (id) {
+          const booking = mappedBookings.find(b => b.id === id || b.reference === id);
+          if (booking) setSelectedBooking(booking);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching bookings:', err);
+      setError('Failed to load bookings');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  // Sync selected booking when ID changes or bookings list updates
+  useEffect(() => {
+    if (id && bookings.length > 0) {
+      const b = bookings.find(item => item.id === id || item.reference === id);
+      if (b) setSelectedBooking(b);
+    } else if (!id) {
+      setSelectedBooking(null);
+    }
+  }, [id, bookings]);
   
   // Filter logic
   const now = new Date();
@@ -33,52 +69,33 @@ const Bookings = () => {
       value: 'upcoming', 
       label: 'Upcoming', 
       count: bookings.filter(b => 
-        getStatus(b) === 'Confirmed' && new Date(b.scheduledDate) > now
+        b.status === 'Confirmed' && new Date(b.scheduledDate) > now
       ).length 
     },
-    { 
-      value: 'inProgress', 
-      label: 'In Progress', 
-      count: bookings.filter(b => 
-        (getStatus(b) === 'Accepted' || getStatus(b) === 'Confirmed') && 
-        new Date(b.scheduledDate).toDateString() === now.toDateString()
-      ).length 
-    },
-    { value: 'completed', label: 'Completed', count: bookings.filter(b => getStatus(b) === 'Completed').length },
-    { value: 'cancelled', label: 'Cancelled', count: bookings.filter(b => getStatus(b) === 'Cancelled').length },
+    { value: 'completed', label: 'Completed', count: bookings.filter(b => b.status === 'Completed').length },
+    { value: 'cancelled', label: 'Cancelled', count: bookings.filter(b => b.status === 'Cancelled').length },
   ];
   
   const filteredBookings = bookings.filter(booking => {
-    const status = getStatus(booking);
+    const status = booking.status;
     // Tab filter
     if (activeTab === 'upcoming' && !(status === 'Confirmed' && new Date(booking.scheduledDate) > now)) return false;
-    if (activeTab === 'inProgress' && !((status === 'Accepted' || status === 'Confirmed') && new Date(booking.scheduledDate).toDateString() === now.toDateString())) return false;
     if (activeTab === 'completed' && status !== 'Completed') return false;
     if (activeTab === 'cancelled' && status !== 'Cancelled') return false;
     
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      // Handle both string and object formats for service and vehicle
-      const serviceName = typeof booking.service === 'object' ? booking.service?.name : booking.service;
-      const vehicleStr = typeof booking.vehicle === 'object' 
-        ? `${booking.vehicle.year} ${booking.vehicle.make} ${booking.vehicle.model}`
-        : booking.vehicle;
       return (
-        booking.id.toLowerCase().includes(query) ||
-        vehicleStr?.toLowerCase().includes(query) ||
+        booking.reference?.toLowerCase().includes(query) ||
+        booking.vehicle?.toLowerCase().includes(query) ||
         booking.providerName?.toLowerCase().includes(query) ||
-        serviceName?.toLowerCase().includes(query)
+        booking.service?.toLowerCase().includes(query)
       );
     }
     
     return true;
   });
-  
-  // Sort by date, most recent first
-  const sortedBookings = [...filteredBookings].sort(
-    (a, b) => new Date(b.scheduledDate) - new Date(a.scheduledDate)
-  );
   
   const handleViewBooking = (booking) => {
     setSelectedBooking(booking);
@@ -90,6 +107,15 @@ const Bookings = () => {
     navigate('/dashboard/bookings', { replace: true });
   };
   
+  if (isLoading && bookings.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <Loader2 className="animate-spin text-primary-600 mb-4" size={48} />
+        <p className="text-slate-500">Loading your bookings...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -116,17 +142,17 @@ const Bookings = () => {
       </div>
       
       {/* Bookings List */}
-      {sortedBookings.length === 0 ? (
+      {filteredBookings.length === 0 ? (
         <EmptyState
           iconType="bookings"
-          title="No bookings yet"
-          description="Accept a quote to create your first booking."
-          actionLabel="Browse My Quotes"
-          onAction={() => navigate('/dashboard/quotes')}
+          title={searchQuery ? "No matching bookings" : "No bookings yet"}
+          description={searchQuery ? "Try a different search term." : "Request a quote or search for a provider to create your first booking."}
+          actionLabel={searchQuery ? "Clear Search" : "Find Providers"}
+          onAction={() => searchQuery ? setSearchQuery('') : navigate('/dashboard/book')}
         />
       ) : (
         <div className="grid gap-4">
-          {sortedBookings.map((booking) => (
+          {filteredBookings.map((booking) => (
             <Card 
               key={booking.id} 
               className="hover:shadow-card-hover transition-shadow cursor-pointer"
@@ -137,34 +163,34 @@ const Bookings = () => {
                   <div className="flex items-start justify-between lg:justify-start gap-3 flex-wrap">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-sm text-slate-500 dark:text-slate-400">
-                        #{booking.reference || booking.id}
+                        #{booking.reference}
                       </span>
-                      <StatusBadge status={booking.bookingStatus || booking.status} type="booking" />
+                      <StatusBadge status={booking.status} type="booking" />
                       <StatusBadge status={booking.paymentStatus} type="payment" />
                     </div>
                   </div>
                   
                   <div>
                     <h3 className="font-semibold text-slate-900 dark:text-white">
-                      {typeof booking.service === 'object' ? booking.service?.name : booking.service}
+                      {booking.service}
                     </h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                      {typeof booking.vehicle === 'object' 
-                        ? `${booking.vehicle.year} ${booking.vehicle.make} ${booking.vehicle.model}`
-                        : booking.vehicle}
+                      {booking.vehicle}
                     </p>
                   </div>
                   
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600">
-                    <span>{booking.providerName}</span>
+                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                      {booking.providerName}
+                    </span>
                     <span className="text-slate-300">•</span>
                     <span className="flex items-center gap-1">
                       <Calendar size={14} className="text-slate-400" />
                       {formatDate(booking.scheduledDate, 'datetime')}
                     </span>
                     <span className="text-slate-300">•</span>
-                    <span className="font-medium text-slate-900 dark:text-white">
-                      {formatCurrency(typeof booking.price === 'object' ? booking.price?.total : booking.price)}
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {formatCurrency(booking.price?.total || 0)}
                     </span>
                   </div>
                 </div>
@@ -191,11 +217,10 @@ const Bookings = () => {
         booking={selectedBooking}
         isOpen={!!selectedBooking}
         onClose={handleCloseDrawer}
+        onUpdate={fetchBookings}
       />
     </div>
   );
 };
 
 export default Bookings;
-
-

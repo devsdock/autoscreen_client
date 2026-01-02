@@ -1,0 +1,147 @@
+import { request } from "./api";
+
+/**
+ * Booking Service
+ */
+const bookingService = {
+  /**
+   * Get all bookings
+   */
+  getBookings: (params = {}) => {
+    const { status, type, page = 1, limit = 10 } = params;
+    const queryParams = new URLSearchParams();
+    if (status) queryParams.append("status", status);
+    if (type) queryParams.append("type", type);
+    queryParams.append("page", page);
+    queryParams.append("limit", limit);
+
+    return request({
+      method: "GET",
+      url: `/api/customer/bookings?${queryParams.toString()}`,
+    });
+  },
+
+  /**
+   * Get single booking
+   */
+  getBooking: (bookingId) => {
+    return request({
+      method: "GET",
+      url: `/api/customer/bookings/${bookingId}`,
+    });
+  },
+
+  /**
+   * Get upcoming bookings
+   */
+  getUpcomingBookings: () => {
+    return request({
+      method: "GET",
+      url: "/api/customer/bookings/upcoming",
+    });
+  },
+
+  /**
+   * Get booking history
+   */
+  getBookingHistory: (params = {}) => {
+    const { page = 1, limit = 10 } = params;
+    return request({
+      method: "GET",
+      url: `/api/customer/bookings/history?page=${page}&limit=${limit}`,
+    });
+  },
+
+  /**
+   * Cancel a booking
+   */
+  cancelBooking: (bookingId, reason) => {
+    return request({
+      method: "PUT",
+      url: `/api/customer/bookings/${bookingId}/cancel`,
+      data: { reason },
+    });
+  },
+
+  /**
+   * Reschedule a booking
+   */
+  rescheduleBooking: (bookingId, data) => {
+    return request({
+      method: "PUT",
+      url: `/api/customer/bookings/${bookingId}/reschedule`,
+      data,
+    });
+  },
+
+  /**
+   * Add review to completed booking
+   */
+  addReview: (bookingId, data) => {
+    return request({
+      method: "POST",
+      url: `/api/customer/bookings/${bookingId}/review`,
+      data,
+    });
+  },
+
+  // ============================================
+  // BROADCAST BOOKING FLOW METHODS
+  // ============================================
+
+  /**
+   * Create a new booking request (broadcast to providers)
+   * This creates booking in "searching" status and broadcasts to nearby providers
+   */
+  createBookingRequest: (data) => {
+    console.log("Creating booking request with data:", data);
+    if (!data.serviceAddress?.coordinates) {
+      console.warn(
+        "⚠️ WARNING: No coordinates in booking request! Backend will fall back to city matching."
+      );
+    } else {
+      console.log("✅ Coordinates present:", data.serviceAddress.coordinates);
+    }
+
+    return request({
+      method: "POST",
+      url: "/api/customer/bookings",
+      data,
+    });
+  },
+
+  /**
+   * Get booking request status (for polling during search)
+   * Use this to check if a provider has accepted
+   */
+  getBookingStatus: (bookingId) => {
+    return request({
+      method: "GET",
+      url: `/api/customer/bookings/${bookingId}/status`,
+    });
+  },
+
+  /**
+   * Process payment for accepted booking
+   * Called after provider accepts to complete the booking
+   */
+  processBookingPayment: (bookingId, paymentData) => {
+    return request({
+      method: "POST",
+      url: `/api/customer/bookings/${bookingId}/payment`,
+      data: paymentData,
+    });
+  },
+
+  /**
+   * Complete booking (after job is finished)
+   */
+  completeBooking: (bookingId) => {
+    return request({
+      method: "POST",
+      url: `/api/customer/bookings/${bookingId}/complete`,
+    });
+  },
+};
+
+export default bookingService;

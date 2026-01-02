@@ -1,11 +1,15 @@
-import { useState, useRef } from 'react';
-import { X, Upload, Image, Trash2, Calendar, Clock } from 'lucide-react';
+import { X, Upload, Trash2, Clock } from 'lucide-react';
 import useDashboardStore from '../../store/useDashboardStore';
 import Button from '../ui/Button';
 import { vehicleMakes, glassTypes, serviceTypes, timeSlots, cities } from '../../data/quotes';
+import vehicleService from '../../services/vehicleService';
+import geocodingService from '../../services/geocodingService';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import PremiumSelect from '../ui/PremiumSelect';
+import PremiumDatePicker from '../ui/PremiumDatePicker';
 
 const RequestQuoteModal = ({ isOpen, onClose }) => {
-  const { createQuote } = useDashboardStore();
+  const { createQuote, user, vehicles, addresses } = useDashboardStore();
   const fileInputRef = useRef(null);
   
   const [formData, setFormData] = useState({
@@ -17,14 +21,40 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
     city: '',
     postcode: '',
     addressLine1: '',
+    coordinates: null,
     preferredDate: '',
     preferredTimeSlot: '',
     notes: '',
     images: []
   });
+
+  // Pre-fill logic
+  useEffect(() => {
+    if (isOpen && user && !formData.vehicleMake) {
+      const defaultVehicle = vehicles.find(v => v.isDefault) || vehicles[0];
+      const defaultAddress = addresses.find(a => a.isDefault) || addresses[0];
+
+      if (defaultVehicle || defaultAddress) {
+        setFormData(prev => ({
+          ...prev,
+          vehicleMake: defaultVehicle?.make || prev.vehicleMake,
+          vehicleModel: defaultVehicle?.model || prev.vehicleModel,
+          vehicleYear: defaultVehicle?.year?.toString() || prev.vehicleYear,
+          city: defaultAddress?.city || prev.city,
+          postcode: defaultAddress?.postcode || prev.postcode,
+          addressLine1: defaultAddress?.line1 || prev.addressLine1,
+          coordinates: defaultAddress?.coordinates || prev.coordinates
+        }));
+      }
+    }
+  }, [isOpen, user, vehicles, addresses]);
   
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [availableModels, setAvailableModels] = useState([]);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [modelSearchQuery, setModelSearchQuery] = useState('');
+  const [suggestedField, setSuggestedField] = useState(null);
   
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 20 }, (_, i) => currentYear - i);
@@ -34,7 +64,48 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
     }
+    
+    // If make changes, reset model and fetch new ones
+    if (field === 'vehicleMake') {
+      setFormData(prev => ({ ...prev, vehicleModel: '', vehicleYear: new Date().getFullYear().toString() }));
+      setAvailableModels([]);
+      setModelSearchQuery('');
+    }
+    
+    if (field === 'vehicleModel') {
+      setModelSearchQuery(value);
+      setSuggestedField(null);
+    }
+
+    if (field === 'preferredDate') {
+      if (!formData.preferredTimeSlot) {
+        setSuggestedField('preferredTimeSlot');
+      }
+    }
+
+    if (field === 'preferredTimeSlot') {
+      setSuggestedField(null);
+    }
   };
+
+  // Fetch models dynamic based on selected make
+  useEffect(() => {
+    const fetchModels = async () => {
+      if (!formData.vehicleMake) return;
+      
+      setIsFetchingModels(true);
+      try {
+        const models = await vehicleService.getModelsByMake(formData.vehicleMake);
+        setAvailableModels(models);
+      } catch (err) {
+        console.error('Failed to fetch models', err);
+      } finally {
+        setIsFetchingModels(false);
+      }
+    };
+
+    fetchModels();
+  }, [formData.vehicleMake]);
   
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -79,6 +150,10 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
     return Object.keys(newErrors).length === 0;
   };
   
+  const filteredModels = availableModels.filter(model => 
+    model.toLowerCase().includes(modelSearchQuery.toLowerCase())
+  ).slice(0, 50); // Limit to 50 for performance
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -86,62 +161,117 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
     
     setIsSubmitting(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const quoteId = createQuote({
-      ...formData,
-      images: formData.images.map(img => img.data)
-    });
-    
-    setIsSubmitting(false);
-    
-    // Reset form
-    setFormData({
-      vehicleMake: '',
-      vehicleModel: '',
-      vehicleYear: new Date().getFullYear().toString(),
-      serviceType: '',
-      glassType: '',
-      city: '',
-      postcode: '',
-      addressLine1: '',
-      preferredDate: '',
-      preferredTimeSlot: '',
-      notes: '',
-      images: []
-    });
-    
-    onClose(quoteId);
+    try {
+      // Geocode if coordinates are missing
+      let finalCoordinates = formData.coordinates;
+      if (!finalCoordinates && formData.city) {
+        try {
+          const fullAddress = `${formData.addressLine1 || ''}, ${formData.city}, ${formData.postcode || ''}, South Africa`.replace(/^, /, '').replace(/, ,/g, ',');
+          finalCoordinates = await geocodingService.getCoordinates(fullAddress);
+        } catch (err) {
+          console.error("Geocoding failed for quote", err);
+        }
+      }
+      
+      // Prepare API payload
+      const quotePayload = {
+        vehicle: {
+          make: formData.vehicleMake,
+          model: formData.vehicleModel,
+          year: parseInt(formData.vehicleYear) || new Date().getFullYear(),
+        },
+        serviceType: formData.serviceType.toLowerCase(),
+        glassType: formData.glassType,
+        serviceLocation: {
+          type: "mobile",
+          address: {
+            addressLine1: formData.addressLine1,
+            city: formData.city,
+            postalCode: formData.postcode,
+            coordinates: finalCoordinates,
+          },
+        },
+        preferredDate: formData.preferredDate || null,
+        preferredTimeSlot: formData.preferredTimeSlot?.toLowerCase().replace(/\s*\(.*\)/, '') || "any",
+        customerNotes: formData.notes,
+        damageImages: formData.images.map(img => img.data),
+      };
+      
+      // Import quoteService
+      const quoteService = (await import('../../services/quoteService')).default;
+      
+      const response = await quoteService.createQuote(quotePayload);
+      
+      console.log('Quote created:', response);
+      
+      // Show success message
+      const { addToast } = useDashboardStore.getState();
+      addToast({ 
+        type: 'success', 
+        message: response?.message || `Quote submitted! ${response?.data?.providersNotified || 0} providers notified.` 
+      });
+      
+      // Reset form
+      setFormData({
+        vehicleMake: '',
+        vehicleModel: '',
+        vehicleYear: new Date().getFullYear().toString(),
+        serviceType: '',
+        glassType: '',
+        city: '',
+        postcode: '',
+        addressLine1: '',
+        coordinates: null,
+        preferredDate: '',
+        preferredTimeSlot: '',
+        notes: '',
+        images: []
+      });
+      setModelSearchQuery('');
+      
+      // Close modal and pass the quote ID for navigation
+      onClose(response?.data?._id || response?.data?.quoteNumber);
+    } catch (error) {
+      console.error('Error creating quote:', error);
+      const { addToast } = useDashboardStore.getState();
+      addToast({ 
+        type: 'error', 
+        message: error?.error || error?.message || 'Failed to submit quote request' 
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-none">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
+        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity pointer-events-auto" 
         onClick={() => onClose()}
       />
       
       {/* Modal */}
-      <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="relative bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-200/50 dark:border-slate-700/50 animate-in fade-in zoom-in duration-200 pointer-events-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">Request a Quote</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Fill in the details and we'll connect you with providers
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              Fill in the details to get provider offers
             </p>
           </div>
           <button
             onClick={() => onClose()}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all"
           >
             <X size={20} />
           </button>
         </div>
+
+
         
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -149,55 +279,40 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
           <div>
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Vehicle Details</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                  Make <span className="text-danger-500">*</span>
-                </label>
-                <select
-                  value={formData.vehicleMake}
-                  onChange={(e) => handleChange('vehicleMake', e.target.value)}
-                  className={`w-full px-3 py-2.5 bg-white dark:bg-slate-800 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 ${
-                    errors.vehicleMake ? 'border-danger-500' : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  <option value="">Select make</option>
-                  {vehicleMakes.map(make => (
-                    <option key={make} value={make}>{make}</option>
-                  ))}
-                </select>
-                {errors.vehicleMake && <p className="text-xs text-danger-500 mt-1">{errors.vehicleMake}</p>}
-              </div>
+              <PremiumSelect
+                label="Make"
+                required
+                value={formData.vehicleMake}
+                options={vehicleMakes}
+                onChange={(val) => handleChange('vehicleMake', val)}
+                placeholder="Select make"
+                error={errors.vehicleMake}
+                searchable
+              />
               
-              <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                  Model <span className="text-danger-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.vehicleModel}
-                  onChange={(e) => handleChange('vehicleModel', e.target.value)}
-                  placeholder="e.g. Corolla"
-                  className={`w-full px-3 py-2.5 bg-white dark:bg-slate-800 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 ${
-                    errors.vehicleModel ? 'border-danger-500' : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                />
-                {errors.vehicleModel && <p className="text-xs text-danger-500 mt-1">{errors.vehicleModel}</p>}
-              </div>
+              <PremiumSelect
+                label="Model"
+                required
+                value={formData.vehicleModel}
+                options={availableModels}
+                onChange={(val) => handleChange('vehicleModel', val)}
+                placeholder={!formData.vehicleMake ? "Select make first" : "Search model"}
+                error={errors.vehicleModel}
+                searchable
+                disabled={!formData.vehicleMake}
+                loading={isFetchingModels}
+                emptyMessage={!formData.vehicleMake ? "Please select a make first" : "No models found"}
+                autoOpen={suggestedField === 'vehicleModel'}
+              />
               
-              <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                  Year <span className="text-danger-500">*</span>
-                </label>
-                <select
-                  value={formData.vehicleYear}
-                  onChange={(e) => handleChange('vehicleYear', e.target.value)}
-                  className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                >
-                  {years.map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </div>
+              <PremiumSelect
+                label="Year"
+                required
+                value={formData.vehicleYear}
+                options={years.map(String)}
+                onChange={(val) => handleChange('vehicleYear', val)}
+                placeholder="Select year"
+              />
             </div>
           </div>
           
@@ -205,43 +320,26 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
           <div>
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Service Required</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                  Service Type <span className="text-danger-500">*</span>
-                </label>
-                <select
-                  value={formData.serviceType}
-                  onChange={(e) => handleChange('serviceType', e.target.value)}
-                  className={`w-full px-3 py-2.5 bg-white dark:bg-slate-800 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 ${
-                    errors.serviceType ? 'border-danger-500' : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  <option value="">Select type</option>
-                  {serviceTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-                {errors.serviceType && <p className="text-xs text-danger-500 mt-1">{errors.serviceType}</p>}
-              </div>
+              <PremiumSelect
+                label="Service Type"
+                required
+                value={formData.serviceType}
+                options={serviceTypes}
+                onChange={(val) => handleChange('serviceType', val)}
+                placeholder="Select type"
+                error={errors.serviceType}
+              />
               
-              <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                  Glass Type <span className="text-danger-500">*</span>
-                </label>
-                <select
-                  value={formData.glassType}
-                  onChange={(e) => handleChange('glassType', e.target.value)}
-                  className={`w-full px-3 py-2.5 bg-white dark:bg-slate-800 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 ${
-                    errors.glassType ? 'border-danger-500' : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  <option value="">Select glass</option>
-                  {glassTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-                {errors.glassType && <p className="text-xs text-danger-500 mt-1">{errors.glassType}</p>}
-              </div>
+              <PremiumSelect
+                label="Glass Type"
+                required
+                value={formData.glassType}
+                options={glassTypes}
+                onChange={(val) => handleChange('glassType', val)}
+                placeholder="Select glass"
+                error={errors.glassType}
+                searchable
+              />
             </div>
           </div>
           
@@ -249,24 +347,16 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
           <div>
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Service Location</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                  City <span className="text-danger-500">*</span>
-                </label>
-                <select
-                  value={formData.city}
-                  onChange={(e) => handleChange('city', e.target.value)}
-                  className={`w-full px-3 py-2.5 bg-white dark:bg-slate-800 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 ${
-                    errors.city ? 'border-danger-500' : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  <option value="">Select city</option>
-                  {cities.map(city => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
-                </select>
-                {errors.city && <p className="text-xs text-danger-500 mt-1">{errors.city}</p>}
-              </div>
+              <PremiumSelect
+                label="City"
+                required
+                value={formData.city}
+                options={cities}
+                onChange={(val) => handleChange('city', val)}
+                placeholder="Select city"
+                error={errors.city}
+                searchable
+              />
               
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
@@ -277,7 +367,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                   value={formData.postcode}
                   onChange={(e) => handleChange('postcode', e.target.value)}
                   placeholder="e.g. 2196"
-                  className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                  className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-700 dark:text-slate-200 shadow-sm"
                 />
               </div>
             </div>
@@ -300,34 +390,23 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
           <div>
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Preferred Schedule (Optional)</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                  <Calendar size={14} className="inline mr-1" /> Preferred Date
-                </label>
-                <input
-                  type="date"
-                  value={formData.preferredDate}
-                  onChange={(e) => handleChange('preferredDate', e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                />
-              </div>
+              <PremiumDatePicker
+                label="Preferred Date"
+                value={formData.preferredDate}
+                onChange={(val) => handleChange('preferredDate', val)}
+                placeholder="Select a date"
+                minDate={new Date().toISOString().split('T')[0]}
+              />
               
-              <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                  <Clock size={14} className="inline mr-1" /> Preferred Time
-                </label>
-                <select
-                  value={formData.preferredTimeSlot}
-                  onChange={(e) => handleChange('preferredTimeSlot', e.target.value)}
-                  className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-                >
-                  <option value="">Select time slot</option>
-                  {timeSlots.map(slot => (
-                    <option key={slot} value={slot}>{slot}</option>
-                  ))}
-                </select>
-              </div>
+              <PremiumSelect
+                label="Preferred Time"
+                icon={Clock}
+                value={formData.preferredTimeSlot}
+                options={timeSlots}
+                onChange={(val) => handleChange('preferredTimeSlot', val)}
+                placeholder="Select time slot"
+                autoOpen={suggestedField === 'preferredTimeSlot'}
+              />
             </div>
           </div>
           

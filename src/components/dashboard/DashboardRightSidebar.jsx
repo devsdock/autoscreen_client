@@ -2,9 +2,28 @@ import { MoreVertical, Plus, Minus, MessageSquare, Phone } from 'lucide-react';
 import useDashboardStore from '../../store/useDashboardStore';
 import Avatar from '../ui/Avatar';
 
+/**
+ * DashboardRightSidebar Component
+ * 
+ * Currently hidden via SHOW_RIGHT_SIDEBAR flag in DashboardLayout.jsx
+ * To re-enable: Set SHOW_RIGHT_SIDEBAR = true in DashboardLayout.jsx
+ * 
+ * This component displays:
+ * - Service area map
+ * - Top provider info
+ * - Quick stats (dynamic from store)
+ * - Recent providers list
+ */
 const DashboardRightSidebar = () => {
-  const { providers } = useDashboardStore();
+  const { providers, quotes, bookings } = useDashboardStore();
   const topProvider = providers?.[0];
+  
+  // Calculate dynamic stats from store data
+  const activeQuotes = quotes?.filter(q => q.status === 'Open' || q.status === 'pending')?.length || 0;
+  const completedBookings = bookings?.filter(b => b.status === 'Completed' || b.status === 'completed')?.length || 0;
+  const pendingBookings = bookings?.filter(b => b.status === 'Pending' || b.status === 'pending' || b.status === 'Confirmed' || b.status === 'confirmed')?.length || 0;
+  const totalJobs = bookings?.length || 0;
+  const activeProviders = providers?.length || 0;
   
   return (
     <aside className="hidden xl:block fixed top-0 right-0 w-[320px] h-screen bg-white dark:bg-slate-900 border-l border-slate-100 dark:border-slate-800 p-5 overflow-y-auto transition-colors">
@@ -39,10 +58,10 @@ const DashboardRightSidebar = () => {
             <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Gauteng, SA</p>
           </div>
           
-          {/* Info overlay */}
+          {/* Info overlay - Dynamic count */}
           <div className="absolute bottom-3 left-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-sm">
             <p className="text-xs text-slate-500 dark:text-slate-400">Service Providers</p>
-            <p className="text-lg font-bold text-slate-800 dark:text-slate-200">12 Active</p>
+            <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{activeProviders} Active</p>
           </div>
         </div>
         
@@ -78,25 +97,25 @@ const DashboardRightSidebar = () => {
         </div>
       )}
 
-      {/* Quick Stats */}
+      {/* Quick Stats - Now Dynamic */}
       <div className="space-y-4">
         <h3 className="font-semibold text-slate-800 dark:text-slate-200">Quick Stats</h3>
         
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
-            <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">2</p>
+            <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">{activeQuotes}</p>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Active Quotes</p>
           </div>
           <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4">
-            <p className="text-2xl font-bold text-success-600 dark:text-success-500">3</p>
+            <p className="text-2xl font-bold text-success-600 dark:text-success-500">{completedBookings}</p>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Completed</p>
           </div>
           <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4">
-            <p className="text-2xl font-bold text-warning-600 dark:text-warning-500">1</p>
+            <p className="text-2xl font-bold text-warning-600 dark:text-warning-500">{pendingBookings}</p>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Pending</p>
           </div>
           <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-4">
-            <p className="text-2xl font-bold text-slate-700 dark:text-slate-300">5</p>
+            <p className="text-2xl font-bold text-slate-700 dark:text-slate-300">{totalJobs}</p>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">Total Jobs</p>
           </div>
         </div>
@@ -125,6 +144,13 @@ const DashboardRightSidebar = () => {
               </div>
             </div>
           ))}
+          
+          {/* Empty state */}
+          {(!providers || providers.length === 0) && (
+            <div className="text-center py-4">
+              <p className="text-sm text-slate-500 dark:text-slate-400">No providers yet</p>
+            </div>
+          )}
         </div>
       </div>
     </aside>
@@ -132,3 +158,4 @@ const DashboardRightSidebar = () => {
 };
 
 export default DashboardRightSidebar;
+

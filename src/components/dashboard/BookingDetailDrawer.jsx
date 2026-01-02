@@ -8,20 +8,21 @@ import {
   Circle,
   X,
   Download,
-  MessageSquare,
   CreditCard,
-  Star
+  Star,
+  Shield,
+  Loader2
 } from 'lucide-react';
 import Drawer, { DrawerFooter } from '../ui/Drawer';
 import Button from '../ui/Button';
 import StatusBadge from '../ui/StatusBadge';
 import Rating from '../ui/Rating';
 import ConfirmModal from '../ui/ConfirmModal';
-import Select from '../ui/Select';
 import useDashboardStore, { formatDate, formatCurrency } from '../../store/useDashboardStore';
+import bookingService from '../../services/bookingService';
 
-const BookingDetailDrawer = ({ booking, isOpen, onClose }) => {
-  const { cancelBooking, addToast } = useDashboardStore();
+const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
+  const { addToast } = useDashboardStore();
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,33 +31,41 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose }) => {
   
   const handleCancel = async () => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    cancelBooking(booking.id, cancelReason);
-    setLoading(false);
-    setShowCancelModal(false);
-    onClose();
+    try {
+      await bookingService.cancelBooking(booking.id, cancelReason);
+      addToast({ type: 'success', message: 'Booking cancelled successfully' });
+      if (onUpdate) onUpdate();
+      onClose();
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      addToast({ type: 'error', message: 'Failed to cancel booking' });
+    } finally {
+      setLoading(false);
+      setShowCancelModal(false);
+    }
   };
   
   const handlePayNow = () => {
-    addToast({ type: 'info', message: 'Redirecting to payment...' });
+    // In a real app, this would navigate to the payment page/modal
+    // For now, if it's accepted, we can redirect to the pending page where payment happens
+    window.location.href = `/dashboard/booking/pending/${booking.id}`;
     onClose();
-    // Would navigate to payment
   };
   
   const handleDownloadInvoice = () => {
-    addToast({ type: 'success', message: 'Invoice downloaded' });
+    addToast({ type: 'success', message: 'Invoice download started...' });
   };
   
   const handleContactProvider = () => {
-    window.open(`tel:${booking.providerPhone}`, '_self');
+    if (booking.providerPhone) {
+      window.open(`tel:${booking.providerPhone}`, '_self');
+    } else {
+      addToast({ type: 'info', message: 'Provider phone number not available' });
+    }
   };
   
-  const handleLeaveReview = () => {
-    addToast({ type: 'info', message: 'Review feature coming soon!' });
-  };
-  
-  const canCancel = ['Pending', 'Accepted', 'Confirmed'].includes(booking.status);
-  const canPay = booking.paymentStatus === 'Unpaid' && ['Accepted', 'Confirmed'].includes(booking.status);
+  const canCancel = ['Pending', 'Accepted', 'Confirmed', 'Pending Payment'].includes(booking.status);
+  const canPay = booking.paymentStatus === 'Unpaid' && ['Accepted', 'Confirmed', 'Pending Payment'].includes(booking.status);
   const canReview = booking.status === 'Completed';
   
   return (
@@ -64,7 +73,7 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose }) => {
       <Drawer
         isOpen={isOpen}
         onClose={onClose}
-        title={`Booking #${booking.id}`}
+        title={`Booking #${booking.reference}`}
         size="lg"
       >
         <div className="space-y-6">
@@ -75,10 +84,10 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose }) => {
           </div>
           
           {/* Status Timeline */}
-          <div className="bg-slate-50 rounded-xl p-4">
-            <h4 className="font-medium text-slate-900 mb-4">Booking Progress</h4>
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
+            <h4 className="font-semibold text-slate-900 dark:text-white mb-4">Booking Progress</h4>
             <div className="relative">
-              {booking.timeline.map((step, index) => {
+              {booking.timeline?.map((step, index) => {
                 const isLast = index === booking.timeline.length - 1;
                 const isCancelled = step.status === 'Cancelled';
                 
@@ -89,9 +98,9 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose }) => {
                         w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0
                         ${step.completed 
                           ? isCancelled 
-                            ? 'bg-red-100 text-red-600' 
-                            : 'bg-green-100 text-green-600'
-                          : 'bg-slate-200 text-slate-400'
+                            ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' 
+                            : 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500'
                         }
                       `}>
                         {step.completed ? (
@@ -101,15 +110,15 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose }) => {
                         )}
                       </div>
                       {!isLast && (
-                        <div className={`w-0.5 h-8 ${step.completed ? 'bg-green-200' : 'bg-slate-200'}`} />
+                        <div className={`w-0.5 h-8 ${step.completed ? 'bg-green-200 dark:bg-green-900/50' : 'bg-slate-200 dark:bg-slate-700'}`} />
                       )}
                     </div>
                     <div className="flex-1 pb-6">
-                      <p className={`text-sm font-medium ${step.completed ? 'text-slate-900' : 'text-slate-400'}`}>
+                      <p className={`text-sm font-medium ${step.completed ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'}`}>
                         {step.status}
                       </p>
                       {step.date && (
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                           {formatDate(step.date, 'datetime')}
                         </p>
                       )}
@@ -117,116 +126,108 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose }) => {
                   </div>
                 );
               })}
+              {!booking.timeline && <p className="text-sm text-slate-400 italic">No progress data available</p>}
             </div>
           </div>
           
           {/* Booking Details */}
           <div>
-            <h4 className="font-medium text-slate-900 mb-3">Service Details</h4>
-            <div className="space-y-3">
+            <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Service Details</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
-                  <Car size={16} className="text-primary-600" />
+                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
+                  <Car size={16} className="text-primary-600 dark:text-primary-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">Service</p>
-                  <p className="font-medium text-slate-900">{booking.service}</p>
-                  <p className="text-sm text-slate-600">{booking.vehicle}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Service</p>
+                  <p className="font-medium text-slate-900 dark:text-white">{booking.service}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{booking.vehicle}</p>
                 </div>
               </div>
               
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
-                  <Clock size={16} className="text-primary-600" />
+                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
+                  <Clock size={16} className="text-primary-600 dark:text-primary-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">Date & Time</p>
-                  <p className="font-medium text-slate-900">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Date & Time</p>
+                  <p className="font-medium text-slate-900 dark:text-white">
                     {formatDate(booking.scheduledDate, 'datetime')}
                   </p>
                 </div>
               </div>
               
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
-                  <MapPin size={16} className="text-primary-600" />
+                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
+                  <MapPin size={16} className="text-primary-600 dark:text-primary-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">Location</p>
-                  <p className="font-medium text-slate-900">{booking.locationType}</p>
-                  <p className="text-sm text-slate-600">{booking.address}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Location</p>
+                  <p className="font-medium text-slate-900 dark:text-white">{booking.locationType}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{booking.address}</p>
                 </div>
               </div>
-              
-              {booking.notes && (
-                <div className="bg-slate-50 p-3 rounded-lg">
-                  <p className="text-sm text-slate-500 mb-1">Special Notes</p>
-                  <p className="text-sm text-slate-700">{booking.notes}</p>
-                </div>
-              )}
             </div>
           </div>
           
           {/* Provider Details */}
-          <div>
-            <h4 className="font-medium text-slate-900 mb-3">Provider</h4>
-            <div className="flex items-start justify-between p-4 bg-slate-50 rounded-xl">
-              <div className="flex items-start gap-3">
-                <div className="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-lg flex-shrink-0">
-                  {booking.providerName.charAt(0)}
+          {booking.providerName && (
+            <div>
+                <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Provider</h4>
+                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                    {booking.providerName.charAt(0)}
+                    </div>
+                    <div>
+                    <p className="font-semibold text-slate-900 dark:text-white">{booking.providerName}</p>
+                    <Rating 
+                        value={booking.providerRating || 0} 
+                        reviewCount={booking.providerReviews || 0}
+                        size="sm"
+                        className="mt-1"
+                    />
+                    </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-slate-900">{booking.providerName}</p>
-                  <Rating 
-                    value={booking.providerRating || 4.5} 
-                    reviewCount={booking.providerReviews || 50}
+                <Button 
+                    variant="secondary" 
                     size="sm"
-                    className="mt-1"
-                  />
-                  <p className="text-sm text-slate-500 mt-1">{booking.providerPhone}</p>
+                    onClick={handleContactProvider}
+                >
+                    <Phone size={14} />
+                    Call
+                </Button>
                 </div>
-              </div>
-              <Button 
-                variant="secondary" 
-                size="sm"
-                onClick={handleContactProvider}
-              >
-                <Phone size={14} />
-                Call
-              </Button>
             </div>
-          </div>
+          )}
           
           {/* Price Breakdown */}
           <div>
-            <h4 className="font-medium text-slate-900 mb-3">Price Breakdown</h4>
-            <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+            <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Price Breakdown</h4>
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-600">Service Amount</span>
-                <span className="text-slate-900">{formatCurrency(booking.price.service)}</span>
+                <span className="text-slate-600 dark:text-slate-400">Service Amount</span>
+                <span className="text-slate-900 dark:text-white">{formatCurrency(booking.price?.service || 0)}</span>
               </div>
-              {booking.price.callout > 0 && (
+              {booking.price?.callout > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Callout Fee</span>
-                  <span className="text-slate-900">{formatCurrency(booking.price.callout)}</span>
+                  <span className="text-slate-600 dark:text-slate-400">Callout Fee</span>
+                  <span className="text-slate-900 dark:text-white">{formatCurrency(booking.price.callout)}</span>
                 </div>
               )}
-              {booking.price.materials > 0 && (
+              {booking.price?.materials > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Materials</span>
-                  <span className="text-slate-900">{formatCurrency(booking.price.materials)}</span>
+                  <span className="text-slate-600 dark:text-slate-400">Materials</span>
+                  <span className="text-slate-900 dark:text-white">{formatCurrency(booking.price.materials)}</span>
                 </div>
               )}
-              <div className="border-t border-slate-200 pt-2 mt-2">
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-2 mt-2">
                 <div className="flex justify-between">
-                  <span className="font-semibold text-slate-900">Total</span>
-                  <span className="font-bold text-slate-900 text-lg">
-                    {formatCurrency(booking.price.total)}
+                  <span className="font-semibold text-slate-900 dark:text-white">Total</span>
+                  <span className="font-bold text-primary-600 dark:text-primary-400 text-lg">
+                    {formatCurrency(booking.price?.total || 0)}
                   </span>
                 </div>
-              </div>
-              <div className="pt-2">
-                <StatusBadge status={booking.paymentStatus} type="payment" size="md" />
               </div>
             </div>
           </div>
@@ -237,11 +238,11 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose }) => {
           {canPay && (
             <Button onClick={handlePayNow} className="flex-1">
               <CreditCard size={16} />
-              Pay Now
+              Confirm & Pay
             </Button>
           )}
           {canReview && (
-            <Button variant="secondary" onClick={handleLeaveReview} className="flex-1">
+            <Button variant="secondary" className="flex-1">
               <Star size={16} />
               Leave Review
             </Button>
@@ -264,7 +265,7 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose }) => {
         onClose={() => setShowCancelModal(false)}
         onConfirm={handleCancel}
         title="Cancel this booking?"
-        message="Cancellation may be subject to provider's cancellation policy."
+        message="Are you sure you want to cancel this booking? Cancellation may be subject to a fee if outside the grace period."
         confirmLabel="Cancel Booking"
         cancelLabel="Keep Booking"
         type="danger"
@@ -275,7 +276,3 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose }) => {
 };
 
 export default BookingDetailDrawer;
-
-
-
-

@@ -4,7 +4,6 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from './components/dashboard/DashboardLayout';
 import Overview from './pages/dashboard/Overview';
 import Quotes from './pages/dashboard/Quotes';
-import QuoteDetail from './pages/dashboard/QuoteDetail';
 import Bookings from './pages/dashboard/Bookings';
 import Payments from './pages/dashboard/Payments';
 import Profile from './pages/dashboard/Profile';
@@ -15,8 +14,12 @@ import BookSearch from './pages/dashboard/BookSearch';
 import ProviderList from './pages/dashboard/ProviderList';
 import ProviderProfile from './pages/dashboard/ProviderProfile';
 import BookingForm from './pages/dashboard/BookingForm';
+import BookingSearching from './pages/dashboard/BookingSearching';
 import BookingPending from './pages/dashboard/BookingPending';
 import BookingConfirmation from './pages/dashboard/BookingConfirmation';
+
+// Auth Protection
+import ProtectedRoute from './components/ProtectedRoute';
 
 const App = () => {
   return (
@@ -24,22 +27,21 @@ const App = () => {
       {/* Redirect root to dashboard */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       
-      {/* Dashboard Routes */}
-      <Route path="/dashboard" element={<DashboardLayout />}>
+      {/* Dashboard Routes - Protected */}
+      <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
         <Route index element={<Overview />} />
         
-        {/* Booking Flow Routes */}
+        {/* Booking Flow Routes (Uber Style - No manual selection) */}
         <Route path="book" element={<BookSearch />} />
-        <Route path="providers" element={<ProviderList />} />
-        <Route path="providers/:id" element={<ProviderProfile />} />
-        <Route path="book/:providerId" element={<BookingForm />} />
+        <Route path="book/request" element={<BookingForm />} />
+        <Route path="booking/searching/:bookingId" element={<BookingSearching />} />
         <Route path="booking/pending/:bookingId" element={<BookingPending />} />
         <Route path="booking/confirmation/:bookingId" element={<BookingConfirmation />} />
         
         {/* Existing Routes */}
         <Route path="quotes" element={<Quotes />} />
         <Route path="quotes/new" element={<Quotes />} />
-        <Route path="quotes/:id" element={<QuoteDetail />} />
+        <Route path="quotes/:id" element={<Quotes />} />
         <Route path="bookings" element={<Bookings />} />
         <Route path="bookings/:id" element={<Bookings />} />
         <Route path="payments" element={<Payments />} />

@@ -14,10 +14,11 @@ import {
   Search
 } from 'lucide-react';
 import useDashboardStore from '../../store/useDashboardStore';
+import useAuthStore from '../../store/useAuthStore';
 
 const mainMenuItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', end: true },
-  { path: '/dashboard/book', icon: Search, label: 'Book a Service' },
+  { path: '/dashboard/book', icon: Search, label: 'Book Now' },
   { path: '/dashboard/quotes', icon: FileText, label: 'My Quotes' },
   { path: '/dashboard/bookings', icon: Calendar, label: 'My Bookings' },
   { path: '/dashboard/payments', icon: CreditCard, label: 'Payments' },
@@ -30,9 +31,11 @@ const generalItems = [
 
 const DashboardSidebar = () => {
   const { sidebarOpen, sidebarCollapsed, toggleSidebar, toggleSidebarCollapse, addToast } = useDashboardStore();
+  const logout = useAuthStore((state) => state.logout);
   
-  const handleLogout = () => {
-    addToast({ type: 'info', message: 'You have been logged out' });
+  const handleLogout = async () => {
+    addToast({ type: 'info', message: 'Logging out...' });
+    await logout();
   };
   
   return (

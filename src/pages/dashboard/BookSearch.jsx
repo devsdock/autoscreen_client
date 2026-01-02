@@ -1,25 +1,50 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Car, MapPin, Wrench, Shield, Star, Clock, ChevronRight } from 'lucide-react';
 import useDashboardStore from '../../store/useDashboardStore';
 import Button from '../../components/ui/Button';
-import { vehicleMakes, glassTypes, serviceTypes, cities } from '../../data/providers';
+import { vehicleMakes, glassTypes, serviceTypes, cities } from '../../data/quotes';
+import vehicleService from '../../services/vehicleService';
+import PremiumSelect from '../../components/ui/PremiumSelect';
 
 const BookSearch = () => {
   const navigate = useNavigate();
-  const { setSearchCriteria } = useDashboardStore();
+  const { setSearchCriteria, searchCriteria, user, vehicles, addresses } = useDashboardStore();
   
   const [formData, setFormData] = useState({
-    vehicleMake: '',
-    vehicleModel: '',
-    vehicleYear: new Date().getFullYear().toString(),
-    glassType: '',
-    serviceType: '',
-    city: '',
-    postcode: ''
+    vehicleMake: searchCriteria?.vehicleMake || '',
+    vehicleModel: searchCriteria?.vehicleModel || '',
+    vehicleYear: searchCriteria?.vehicleYear || new Date().getFullYear().toString(),
+    glassType: searchCriteria?.glassType || '',
+    serviceType: searchCriteria?.serviceType || '',
+    city: searchCriteria?.city || '',
+    postcode: searchCriteria?.postcode || ''
   });
+
+  // Pre-fill from saved details (Uber Style) - Only if no existing search criteria
+  useEffect(() => {
+    // Only pre-fill if we don't have existing criteria and form is empty
+    if (user && !searchCriteria && !formData.vehicleMake) {
+      const defaultVehicle = vehicles.find(v => v.isDefault) || vehicles[0];
+      const defaultAddress = addresses.find(a => a.isDefault) || addresses[0];
+      
+      if (defaultVehicle || defaultAddress) {
+        setFormData(prev => ({
+          ...prev,
+          vehicleMake: defaultVehicle?.make || prev.vehicleMake,
+          vehicleModel: defaultVehicle?.model || prev.vehicleModel,
+          vehicleYear: defaultVehicle?.year?.toString() || prev.vehicleYear,
+          city: defaultAddress?.city || prev.city,
+          postcode: defaultAddress?.postcode || prev.postcode
+        }));
+      }
+    }
+  }, [user, vehicles, addresses, searchCriteria]);
   
   const [errors, setErrors] = useState({});
+  const [availableModels, setAvailableModels] = useState([]);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [suggestedField, setSuggestedField] = useState(null);
   
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 20 }, (_, i) => currentYear - i);
@@ -29,7 +54,36 @@ const BookSearch = () => {
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
     }
+
+    if (field === 'vehicleMake') {
+      setFormData(prev => ({ ...prev, vehicleMake: value, vehicleModel: '' }));
+      setAvailableModels([]);
+      setSuggestedField('vehicleModel');
+    }
+
+    if (field === 'vehicleModel') {
+      setSuggestedField(null);
+    }
   };
+
+  // Fetch models dynamically
+  useEffect(() => {
+    const fetchModels = async () => {
+      if (!formData.vehicleMake) return;
+      
+      setIsFetchingModels(true);
+      try {
+        const models = await vehicleService.getModelsByMake(formData.vehicleMake);
+        setAvailableModels(models);
+      } catch (err) {
+        console.error('Failed to fetch models', err);
+      } finally {
+        setIsFetchingModels(false);
+      }
+    };
+
+    fetchModels();
+  }, [formData.vehicleMake]);
   
   const validate = () => {
     const newErrors = {};
@@ -47,7 +101,7 @@ const BookSearch = () => {
     if (!validate()) return;
     
     setSearchCriteria(formData);
-    navigate('/dashboard/providers');
+    navigate('/dashboard/book/request');
   };
   
   return (
@@ -59,10 +113,10 @@ const BookSearch = () => {
           Trusted by 10,000+ South African drivers
         </div>
         <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">
-          Find & Book Auto Glass Services
+          Book a Top-Rated Provider
         </h1>
         <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-          Compare prices, read reviews, and book trusted auto glass technicians in your area
+          Compare instant prices and book trusted service providers in your area.
         </p>
       </div>
       
@@ -76,55 +130,39 @@ const BookSearch = () => {
               Vehicle Details
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                  Make <span className="text-danger-500">*</span>
-                </label>
-                <select
-                  value={formData.vehicleMake}
-                  onChange={(e) => handleChange('vehicleMake', e.target.value)}
-                  className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-colors ${
-                    errors.vehicleMake ? 'border-danger-500' : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  <option value="">Select make</option>
-                  {vehicleMakes.map(make => (
-                    <option key={make} value={make}>{make}</option>
-                  ))}
-                </select>
-                {errors.vehicleMake && <p className="text-xs text-danger-500 mt-1">{errors.vehicleMake}</p>}
-              </div>
+              <PremiumSelect
+                label="Make"
+                required
+                value={formData.vehicleMake}
+                options={vehicleMakes}
+                onChange={(val) => handleChange('vehicleMake', val)}
+                placeholder="Select make"
+                error={errors.vehicleMake}
+                searchable
+              />
               
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                  Model <span className="text-danger-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.vehicleModel}
-                  onChange={(e) => handleChange('vehicleModel', e.target.value)}
-                  placeholder="e.g. Corolla, Golf, Polo"
-                  className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-colors ${
-                    errors.vehicleModel ? 'border-danger-500' : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                />
-                {errors.vehicleModel && <p className="text-xs text-danger-500 mt-1">{errors.vehicleModel}</p>}
-              </div>
+              <PremiumSelect
+                label="Model"
+                required
+                value={formData.vehicleModel}
+                options={availableModels}
+                onChange={(val) => handleChange('vehicleModel', val)}
+                placeholder={!formData.vehicleMake ? "Select make first" : "Search model"}
+                error={errors.vehicleModel}
+                searchable
+                disabled={!formData.vehicleMake}
+                loading={isFetchingModels}
+                emptyMessage={!formData.vehicleMake ? "Please select a make first" : "No models found"}
+                autoOpen={suggestedField === 'vehicleModel'}
+              />
               
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                  Year
-                </label>
-                <select
-                  value={formData.vehicleYear}
-                  onChange={(e) => handleChange('vehicleYear', e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-colors"
-                >
-                  {years.map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </div>
+              <PremiumSelect
+                label="Year"
+                value={formData.vehicleYear}
+                options={years.map(String)}
+                onChange={(val) => handleChange('vehicleYear', val)}
+                placeholder="Select year"
+              />
             </div>
           </div>
           
@@ -135,43 +173,26 @@ const BookSearch = () => {
               Service Needed
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                  Glass Type <span className="text-danger-500">*</span>
-                </label>
-                <select
-                  value={formData.glassType}
-                  onChange={(e) => handleChange('glassType', e.target.value)}
-                  className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-colors ${
-                    errors.glassType ? 'border-danger-500' : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  <option value="">Select glass type</option>
-                  {glassTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-                {errors.glassType && <p className="text-xs text-danger-500 mt-1">{errors.glassType}</p>}
-              </div>
+              <PremiumSelect
+                label="Glass Type"
+                required
+                value={formData.glassType}
+                options={glassTypes}
+                onChange={(val) => handleChange('glassType', val)}
+                placeholder="Select glass type"
+                error={errors.glassType}
+                searchable
+              />
               
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                  Service Type <span className="text-danger-500">*</span>
-                </label>
-                <select
-                  value={formData.serviceType}
-                  onChange={(e) => handleChange('serviceType', e.target.value)}
-                  className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-colors ${
-                    errors.serviceType ? 'border-danger-500' : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  <option value="">Select service</option>
-                  {serviceTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-                {errors.serviceType && <p className="text-xs text-danger-500 mt-1">{errors.serviceType}</p>}
-              </div>
+              <PremiumSelect
+                label="Service Type"
+                required
+                value={formData.serviceType}
+                options={serviceTypes}
+                onChange={(val) => handleChange('serviceType', val)}
+                placeholder="Select service"
+                error={errors.serviceType}
+              />
             </div>
           </div>
           
@@ -182,27 +203,19 @@ const BookSearch = () => {
               Your Location
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                  City <span className="text-danger-500">*</span>
-                </label>
-                <select
-                  value={formData.city}
-                  onChange={(e) => handleChange('city', e.target.value)}
-                  className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-colors ${
-                    errors.city ? 'border-danger-500' : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  <option value="">Select city</option>
-                  {cities.map(city => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
-                </select>
-                {errors.city && <p className="text-xs text-danger-500 mt-1">{errors.city}</p>}
-              </div>
+              <PremiumSelect
+                label="City"
+                required
+                value={formData.city}
+                options={cities}
+                onChange={(val) => handleChange('city', val)}
+                placeholder="Select city"
+                error={errors.city}
+                searchable
+              />
               
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">
                   Postcode (optional)
                 </label>
                 <input
@@ -210,7 +223,7 @@ const BookSearch = () => {
                   value={formData.postcode}
                   onChange={(e) => handleChange('postcode', e.target.value)}
                   placeholder="e.g. 2196"
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-colors"
+                  className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 transition-all shadow-sm text-slate-700 dark:text-slate-200"
                 />
               </div>
             </div>
@@ -220,8 +233,12 @@ const BookSearch = () => {
           <div className="pt-4">
             <Button type="submit" size="lg" className="w-full md:w-auto px-12">
               <Search size={20} />
-              Find Providers
+              Search Providers
             </Button>
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-500 flex items-center gap-1.5 justify-center md:justify-start">
+              <Shield size={14} className="text-success-500" />
+              Your request will be broadcast to all professional providers within a 50km radius.
+            </p>
           </div>
         </form>
       </div>

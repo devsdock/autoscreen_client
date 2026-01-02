@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
 import { Menu, Bell, ChevronDown, User, LogOut, Settings } from 'lucide-react'
 import useStore from '../../store/useStore'
+import useAuthStore from '../../store/useAuthStore'
 
 const Header = () => {
-  const { sidebarOpen, toggleSidebar, user } = useStore()
+  const { sidebarOpen, toggleSidebar } = useStore()
+  const { user, logout } = useAuthStore()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
 
@@ -36,7 +38,7 @@ const Header = () => {
           <Menu size={20} />
         </button>
         <h1 className="text-lg font-semibold text-slate-900 hidden sm:block">
-          Admin Dashboard
+          Customer Portal
         </h1>
       </div>
 
@@ -58,7 +60,7 @@ const Header = () => {
               <User size={16} className="text-slate-600" />
             </div>
             <span className="text-sm font-medium text-slate-700 hidden sm:block">
-              {user.name}
+              {user?.name || 'Customer'}
             </span>
             <ChevronDown size={16} className="text-slate-400" />
           </button>
@@ -67,8 +69,8 @@ const Header = () => {
           {dropdownOpen && (
             <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
               <div className="px-4 py-3 border-b border-slate-100">
-                <p className="text-sm font-medium text-slate-900">{user.name}</p>
-                <p className="text-xs text-slate-500">{user.email}</p>
+                <p className="text-sm font-medium text-slate-900">{user?.name || 'Customer'}</p>
+                <p className="text-xs text-slate-500">{user?.email}</p>
               </div>
               <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
                 <User size={16} />
@@ -79,7 +81,10 @@ const Header = () => {
                 <span>Settings</span>
               </button>
               <div className="border-t border-slate-100 mt-1">
-                <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                <button 
+                  onClick={() => logout()}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                >
                   <LogOut size={16} />
                   <span>Sign out</span>
                 </button>

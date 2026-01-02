@@ -6,6 +6,10 @@ import DashboardRightSidebar from './DashboardRightSidebar';
 import ToastContainer from '../ui/Toast';
 import useDashboardStore from '../../store/useDashboardStore';
 
+// Toggle this to show/hide the right sidebar
+// Set to true to enable the right sidebar in the future
+const SHOW_RIGHT_SIDEBAR = false;
+
 const DashboardLayout = () => {
   const { sidebarCollapsed, setSidebarOpen, initTheme } = useDashboardStore();
 
@@ -53,7 +57,7 @@ const DashboardLayout = () => {
           min-h-screen flex flex-col
           transition-all duration-300
           ${sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-[240px]'}
-          xl:mr-[320px]
+          ${SHOW_RIGHT_SIDEBAR ? 'xl:mr-[320px]' : ''}
         `}
       >
         {/* Top Bar */}
@@ -65,8 +69,8 @@ const DashboardLayout = () => {
         </main>
       </div>
       
-      {/* Right Sidebar */}
-      <DashboardRightSidebar />
+      {/* Right Sidebar - conditionally rendered */}
+      {SHOW_RIGHT_SIDEBAR && <DashboardRightSidebar />}
       
       <ToastContainer />
     </div>
@@ -74,3 +78,4 @@ const DashboardLayout = () => {
 };
 
 export default DashboardLayout;
+

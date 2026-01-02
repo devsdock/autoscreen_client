@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Search, 
   Plus, 
@@ -8,7 +8,8 @@ import {
   MapPin, 
   Clock,
   ChevronRight,
-  Filter
+  Filter,
+  Loader2
 } from 'lucide-react';
 import useDashboardStore, { formatDate, getRelativeTime } from '../../store/useDashboardStore';
 import Button from '../../components/ui/Button';
@@ -25,27 +26,44 @@ const statusFilters = [
 ];
 
 const Quotes = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { quotes } = useDashboardStore();
+  const { id: routeId } = useParams();
+  const navigate = useNavigate();
+  const { quotes, fetchQuotes } = useDashboardStore();
+  const [isLoading, setIsLoading] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [selectedQuoteId, setSelectedQuoteId] = useState(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showMobileDetail, setShowMobileDetail] = useState(false);
+
+  useEffect(() => {
+    const loadQuotes = async () => {
+      setIsLoading(true);
+      await fetchQuotes();
+      setIsLoading(false);
+    };
+    loadQuotes();
+  }, [fetchQuotes]);
   
   // Handle URL params for quote selection
   useEffect(() => {
-    const quoteId = searchParams.get('id');
-    if (quoteId && quotes.find(q => q.id === quoteId)) {
-      setSelectedQuoteId(quoteId);
+    if (routeId) {
+      if (quotes.length > 0 && quotes.find(q => q.id === routeId)) {
+        setSelectedQuoteId(routeId);
+        // On mobile, if we have a route ID, we should show the detail panel
+        if (window.innerWidth < 1024) {
+          setShowMobileDetail(true);
+        }
+      }
     } else if (quotes.length > 0 && !selectedQuoteId) {
       // Auto-select first quote on desktop
       if (window.innerWidth >= 1024) {
         setSelectedQuoteId(quotes[0].id);
+        navigate(`/dashboard/quotes/${quotes[0].id}`, { replace: true });
       }
     }
-  }, [searchParams, quotes]);
+  }, [routeId, quotes, navigate, selectedQuoteId]);
   
   // Filter quotes
   const filteredQuotes = quotes.filter(quote => {
@@ -72,15 +90,23 @@ const Quotes = () => {
   
   const handleQuoteSelect = (quoteId) => {
     setSelectedQuoteId(quoteId);
-    setSearchParams({ id: quoteId });
+    navigate(`/dashboard/quotes/${quoteId}`);
     setShowMobileDetail(true);
+  };
+  
+  const handleCloseMobileDetail = () => {
+    setShowMobileDetail(false);
+    // On mobile, clearing the selection should reset the URL
+    if (window.innerWidth < 1024) {
+      navigate('/dashboard/quotes');
+    }
   };
   
   const handleRequestModalClose = (newQuoteId) => {
     setShowRequestModal(false);
     if (newQuoteId) {
       setSelectedQuoteId(newQuoteId);
-      setSearchParams({ id: newQuoteId });
+      navigate(`/dashboard/quotes/${newQuoteId}`);
     }
   };
   
@@ -148,7 +174,12 @@ const Quotes = () => {
           
           {/* Quote List */}
           <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-            {filteredQuotes.length === 0 ? (
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary-600 mb-4" />
+                <p className="text-sm text-slate-500">Loading quotes...</p>
+              </div>
+            ) : filteredQuotes.length === 0 ? (
               <div className="text-center py-12 px-4">
                 <div className="w-16 h-16 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
                   <FileText size={24} className="text-slate-400" />
@@ -245,7 +276,7 @@ const Quotes = () => {
         `}>
           <QuoteDetailPanel 
             quote={selectedQuote} 
-            onClose={() => setShowMobileDetail(false)}
+            onClose={handleCloseMobileDetail}
           />
         </div>
       </div>
