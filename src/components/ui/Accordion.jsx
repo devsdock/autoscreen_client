@@ -9,16 +9,16 @@ const AccordionItem = ({
   className = '' 
 }) => {
   return (
-    <div className={`border-b border-slate-200 last:border-b-0 ${className}`}>
+    <div className={`border-b border-slate-200 dark:border-slate-800 last:border-b-0 ${className}`}>
       <button
         onClick={onToggle}
         className="w-full flex items-center justify-between py-4 px-1 text-left hover:text-primary-600 transition-colors"
         aria-expanded={isOpen}
       >
-        <span className="font-medium text-slate-900 pr-4">{title}</span>
+        <span className="font-medium text-slate-900 dark:text-white pr-4">{title}</span>
         <ChevronDown 
           size={20} 
-          className={`text-slate-400 transition-transform duration-200 flex-shrink-0 ${
+          className={`text-slate-400 dark:text-slate-500 transition-transform duration-200 flex-shrink-0 ${
             isOpen ? 'rotate-180' : ''
           }`} 
         />
@@ -29,7 +29,7 @@ const AccordionItem = ({
           ${isOpen ? 'max-h-96 pb-4' : 'max-h-0'}
         `}
       >
-        <div className="px-1 text-slate-600 text-sm leading-relaxed">
+        <div className="px-1 text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
           {children}
         </div>
       </div>
@@ -58,7 +58,7 @@ const Accordion = ({
   };
   
   return (
-    <div className={`divide-y divide-slate-200 ${className}`}>
+    <div className={`divide-y divide-slate-200 dark:divide-slate-800 ${className}`}>
       {items.map((item) => (
         <AccordionItem
           key={item.id}

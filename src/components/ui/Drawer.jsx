@@ -70,7 +70,7 @@ const Drawer = ({
           aria-labelledby={title ? 'drawer-title' : undefined}
           tabIndex={-1}
           className={`
-            relative w-screen flex flex-col bg-white shadow-xl
+            relative w-screen flex flex-col bg-white dark:bg-slate-900 shadow-xl
             ${sizeClasses[size]}
             ${className}
           `}
@@ -79,12 +79,12 @@ const Drawer = ({
           <div className="flex items-start justify-between p-5 border-b border-slate-100 flex-shrink-0">
             <div>
               {title && (
-                <h2 id="drawer-title" className="text-lg font-semibold text-slate-900">
+                <h2 id="drawer-title" className="text-lg font-semibold text-slate-900 dark:text-white">
                   {title}
                 </h2>
               )}
               {description && (
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                   {description}
                 </p>
               )}
@@ -92,7 +92,7 @@ const Drawer = ({
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                 aria-label="Close drawer"
               >
                 <X size={20} />
@@ -111,7 +111,7 @@ const Drawer = ({
 };
 
 export const DrawerFooter = ({ children, className = '' }) => (
-  <div className={`flex items-center gap-3 p-5 border-t border-slate-100 bg-slate-50 ${className}`}>
+  <div className={`flex items-center gap-3 p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 ${className}`}>
     {children}
   </div>
 );
