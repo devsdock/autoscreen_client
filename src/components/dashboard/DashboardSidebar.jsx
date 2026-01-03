@@ -11,8 +11,7 @@ import {
   ChevronRight,
   Shield,
   X,
-  Search,
-  HelpCircle
+  Search
 } from 'lucide-react';
 import useDashboardStore from '../../store/useDashboardStore';
 import useAuthStore from '../../store/useAuthStore';
@@ -23,8 +22,7 @@ const mainMenuItems = [
   { path: '/dashboard/quotes', icon: FileText, label: 'My Quotes' },
   { path: '/dashboard/bookings', icon: Calendar, label: 'My Bookings' },
   { path: '/dashboard/payments', icon: CreditCard, label: 'Payments' },
-  { path: '/dashboard/messages', icon: MessageSquare, label: 'Messages', badge: 2 },
-  { path: '/dashboard/support', icon: HelpCircle, label: 'Support' },
+  { path: '/dashboard/support', icon: MessageSquare, label: 'Messages', badge: 2 },
 ];
 
 const generalItems = [
@@ -63,7 +61,6 @@ const DashboardSidebar = () => {
           border-r border-slate-100 dark:border-slate-800
         `}
       >
-        {/* Logo & Toggle */}
         {/* Logo & Toggle */}
         <div className="h-16 flex items-center justify-between px-4">
           <Link to="/dashboard" className="flex items-center gap-3">
@@ -257,10 +254,7 @@ const DashboardSidebar = () => {
         {/* Bottom Card - hide when collapsed */}
         {!sidebarCollapsed && (
           <div className="p-4">
-            <Link 
-              to="/dashboard/quotes" 
-              className="block bg-slate-50 dark:bg-slate-800 rounded-xl p-4 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group"
-            >
+            <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
                   <Shield size={20} className="text-primary-600 dark:text-primary-400" />
@@ -269,9 +263,9 @@ const DashboardSidebar = () => {
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-200">Get a Quote</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">for your windscreen</p>
                 </div>
-                <ChevronRight size={16} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                <ChevronRight size={16} className="text-slate-400" />
               </div>
-            </Link>
+            </div>
             
             {/* Dots indicator */}
             <div className="flex items-center justify-center gap-1.5 mt-3">

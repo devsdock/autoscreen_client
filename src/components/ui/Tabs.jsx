@@ -8,22 +8,22 @@ const Tabs = ({
 }) => {
   const variants = {
     underline: {
-      container: 'border-b border-slate-200 dark:border-slate-800',
+      container: 'border-b border-slate-200',
       tab: (active) => `
         px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors
         ${active 
           ? 'border-primary-600 text-primary-600' 
-          : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
+          : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
         }
       `
     },
     pills: {
-      container: 'bg-slate-100 dark:bg-slate-800 p-1 rounded-lg',
+      container: 'bg-slate-100 p-1 rounded-lg',
       tab: (active) => `
         px-4 py-2 text-sm font-medium rounded-md transition-all
         ${active 
-          ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' 
-          : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+          ? 'bg-white text-slate-900 shadow-sm' 
+          : 'text-slate-500 hover:text-slate-700'
         }
       `
     },
@@ -32,8 +32,8 @@ const Tabs = ({
       tab: (active) => `
         px-4 py-2 text-sm font-medium rounded-lg border transition-colors
         ${active 
-          ? 'bg-primary-50 dark:bg-primary-900/10 border-primary-200 dark:border-primary-800 text-primary-700 dark:text-primary-400' 
-          : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+          ? 'bg-primary-50 border-primary-200 text-primary-700' 
+          : 'border-slate-200 text-slate-600 hover:bg-slate-50'
         }
       `
     }

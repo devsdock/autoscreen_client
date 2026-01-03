@@ -15,7 +15,7 @@ const Select = forwardRef(({
   return (
     <div className={className}>
       {label && (
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">
           {label}
           {required && <span className="text-red-500 ml-0.5">*</span>}
         </label>
@@ -25,12 +25,11 @@ const Select = forwardRef(({
           ref={ref}
           className={`
             w-full px-3 py-2.5 border rounded-lg text-sm
-            appearance-none bg-white dark:bg-slate-800
-            text-slate-900 dark:text-white
+            appearance-none bg-white
             transition-colors duration-200
             focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
-            disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-500 dark:disabled:text-slate-600 disabled:cursor-not-allowed
-            ${error ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-300 dark:border-slate-700'}
+            disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed
+            ${error ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-300'}
             ${selectClassName}
           `}
           {...props}
@@ -44,7 +43,6 @@ const Select = forwardRef(({
             <option 
               key={option.value || option} 
               value={option.value || option}
-              className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
             >
               {option.label || option}
             </option>
@@ -55,7 +53,7 @@ const Select = forwardRef(({
         </div>
       </div>
       {(error || helperText) && (
-        <p className={`mt-1.5 text-sm ${error ? 'text-red-600' : 'text-slate-500 dark:text-slate-400'}`}>
+        <p className={`mt-1.5 text-sm ${error ? 'text-red-600' : 'text-slate-500'}`}>
           {error || helperText}
         </p>
       )}

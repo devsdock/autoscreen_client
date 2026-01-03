@@ -75,14 +75,11 @@ const Quotes = () => {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      const vehicle = quote.vehicle || {};
-      const vehicleStr = `${vehicle.year || ''} ${vehicle.make || ''} ${vehicle.model || ''}`.toLowerCase();
-      const city = quote.location?.city || '';
-      
+      const vehicleStr = `${quote.vehicle.make} ${quote.vehicle.model}`.toLowerCase();
       return (
-        quote.reference?.toLowerCase().includes(query) ||
+        quote.reference.toLowerCase().includes(query) ||
         vehicleStr.includes(query) ||
-        city.toLowerCase().includes(query)
+        quote.location.city.toLowerCase().includes(query)
       );
     }
     

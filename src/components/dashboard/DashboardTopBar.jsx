@@ -4,7 +4,6 @@ import { Search, Bell, HelpCircle, ChevronDown, User, LogOut, Menu, Sun, Moon, M
 import useDashboardStore from '../../store/useDashboardStore';
 import useAuthStore from '../../store/useAuthStore';
 import Avatar from '../ui/Avatar';
-import { NodeURL } from '../../services/api';
 
 const ThemeToggle = () => {
   const { theme, setTheme } = useDashboardStore();
@@ -71,8 +70,8 @@ const ThemeToggle = () => {
 };
 
 const DashboardTopBar = () => {
-  const { toggleSidebar, addToast } = useDashboardStore();
-  const { user, logout } = useAuthStore();
+  const { user, toggleSidebar, addToast } = useDashboardStore();
+  const logout = useAuthStore((state) => state.logout);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef(null);
@@ -144,14 +143,6 @@ const DashboardTopBar = () => {
             className="flex items-center gap-3 p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
           >
             <Avatar 
-              src={
-                user?.avatar 
-                || (user?.profileImage 
-                    ? (user.profileImage.startsWith('http') 
-                        ? user.profileImage 
-                        : `${NodeURL}${user.profileImage}`)
-                    : null)
-              }
               name={user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'User'} 
               size="sm"
             />
