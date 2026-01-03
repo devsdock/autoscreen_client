@@ -239,7 +239,7 @@ const Overview = () => {
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
             {user?.name ? `Welcome back, ${user.name.split(' ')[0]}!` : 'Dashboard'}
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Here is what's happening today</p>
+          <p className="text-slate-500 text-sm mt-1">Here is what's happening today</p>
           <div className="flex items-center gap-3 mt-2">
             <div className="relative" ref={timeRangeRef}>
               <button 
@@ -258,7 +258,7 @@ const Overview = () => {
                         setTimeRange(range);
                         setShowTimeRangeDropdown(false);
                       }}
-                      className="w-full text-left px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors capitalize"
+                      className="w-full text-left px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors capitalize"
                     >
                       {range === 'all' ? 'All Time' : range}
                     </button>
@@ -266,8 +266,8 @@ const Overview = () => {
                 </div>
               )}
             </div>
-            <button className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-              <Calendar size={16} className="text-slate-400 dark:text-slate-500" />
+            <button className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+              <Calendar size={16} />
               {dateRangeText}
             </button>
           </div>
@@ -319,7 +319,7 @@ const Overview = () => {
                   <div>
                     <p className="text-xs text-slate-500 dark:text-slate-400">Vehicle</p>
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      {typeof latestBooking.vehicle === 'object' && latestBooking.vehicle ? `${latestBooking.vehicle.year || ''} ${latestBooking.vehicle.make || ''} ${latestBooking.vehicle.model || ''}`.trim() : (latestBooking.vehicle || 'Unknown Vehicle')}
+                      {typeof latestBooking.vehicle === 'object' && latestBooking.vehicle ? `${latestBooking.vehicle.year || ''} ${latestBooking.vehicle.make || ''}`.trim() : (latestBooking.vehicle || 'Unknown Vehicle')}
                     </p>
                   </div>
                 </div>
@@ -370,7 +370,7 @@ const Overview = () => {
       {latestBooking && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-white">Recent Booking</h2>
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-white">Booking Details</h2>
             <div className="relative">
               <button 
                 onClick={(e) => {
@@ -562,7 +562,7 @@ const Overview = () => {
                   </td>
                   <td className="py-4 px-4">
                     <span className="text-sm text-slate-600 dark:text-slate-400">
-                      {typeof booking.vehicle === 'object' && booking.vehicle ? `${booking.vehicle.year || ''} ${booking.vehicle.make || ''} ${booking.vehicle.model || ''}`.trim() : (booking.vehicle || 'Unknown Vehicle')}
+                      {typeof booking.vehicle === 'object' && booking.vehicle ? `${booking.vehicle.year || ''} ${booking.vehicle.make || ''}`.trim() : (booking.vehicle || 'Unknown Vehicle')}
                     </span>
                   </td>
                   <td className="py-4 px-4">
@@ -575,7 +575,7 @@ const Overview = () => {
                     <span className="text-sm font-medium text-slate-800 dark:text-white">{formatCurrency(booking.price?.total || 0)}</span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                    <span className="text-sm text-slate-600 dark:text-slate-400 lowercase first-letter:uppercase">
                       {booking.status}
                     </span>
                   </td>

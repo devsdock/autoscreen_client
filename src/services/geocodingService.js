@@ -1,5 +1,4 @@
 import axios from "axios";
-import { CITY_COORDINATES } from "../data/cities";
 
 // Using OpenStreetMap Nominatim API (Free, requires User-Agent)
 const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/search";
@@ -15,22 +14,6 @@ const geocodingService = {
       if (!address) return null;
       console.log("Geocoding address:", address);
 
-      // 1. Try Local Lookup First (Fast & Reliable)
-      const addressLower = address.toLowerCase();
-
-      // Find longest matching city name (to prefer "Johannesburg North" over "Johannesburg")
-      const cityKeys = Object.keys(CITY_COORDINATES).sort(
-        (a, b) => b.length - a.length
-      );
-
-      for (const city of cityKeys) {
-        if (addressLower.includes(city.toLowerCase())) {
-          console.log(`Geocoding: Found local match for ${city}`);
-          return CITY_COORDINATES[city];
-        }
-      }
-
-      // 2. Fallback to API (Nominatim)
       const response = await axios.get(NOMINATIM_BASE_URL, {
         params: {
           q: address,

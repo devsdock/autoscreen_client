@@ -1061,17 +1061,20 @@ export const vehicleMakes = [
   "Other",
 ];
 
-// Import centralized constants for consistency
-import {
-  serviceTypes as _serviceTypes,
-  glassTypes as _glassTypes,
-} from "./serviceConstants";
+// Glass types for search
+export const glassTypes = [
+  "Windscreen",
+  "Side Window (Front Left)",
+  "Side Window (Front Right)",
+  "Side Window (Rear Left)",
+  "Side Window (Rear Right)",
+  "Rear Window",
+  "Quarter Glass",
+  "Sunroof",
+];
 
-// Glass types for search (re-export from centralized source)
-export const glassTypes = _glassTypes;
-
-// Service types for search (re-export from centralized source)
-export const serviceTypes = _serviceTypes;
+// Service types for search
+export const serviceTypes = ["Repair", "Replacement"];
 
 // Time slots
 export const timeSlots = [
