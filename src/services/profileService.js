@@ -26,6 +26,20 @@ const profileService = {
   },
 
   /**
+   * Upload profile image
+   */
+  uploadProfileImage: (formData) => {
+    return request({
+      method: "POST",
+      url: "/api/customer/profile/upload-image",
+      data: formData,
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
+  /**
    * Get customer addresses
    */
   getAddresses: () => {
@@ -106,6 +120,28 @@ const profileService = {
     return request({
       method: "DELETE",
       url: `/api/customer/profile/vehicles/${vehicleId}`,
+    });
+  },
+
+  /**
+   * Change password
+   */
+  changePassword: (data) => {
+    return request({
+      method: "PUT",
+      url: "/api/customer/profile/change-password",
+      data,
+    });
+  },
+
+  /**
+   * Delete account
+   */
+  deleteAccount: (data) => {
+    return request({
+      method: "DELETE",
+      url: "/api/customer/profile/delete-account",
+      data,
     });
   },
 };

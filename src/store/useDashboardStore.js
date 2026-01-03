@@ -10,6 +10,7 @@ import { paymentsData } from "../data/payments";
 import { activitiesData } from "../data/activities";
 import { providersData } from "../data/providers";
 import { reviewsData } from "../data/reviews";
+import { messagesData } from "../data/messages";
 
 // Helper to generate IDs
 const generateId = (prefix) =>
@@ -104,6 +105,9 @@ const useDashboardStore = create(
       // Reviews
       reviews: [],
 
+      // Messages / Conversations
+      messages: messagesData,
+
       // Search/Booking flow state
       searchCriteria: null,
 
@@ -189,6 +193,7 @@ const useDashboardStore = create(
           payments: [],
           activities: [],
           reviews: [],
+          messages: messagesData,
           searchCriteria: null,
         }),
 
@@ -967,6 +972,61 @@ const useDashboardStore = create(
       getUnpaidPayments: () => {
         return get().payments.filter((p) => p.status === "Unpaid");
       },
+
+      // Message Actions
+      setMessages: (messages) => set({ messages }),
+
+      addMessage: (conversationId, message) => {
+        set((state) => ({
+          messages: state.messages.map((conv) => {
+            if (conv.id !== conversationId) return conv;
+            return {
+              ...conv,
+              chatLog: [...conv.chatLog, message],
+              lastMessage: message.text,
+              lastMessageTime: message.time,
+            };
+          }),
+        }));
+      },
+
+      createSupportTicket: (ticketData) => {
+        const id = generateId("MSG");
+        const newConversation = {
+          id,
+          type: "support",
+          subject: ticketData.subject,
+          preview: ticketData.description.substring(0, 50) + "...",
+          lastMessage: ticketData.description,
+          lastMessageTime: new Date().toISOString(),
+          unreadCount: 0,
+          status: "open",
+          participants: [
+            { name: "Support Team", avatar: null, role: "admin" },
+            { name: "Me", avatar: null, role: "customer" },
+          ],
+          chatLog: [
+            {
+              sender: "customer",
+              text: ticketData.description,
+              time: new Date().toISOString(),
+              attachments: ticketData.attachments || [],
+            },
+          ],
+        };
+
+        set((state) => ({
+          messages: [newConversation, ...state.messages],
+        }));
+
+        get().addActivity({
+          type: "support_ticket_created",
+          message: `Support ticket "${ticketData.subject}" created`,
+          relatedId: id,
+        });
+
+        return id;
+      },
     }),
     {
       name: "autoscreen-dashboard-v3",
@@ -980,6 +1040,7 @@ const useDashboardStore = create(
         payments: state.payments,
         activities: state.activities,
         reviews: state.reviews,
+        messages: state.messages,
         searchCriteria: state.searchCriteria,
         sidebarCollapsed: state.sidebarCollapsed,
         theme: state.theme,

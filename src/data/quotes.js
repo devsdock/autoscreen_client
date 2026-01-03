@@ -1,3 +1,5 @@
+import { CITIES } from "./cities";
+
 export const quotesData = [
   {
     id: "QT-1234",
@@ -8,20 +10,21 @@ export const quotesData = [
     vehicle: {
       make: "Toyota",
       model: "Corolla",
-      year: 2019
+      year: 2019,
     },
     serviceType: "Replacement",
     glassType: "Windscreen",
     location: {
       city: "Johannesburg",
       postcode: "2196",
-      addressLine1: "123 Main Road, Sandton"
+      addressLine1: "123 Main Road, Sandton",
     },
     preferredDate: "2025-06-18",
     preferredTimeSlot: "Morning (08:00 - 12:00)",
-    notes: "Crack on driver side, approximately 15cm long. Need urgent replacement.",
+    notes:
+      "Crack on driver side, approximately 15cm long. Need urgent replacement.",
     images: [],
-    responsesCount: 3
+    responsesCount: 3,
   },
   {
     id: "QT-1235",
@@ -32,20 +35,20 @@ export const quotesData = [
     vehicle: {
       make: "Ford",
       model: "Ranger",
-      year: 2021
+      year: 2021,
     },
     serviceType: "Replacement",
     glassType: "Side Window (Front Right)",
     location: {
       city: "Johannesburg",
       postcode: "2196",
-      addressLine1: "456 Office Park, Rosebank"
+      addressLine1: "456 Office Park, Rosebank",
     },
     preferredDate: "2025-06-20",
     preferredTimeSlot: "Afternoon (12:00 - 17:00)",
     notes: "",
     images: [],
-    responsesCount: 0
+    responsesCount: 0,
   },
   {
     id: "QT-1230",
@@ -56,21 +59,21 @@ export const quotesData = [
     vehicle: {
       make: "Toyota",
       model: "Corolla",
-      year: 2019
+      year: 2019,
     },
     serviceType: "Repair",
     glassType: "Windscreen",
     location: {
       city: "Johannesburg",
       postcode: "2196",
-      addressLine1: "123 Main Road, Sandton"
+      addressLine1: "123 Main Road, Sandton",
     },
     preferredDate: "2025-06-10",
     preferredTimeSlot: "Morning (08:00 - 12:00)",
     notes: "Small chip from stone, driver side",
     images: [],
     responsesCount: 2,
-    acceptedResponseId: "QR-3001"
+    acceptedResponseId: "QR-3001",
   },
   {
     id: "QT-1228",
@@ -81,20 +84,20 @@ export const quotesData = [
     vehicle: {
       make: "Toyota",
       model: "Corolla",
-      year: 2019
+      year: 2019,
     },
     serviceType: "Replacement",
     glassType: "Rear Window",
     location: {
       city: "Johannesburg",
       postcode: "2196",
-      addressLine1: "123 Main Road, Sandton"
+      addressLine1: "123 Main Road, Sandton",
     },
     preferredDate: "2025-05-20",
     preferredTimeSlot: "Any time",
     notes: "No longer needed - found alternative",
     images: [],
-    responsesCount: 0
+    responsesCount: 0,
   },
   {
     id: "QT-1236",
@@ -105,41 +108,38 @@ export const quotesData = [
     vehicle: {
       make: "BMW",
       model: "3 Series",
-      year: 2020
+      year: 2020,
     },
     serviceType: "Repair",
     glassType: "Windscreen",
     location: {
       city: "Pretoria",
       postcode: "0181",
-      addressLine1: "78 Church Street, Arcadia"
+      addressLine1: "78 Church Street, Arcadia",
     },
     preferredDate: "2025-06-22",
     preferredTimeSlot: "Morning (08:00 - 12:00)",
     notes: "Small stone chip, about 2cm from edge",
     images: [],
-    responsesCount: 0
-  }
+    responsesCount: 0,
+  },
 ];
 
-export const glassTypes = [
-  "Windscreen",
-  "Side Window (Front Left)",
-  "Side Window (Front Right)",
-  "Side Window (Rear Left)",
-  "Side Window (Rear Right)",
-  "Rear Window",
-  "Quarter Glass",
-  "Sunroof"
-];
+// Import centralized constants for consistency
+import {
+  serviceTypes as _serviceTypes,
+  glassTypes as _glassTypes,
+} from "./serviceConstants";
 
-export const serviceTypes = ["Repair", "Replacement"];
+// Re-export for backward compatibility
+export const glassTypes = _glassTypes;
+export const serviceTypes = _serviceTypes;
 
 export const timeSlots = [
   "Morning (08:00 - 12:00)",
   "Afternoon (12:00 - 17:00)",
   "Evening (17:00 - 20:00)",
-  "Any time"
+  "Any time",
 ];
 
 export const vehicleMakes = [
@@ -160,18 +160,7 @@ export const vehicleMakes = [
   "Toyota",
   "Volkswagen",
   "Volvo",
-  "Other"
+  "Other",
 ];
 
-export const cities = [
-  "Johannesburg",
-  "Pretoria",
-  "Cape Town",
-  "Durban",
-  "Port Elizabeth",
-  "Bloemfontein",
-  "East London",
-  "Polokwane",
-  "Nelspruit",
-  "Rustenburg"
-];
+export const cities = CITIES;

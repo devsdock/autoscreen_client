@@ -2,7 +2,7 @@ const Card = ({ children, className = '', padding = true }) => {
   return (
     <div
       className={`
-        bg-white rounded-2xl shadow-sm
+        bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-transparent dark:border-slate-800
         ${padding ? 'p-6' : ''}
         ${className}
       `}
@@ -17,7 +17,7 @@ export const CardHeader = ({ children, className = '' }) => (
 )
 
 export const CardTitle = ({ children, className = '' }) => (
-  <h3 className={`text-lg font-semibold text-slate-900 ${className}`}>{children}</h3>
+  <h3 className={`text-lg font-semibold text-slate-900 dark:text-white ${className}`}>{children}</h3>
 )
 
 export const CardContent = ({ children, className = '' }) => (

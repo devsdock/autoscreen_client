@@ -381,7 +381,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                 value={formData.addressLine1}
                 onChange={(e) => handleChange('addressLine1', e.target.value)}
                 placeholder="Street address for mobile service"
-                className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-700 dark:text-slate-200"
               />
             </div>
           </div>
@@ -420,7 +420,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
               onChange={(e) => handleChange('notes', e.target.value)}
               placeholder="Describe the damage or any special requirements..."
               rows={3}
-              className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 resize-none"
+              className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 resize-none text-slate-700 dark:text-slate-200"
             />
           </div>
           

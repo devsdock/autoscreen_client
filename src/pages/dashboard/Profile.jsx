@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   User,
   Mail,
@@ -14,9 +14,13 @@ import {
   Shield,
   ExternalLink,
   Loader2,
+  Lock,
 } from "lucide-react";
 import useDashboardStore, { formatDate } from "../../store/useDashboardStore";
+import useAuthStore from "../../store/useAuthStore";
 import profileService from "../../services/profileService";
+import { NodeURL } from "../../services/api";
+import vehicleService from "../../services/vehicleService";
 import { mapUser } from "../../utils/dataMappers";
 import PageHeader from "../../components/ui/PageHeader";
 import Card, {
@@ -27,7 +31,7 @@ import Card, {
 import Button from "../../components/ui/Button";
 import Avatar from "../../components/ui/Avatar";
 import Input from "../../components/ui/Input";
-import Select from "../../components/ui/Select";
+import PremiumSelect from "../../components/ui/PremiumSelect";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 import Modal, { ModalActions } from "../../components/ui/Modal";
 import { vehicleMakes, bodyTypes, yearOptions } from "../../data/vehicles";
@@ -42,6 +46,9 @@ const Profile = () => {
     updateUser: updateStoreUser,
     addToast,
   } = useDashboardStore();
+  
+  // Get AuthStore for session persistence
+  const { user: authUser, setUser: setAuthUser } = useAuthStore();
 
   // API Data state
   const [isLoading, setIsLoading] = useState(true);
@@ -71,6 +78,8 @@ const Profile = () => {
     bodyType: "Sedan",
     registration: "",
   });
+  const [availableModels, setAvailableModels] = useState([]);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [deleteVehicleId, setDeleteVehicleId] = useState(null);
 
   // Address modal state
@@ -95,68 +104,111 @@ const Profile = () => {
     whatsapp: true,
   });
 
+  // Password change state
+  const [passwordModal, setPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  // Delete account state
+  const [deleteAccountModal, setDeleteAccountModal] = useState(false);
+
+  // Avatar upload state
+  const avatarInputRef = useRef(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
   // Fetch profile data from API
+  const fetchProfileData = async () => {
+    setIsLoading(true);
+    try {
+      const [profileRes, vehiclesRes, addressesRes] = await Promise.all([
+        profileService.getProfile(),
+        profileService.getVehicles(),
+        profileService.getAddresses(),
+      ]);
+
+      if (profileRes.success && profileRes.data) {
+        const mappedUser = mapUser(profileRes.data);
+        setUser(mappedUser);
+        updateStoreUser(mappedUser);
+        setAuthUser(profileRes.data); // Sync with auth store
+        setNotifications(
+          mappedUser.notificationPreferences || {
+            email: true,
+            sms: false,
+            whatsapp: true,
+          }
+        );
+      }
+
+      if (vehiclesRes.success) {
+        // Map vehicle data from API format
+        const mappedVehicles = (vehiclesRes.data || []).map((v) => ({
+          id: v._id,
+          make: v.make,
+          model: v.model,
+          year: v.year,
+          bodyType: v.bodyType || "Sedan",
+          registration: v.registrationNumber || "",
+          isDefault: v.isDefault,
+        }));
+        setVehicles(mappedVehicles);
+      }
+
+      if (addressesRes.success) {
+        // Map address data from API format
+        const mappedAddresses = (addressesRes.data || []).map((a) => ({
+          id: a._id,
+          label: a.label || "Home",
+          street: a.addressLine1,
+          suburb: a.suburb || "",
+          city: a.city,
+          postalCode: a.postalCode || "",
+          isDefault: a.isDefault,
+        }));
+        setAddresses(mappedAddresses);
+      }
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      addToast({ type: "error", message: "Failed to load profile data" });
+      // Fall back to store/auth data if available
+      if (authUser) {
+        const mappedUser = mapUser(authUser);
+        setUser(mappedUser);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   useEffect(() => {
-    const fetchProfileData = async () => {
-      setIsLoading(true);
+    fetchProfileData();
+  }, []);
+
+  // Fetch models dynamically for vehicle form
+  useEffect(() => {
+    const fetchModels = async () => {
+      if (!vehicleForm.make) {
+        setAvailableModels([]);
+        return;
+      }
+      
+      setIsFetchingModels(true);
       try {
-        const [profileRes, vehiclesRes, addressesRes] = await Promise.all([
-          profileService.getProfile(),
-          profileService.getVehicles(),
-          profileService.getAddresses(),
-        ]);
-
-        if (profileRes.success && profileRes.data) {
-          const mappedUser = mapUser(profileRes.data);
-          setUser(mappedUser);
-          updateStoreUser(mappedUser);
-          setNotifications(
-            mappedUser.notificationPreferences || {
-              email: true,
-              sms: false,
-              whatsapp: true,
-            }
-          );
-        }
-
-        if (vehiclesRes.success) {
-          // Map vehicle data from API format
-          const mappedVehicles = (vehiclesRes.data || []).map((v) => ({
-            id: v._id,
-            make: v.make,
-            model: v.model,
-            year: v.year,
-            bodyType: v.bodyType || "Sedan",
-            registration: v.registrationNumber || "",
-            isDefault: v.isDefault,
-          }));
-          setVehicles(mappedVehicles);
-        }
-
-        if (addressesRes.success) {
-          // Map address data from API format
-          const mappedAddresses = (addressesRes.data || []).map((a) => ({
-            id: a._id,
-            label: a.label || "Home",
-            street: a.addressLine1,
-            suburb: a.suburb || "",
-            city: a.city,
-            postalCode: a.postalCode || "",
-            isDefault: a.isDefault,
-          }));
-          setAddresses(mappedAddresses);
-        }
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-        addToast({ type: "error", message: "Failed to load profile data" });
-        // Fall back to store data
+        const models = await vehicleService.getModelsByMake(vehicleForm.make);
+        setAvailableModels(models);
+      } catch (err) {
+        console.error('Failed to fetch models', err);
+        setAvailableModels([]);
       } finally {
-        setIsLoading(false);
+        setIsFetchingModels(false);
       }
     };
 
-    fetchProfileData();
-  }, []);
+    fetchModels();
+  }, [vehicleForm.make]);
 
   const totalBookings = bookings.length;
 
@@ -185,8 +237,28 @@ const Profile = () => {
       const res = await profileService.updateProfile(updateData);
       if (res.success) {
         const mappedUser = mapUser(res.data);
+        
+        // Update local state
         setUser(mappedUser);
+        
+        // Update dashboard store
         updateStoreUser(mappedUser);
+        
+        // Update AuthStore to persist session data
+        setAuthUser(res.data);
+        
+        // Also update localStorage for auth
+        const storedAuth = localStorage.getItem('autoscreen-auth');
+        if (storedAuth) {
+          try {
+            const authData = JSON.parse(storedAuth);
+            authData.state.user = res.data;
+            localStorage.setItem('autoscreen-auth', JSON.stringify(authData));
+          } catch (e) {
+            console.error('Failed to update auth storage:', e);
+          }
+        }
+        
         setIsEditing(false);
         addToast({ type: "success", message: "Profile updated successfully" });
       }
@@ -195,6 +267,54 @@ const Profile = () => {
       addToast({ type: "error", message: "Failed to update profile" });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Check file size (max 2MB for avatar)
+    if (file.size > 2 * 1024 * 1024) {
+      addToast({ type: "error", message: "Avatar must be less than 2MB" });
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append("profileImage", file);
+      
+      // Upload to server
+      const res = await profileService.uploadProfileImage(formData);
+      
+      if (res.success) {
+        // Backend returns profileImage path like /uploads/profiles/filename.jpg
+        const imageUrl = `${NodeURL}${res.data.profileImage}`;
+        
+        // Backend returns profileImage, map to avatar for frontend
+        const updatedUser = {
+          ...authUser,
+          profileImage: res.data.profileImage,
+          avatar: imageUrl
+        };
+        
+        // Update all stores and persistence
+        setUser(prev => ({ ...prev, avatar: imageUrl, profileImage: res.data.profileImage }));
+        updateStoreUser({ avatar: imageUrl, profileImage: res.data.profileImage });
+        setAuthUser(updatedUser);
+        
+        // Re-fetch profile to get updated data from server
+        await fetchProfileData();
+        
+        addToast({ type: "success", message: "Profile photo updated successfully" });
+      }
+    } catch (error) {
+      console.error("Error updating avatar:", error);
+      addToast({ type: "error", message: error.message || "Failed to update profile photo" });
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -396,14 +516,74 @@ const Profile = () => {
     setNotifications(newNotifications);
 
     try {
-      await profileService.updateProfile({
+      const res = await profileService.updateProfile({
         notificationPreferences: newNotifications,
       });
-      updateStoreUser({ notificationPreferences: newNotifications });
+      
+      if (res.success) {
+        updateStoreUser({ notificationPreferences: newNotifications });
+        
+        // Update AuthStore
+        const updatedUser = { ...authUser, notificationPreferences: newNotifications };
+        setAuthUser(updatedUser);
+        
+        addToast({ type: "success", message: "Preferences updated" });
+      }
     } catch (error) {
       console.error("Error updating notifications:", error);
       // Revert on error
       setNotifications(notifications);
+      addToast({ type: "error", message: "Failed to update preferences" });
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      addToast({ type: "error", message: "Passwords do not match" });
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      addToast({ type: "error", message: "Password must be at least 8 characters" });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const res = await profileService.changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+
+      if (res.success) {
+        setPasswordModal(false);
+        setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+        addToast({ type: "success", message: "Password changed successfully" });
+      }
+    } catch (error) {
+      console.error("Error changing password:", error);
+      addToast({ type: "error", message: error.message || "Failed to change password" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsSaving(true);
+    try {
+      const res = await profileService.deleteAccount();
+      if (res.success) {
+        addToast({ type: "success", message: "Account deleted successfully" });
+        // Redirect to login or logout
+        const logout = useAuthStore.getState().logout;
+        await logout();
+      }
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      addToast({ type: "error", message: "Failed to delete account" });
+    } finally {
+      setIsSaving(false);
+      setDeleteAccountModal(false);
     }
   };
 
@@ -438,14 +618,28 @@ const Profile = () => {
               <div className="flex flex-col items-center">
                 <Avatar
                   name={
-                    user.name ||
-                    `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+                    user?.name ||
+                    `${user?.firstName || ""} ${user?.lastName || ""}`.trim() ||
                     "User"
                   }
+                  src={user?.avatar}
                   size="xl"
                 />
-                <Button variant="ghost" size="sm" className="mt-2">
-                  Change Photo
+                <input
+                  type="file"
+                  ref={avatarInputRef}
+                  onChange={handleAvatarChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="mt-2 text-primary-600 dark:text-primary-400 font-medium"
+                  onClick={() => avatarInputRef.current?.click()}
+                  loading={uploadingAvatar}
+                >
+                  {uploadingAvatar ? "Uploading..." : "Change Photo"}
                 </Button>
               </div>
 
@@ -497,7 +691,7 @@ const Profile = () => {
                     }
                   />
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                       Preferred Contact
                     </label>
                     <div className="flex gap-4">
@@ -517,7 +711,7 @@ const Profile = () => {
                             }
                             className="w-4 h-4 text-primary-600"
                           />
-                          <span className="text-sm text-slate-700 capitalize">
+                          <span className="text-sm text-slate-700 dark:text-slate-300 capitalize">
                             {method}
                           </span>
                         </label>
@@ -542,38 +736,38 @@ const Profile = () => {
               ) : (
                 <div className="flex-1 space-y-4">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900">
+                    <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
                       {user?.name ||
                         `${user?.firstName || ""} ${
                           user?.lastName || ""
                         }`.trim() ||
                         "User"}
                     </h2>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
                       Member since {formatDate(user?.memberSince)}
                     </p>
                   </div>
 
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 text-sm">
-                      <Mail size={16} className="text-slate-400" />
-                      <span className="text-slate-700">{user?.email}</span>
+                      <Mail size={16} className="text-slate-400 dark:text-slate-500" />
+                      <span className="text-slate-700 dark:text-slate-300">{user?.email}</span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
-                      <Phone size={16} className="text-slate-400" />
-                      <span className="text-slate-700">
+                      <Phone size={16} className="text-slate-400 dark:text-slate-500" />
+                      <span className="text-slate-700 dark:text-slate-300">
                         {user?.phone || "Not set"}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
-                      <MessageSquare size={16} className="text-slate-400" />
-                      <span className="text-slate-700 capitalize">
+                      <MessageSquare size={16} className="text-slate-400 dark:text-slate-500" />
+                      <span className="text-slate-700 dark:text-slate-300 capitalize">
                         Preferred: {user?.preferredContact || "whatsapp"}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
-                      <Calendar size={16} className="text-slate-400" />
-                      <span className="text-slate-700">
+                      <Calendar size={16} className="text-slate-400 dark:text-slate-500" />
+                      <span className="text-slate-700 dark:text-slate-300">
                         {totalBookings} total bookings
                       </span>
                     </div>
@@ -600,10 +794,10 @@ const Profile = () => {
             <CardContent>
               {vehicles.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="w-12 h-12 mx-auto bg-slate-100 rounded-full flex items-center justify-center mb-3">
-                    <Car size={24} className="text-slate-400" />
+                  <div className="w-12 h-12 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
+                    <Car size={24} className="text-slate-400 dark:text-slate-500" />
                   </div>
-                  <p className="text-slate-500 text-sm">
+                  <p className="text-slate-500 dark:text-slate-400 text-sm">
                     No vehicles saved yet
                   </p>
                 </div>
@@ -612,20 +806,20 @@ const Profile = () => {
                   {vehicles.map((vehicle) => (
                     <div
                       key={vehicle.id}
-                      className="flex items-center justify-between p-4 bg-slate-50 rounded-xl"
+                      className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                          <Car size={20} className="text-primary-600" />
+                        <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
+                          <Car size={20} className="text-primary-600 dark:text-primary-400" />
                         </div>
                         <div>
-                          <p className="font-medium text-slate-900">
-                            {vehicle.year} {vehicle.make} {vehicle.model}
+                          <p className="font-medium text-slate-900 dark:text-white">
+                            {vehicle.year || ''} {vehicle.make || ''} {vehicle.model || ''}
                           </p>
-                          <p className="text-sm text-slate-500">
-                            {vehicle.bodyType}
-                            {vehicle.registration &&
-                              ` · ${vehicle.registration}`}
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            {vehicle.bodyType || 'Sedan'}
+                            {vehicle.registrationNumber &&
+                              ` · ${vehicle.registrationNumber}`}
                           </p>
                         </div>
                       </div>
@@ -641,7 +835,7 @@ const Profile = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => setDeleteVehicleId(vehicle.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/10"
                         >
                           <Trash2 size={14} />
                         </Button>
@@ -670,10 +864,10 @@ const Profile = () => {
             <CardContent>
               {addresses.length === 0 ? (
                 <div className="text-center py-8">
-                  <div className="w-12 h-12 mx-auto bg-slate-100 rounded-full flex items-center justify-center mb-3">
-                    <MapPin size={24} className="text-slate-400" />
+                  <div className="w-12 h-12 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
+                    <MapPin size={24} className="text-slate-400 dark:text-slate-500" />
                   </div>
-                  <p className="text-slate-500 text-sm">
+                  <p className="text-slate-500 dark:text-slate-400 text-sm">
                     No addresses saved yet
                   </p>
                 </div>
@@ -682,25 +876,27 @@ const Profile = () => {
                   {addresses.map((address) => (
                     <div
                       key={address.id}
-                      className="flex items-center justify-between p-4 bg-slate-50 rounded-xl"
+                      className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                          <MapPin size={20} className="text-primary-600" />
+                        <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
+                          <MapPin size={20} className="text-primary-600 dark:text-primary-400" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="font-medium text-slate-900">
+                            <p className="font-medium text-slate-900 dark:text-white">
                               {address.label}
                             </p>
                             {address.isDefault && (
-                              <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">
+                              <span className="text-xs bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 px-2 py-0.5 rounded-full">
                                 Default
                               </span>
                             )}
                           </div>
-                          <p className="text-sm text-slate-500">
-                            {address.street}, {address.suburb}, {address.city}
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            {[address.street, address.suburb, address.city]
+                              .filter(Boolean)
+                              .join(', ')}
                           </p>
                         </div>
                       </div>
@@ -759,16 +955,16 @@ const Profile = () => {
               ].map(({ key, label, description }) => (
                 <div key={key} className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">
                       {label}
                     </p>
-                    <p className="text-xs text-slate-500">{description}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{description}</p>
                   </div>
                   <button
                     onClick={() => toggleNotification(key)}
                     className={`
                       relative w-11 h-6 rounded-full transition-colors
-                      ${notifications[key] ? "bg-primary-600" : "bg-slate-200"}
+                      ${notifications[key] ? "bg-primary-600" : "bg-slate-200 dark:bg-slate-700"}
                     `}
                   >
                     <span
@@ -796,14 +992,18 @@ const Profile = () => {
                 variant="secondary"
                 className="w-full justify-start"
                 size="sm"
+                onClick={() => setPasswordModal(true)}
               >
+                <Lock size={14} className="mr-2" />
                 Change Password
               </Button>
               <Button
                 variant="ghost"
                 className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
                 size="sm"
+                onClick={() => setDeleteAccountModal(true)}
               >
+                <Trash2 size={14} className="mr-2" />
                 Delete Account
               </Button>
             </CardContent>
@@ -849,42 +1049,49 @@ const Profile = () => {
         size="md"
       >
         <div className="space-y-4">
-          <Select
+          <PremiumSelect
             label="Make"
             options={vehicleMakes}
             value={vehicleForm.make}
-            onChange={(e) =>
-              setVehicleForm((prev) => ({ ...prev, make: e.target.value }))
+            onChange={(val) =>
+              setVehicleForm((prev) => ({ ...prev, make: val, model: "" }))
             }
             required
+            searchable
+            placeholder="Select make"
           />
-          <Input
+          <PremiumSelect
             label="Model"
-            placeholder="e.g., Corolla"
+            options={availableModels}
             value={vehicleForm.model}
-            onChange={(e) =>
-              setVehicleForm((prev) => ({ ...prev, model: e.target.value }))
+            onChange={(val) =>
+              setVehicleForm((prev) => ({ ...prev, model: val }))
             }
             required
+            searchable
+            disabled={!vehicleForm.make}
+            loading={isFetchingModels}
+            placeholder={!vehicleForm.make ? "Select make first" : "Search or select model"}
+            emptyMessage={!vehicleForm.make ? "Please select a make first" : "No models found"}
           />
           <div className="grid grid-cols-2 gap-4">
-            <Select
+            <PremiumSelect
               label="Year"
-              options={yearOptions.map((y) => ({ value: y, label: y }))}
-              value={vehicleForm.year}
-              onChange={(e) =>
-                setVehicleForm((prev) => ({ ...prev, year: e.target.value }))
+              options={yearOptions.map(String)}
+              value={vehicleForm.year?.toString() || ""}
+              onChange={(val) =>
+                setVehicleForm((prev) => ({ ...prev, year: val }))
               }
               required
             />
-            <Select
+            <PremiumSelect
               label="Body Type"
               options={bodyTypes}
               value={vehicleForm.bodyType}
-              onChange={(e) =>
+              onChange={(val) =>
                 setVehicleForm((prev) => ({
                   ...prev,
-                  bodyType: e.target.value,
+                  bodyType: val,
                 }))
               }
             />
@@ -925,12 +1132,12 @@ const Profile = () => {
         size="md"
       >
         <div className="space-y-4">
-          <Select
+          <PremiumSelect
             label="Label"
             options={addressLabels}
             value={addressForm.label}
-            onChange={(e) =>
-              setAddressForm((prev) => ({ ...prev, label: e.target.value }))
+            onChange={(val) =>
+              setAddressForm((prev) => ({ ...prev, label: val }))
             }
           />
           <Input
@@ -952,13 +1159,14 @@ const Profile = () => {
               }
               required
             />
-            <Select
+            <PremiumSelect
               label="City"
               options={cities}
               value={addressForm.city}
-              onChange={(e) =>
-                setAddressForm((prev) => ({ ...prev, city: e.target.value }))
+              onChange={(val) =>
+                setAddressForm((prev) => ({ ...prev, city: val }))
               }
+              searchable
             />
           </div>
           <Input
@@ -1026,6 +1234,60 @@ const Profile = () => {
         message="This won't affect existing bookings."
         confirmLabel="Remove"
         cancelLabel="Keep"
+        type="danger"
+      />
+
+      {/* Change Password Modal */}
+      <Modal
+        isOpen={passwordModal}
+        onClose={() => setPasswordModal(false)}
+        title="Change Password"
+        size="md"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Current Password"
+            type="password"
+            value={passwordForm.currentPassword}
+            onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+            required
+          />
+          <Input
+            label="New Password"
+            type="password"
+            value={passwordForm.newPassword}
+            onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+            required
+            helperText="At least 8 characters"
+          />
+          <Input
+            label="Confirm New Password"
+            type="password"
+            value={passwordForm.confirmPassword}
+            onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+            required
+          />
+        </div>
+        <ModalActions>
+          <Button variant="secondary" onClick={() => setPasswordModal(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handlePasswordChange} disabled={isSaving}>
+            {isSaving && <Loader2 className="animate-spin mr-2" size={16} />}
+            Update Password
+          </Button>
+        </ModalActions>
+      </Modal>
+
+      {/* Delete Account Confirmation */}
+      <ConfirmModal
+        isOpen={deleteAccountModal}
+        onClose={() => setDeleteAccountModal(false)}
+        onConfirm={handleDeleteAccount}
+        title="Delete your account?"
+        message="This action is permanent and cannot be undone. All your data, including quotes and history, will be removed."
+        confirmLabel="Delete Everything"
+        cancelLabel="No, keep my account"
         type="danger"
       />
     </div>

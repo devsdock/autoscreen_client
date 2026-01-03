@@ -71,27 +71,27 @@ const PaymentModal = ({ payment, isOpen, onClose }) => {
     >
       <div className="space-y-6">
         {/* Amount Summary */}
-        <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-slate-600">Service Amount</span>
-            <span className="text-slate-900">{formatCurrency(payment.breakdown.service)}</span>
+            <span className="text-slate-600 dark:text-slate-400">Service Amount</span>
+            <span className="text-slate-900 dark:text-white">{formatCurrency(payment.breakdown.service)}</span>
           </div>
           {payment.breakdown.callout > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-slate-600">Callout Fee</span>
-              <span className="text-slate-900">{formatCurrency(payment.breakdown.callout)}</span>
+              <span className="text-slate-600 dark:text-slate-400">Callout Fee</span>
+              <span className="text-slate-900 dark:text-white">{formatCurrency(payment.breakdown.callout)}</span>
             </div>
           )}
           {payment.breakdown.materials > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-slate-600">Materials</span>
-              <span className="text-slate-900">{formatCurrency(payment.breakdown.materials)}</span>
+              <span className="text-slate-600 dark:text-slate-400">Materials</span>
+              <span className="text-slate-900 dark:text-white">{formatCurrency(payment.breakdown.materials)}</span>
             </div>
           )}
-          <div className="border-t border-slate-200 pt-2 mt-2">
+          <div className="border-t border-slate-200 dark:border-slate-800 pt-2 mt-2">
             <div className="flex justify-between">
-              <span className="font-semibold text-slate-900">Total</span>
-              <span className="font-bold text-slate-900 text-xl">
+              <span className="font-semibold text-slate-900 dark:text-white">Total</span>
+              <span className="font-bold text-slate-900 dark:text-white text-xl">
                 {formatCurrency(payment.amount)}
               </span>
             </div>
@@ -100,7 +100,7 @@ const PaymentModal = ({ payment, isOpen, onClose }) => {
         
         {/* Payment Method Selection */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-3">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
             Payment Method
           </label>
           <div className="grid grid-cols-3 gap-3">
@@ -110,13 +110,13 @@ const PaymentModal = ({ payment, isOpen, onClose }) => {
               className={`
                 p-4 border-2 rounded-xl text-center transition-all
                 ${paymentMethod === 'card' 
-                  ? 'border-primary-500 bg-primary-50' 
-                  : 'border-slate-200 hover:border-slate-300'
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' 
+                  : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                 }
               `}
             >
-              <CreditCard size={24} className={`mx-auto mb-2 ${paymentMethod === 'card' ? 'text-primary-600' : 'text-slate-400'}`} />
-              <span className={`text-sm font-medium ${paymentMethod === 'card' ? 'text-primary-700' : 'text-slate-600'}`}>
+              <CreditCard size={24} className={`mx-auto mb-2 ${paymentMethod === 'card' ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'}`} />
+              <span className={`text-sm font-medium ${paymentMethod === 'card' ? 'text-primary-700 dark:text-primary-400' : 'text-slate-600 dark:text-slate-400'}`}>
                 Card
               </span>
             </button>
@@ -127,13 +127,13 @@ const PaymentModal = ({ payment, isOpen, onClose }) => {
               className={`
                 p-4 border-2 rounded-xl text-center transition-all
                 ${paymentMethod === 'eft' 
-                  ? 'border-primary-500 bg-primary-50' 
-                  : 'border-slate-200 hover:border-slate-300'
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' 
+                  : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                 }
               `}
             >
-              <Building2 size={24} className={`mx-auto mb-2 ${paymentMethod === 'eft' ? 'text-primary-600' : 'text-slate-400'}`} />
-              <span className={`text-sm font-medium ${paymentMethod === 'eft' ? 'text-primary-700' : 'text-slate-600'}`}>
+              <Building2 size={24} className={`mx-auto mb-2 ${paymentMethod === 'eft' ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'}`} />
+              <span className={`text-sm font-medium ${paymentMethod === 'eft' ? 'text-primary-700 dark:text-primary-400' : 'text-slate-600 dark:text-slate-400'}`}>
                 EFT
               </span>
             </button>
@@ -144,13 +144,13 @@ const PaymentModal = ({ payment, isOpen, onClose }) => {
               className={`
                 p-4 border-2 rounded-xl text-center transition-all
                 ${paymentMethod === 'instant' 
-                  ? 'border-primary-500 bg-primary-50' 
-                  : 'border-slate-200 hover:border-slate-300'
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' 
+                  : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                 }
               `}
             >
-              <Zap size={24} className={`mx-auto mb-2 ${paymentMethod === 'instant' ? 'text-primary-600' : 'text-slate-400'}`} />
-              <span className={`text-sm font-medium ${paymentMethod === 'instant' ? 'text-primary-700' : 'text-slate-600'}`}>
+              <Zap size={24} className={`mx-auto mb-2 ${paymentMethod === 'instant' ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400 dark:text-slate-500'}`} />
+              <span className={`text-sm font-medium ${paymentMethod === 'instant' ? 'text-primary-700 dark:text-primary-400' : 'text-slate-600 dark:text-slate-400'}`}>
                 Instant EFT
               </span>
             </button>
@@ -193,31 +193,31 @@ const PaymentModal = ({ payment, isOpen, onClose }) => {
         
         {/* EFT Instructions */}
         {paymentMethod === 'eft' && (
-          <div className="bg-slate-50 rounded-xl p-4 space-y-3">
-            <p className="text-sm text-slate-600 font-medium">Bank Details</p>
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 space-y-3">
+            <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">Bank Details</p>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-slate-500">Bank</span>
-                <span className="text-slate-900 font-medium">First National Bank</span>
+                <span className="text-slate-500 dark:text-slate-500">Bank</span>
+                <span className="text-slate-900 dark:text-white font-medium">First National Bank</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Account Name</span>
-                <span className="text-slate-900 font-medium">AutoScreen (Pty) Ltd</span>
+                <span className="text-slate-500 dark:text-slate-500">Account Name</span>
+                <span className="text-slate-900 dark:text-white font-medium">AutoScreen (Pty) Ltd</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Account Number</span>
-                <span className="text-slate-900 font-medium font-mono">62845912345</span>
+                <span className="text-slate-500 dark:text-slate-500">Account Number</span>
+                <span className="text-slate-900 dark:text-white font-medium font-mono">62845912345</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Branch Code</span>
-                <span className="text-slate-900 font-medium font-mono">250655</span>
+                <span className="text-slate-500 dark:text-slate-500">Branch Code</span>
+                <span className="text-slate-900 dark:text-white font-medium font-mono">250655</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Reference</span>
-                <span className="text-slate-900 font-medium font-mono">{payment.id}</span>
+                <span className="text-slate-500 dark:text-slate-500">Reference</span>
+                <span className="text-slate-900 dark:text-white font-medium font-mono">{payment.id}</span>
               </div>
             </div>
-            <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded-lg mt-3">
+            <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg mt-3">
               Please use your Payment ID as reference. EFT payments may take 1-3 business days to reflect.
             </p>
           </div>
@@ -226,17 +226,17 @@ const PaymentModal = ({ payment, isOpen, onClose }) => {
         {/* Instant EFT Options */}
         {paymentMethod === 'instant' && (
           <div className="grid grid-cols-2 gap-4">
-            <button className="p-4 border-2 border-slate-200 rounded-xl hover:border-primary-300 transition-colors text-center">
-              <div className="w-12 h-12 mx-auto mb-2 bg-slate-100 rounded-lg flex items-center justify-center">
-                <span className="font-bold text-slate-600">PF</span>
+            <button className="p-4 border-2 border-slate-200 dark:border-slate-800 rounded-xl hover:border-primary-300 dark:hover:border-primary-700 transition-colors text-center">
+              <div className="w-12 h-12 mx-auto mb-2 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                <span className="font-bold text-slate-600 dark:text-slate-400">PF</span>
               </div>
-              <span className="text-sm font-medium text-slate-700">PayFast</span>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">PayFast</span>
             </button>
-            <button className="p-4 border-2 border-slate-200 rounded-xl hover:border-primary-300 transition-colors text-center">
-              <div className="w-12 h-12 mx-auto mb-2 bg-slate-100 rounded-lg flex items-center justify-center">
-                <span className="font-bold text-slate-600">OZ</span>
+            <button className="p-4 border-2 border-slate-200 dark:border-slate-800 rounded-xl hover:border-primary-300 dark:hover:border-primary-700 transition-colors text-center">
+              <div className="w-12 h-12 mx-auto mb-2 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                <span className="font-bold text-slate-600 dark:text-slate-400">OZ</span>
               </div>
-              <span className="text-sm font-medium text-slate-700">Ozow</span>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Ozow</span>
             </button>
           </div>
         )}

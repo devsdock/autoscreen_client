@@ -3,52 +3,52 @@ import { Check, Clock, AlertCircle, X, CreditCard, FileText, Calendar } from 'lu
 // Status configurations
 const bookingStatusConfig = {
   Searching: { 
-    color: 'bg-blue-50 text-blue-700 border-blue-200',
+    color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
     icon: Clock,
     label: 'Searching'
   },
   Pending: { 
-    color: 'bg-amber-50 text-amber-700 border-amber-200',
+    color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
     icon: Clock,
     label: 'Pending'
   },
   Accepted: { 
-    color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    color: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
     icon: Check,
     label: 'Accepted'
   },
   'Awaiting Payment': { 
-    color: 'bg-amber-50 text-amber-700 border-amber-200',
+    color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
     icon: CreditCard,
     label: 'Awaiting Payment'
   },
   'awaiting-payment': { 
-    color: 'bg-amber-50 text-amber-700 border-amber-200',
+    color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
     icon: CreditCard,
     label: 'Awaiting Payment'
   },
   Confirmed: { 
-    color: 'bg-green-50 text-green-700 border-green-200',
+    color: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
     icon: Check,
     label: 'Confirmed'
   },
   'In Progress': { 
-    color: 'bg-blue-50 text-blue-700 border-blue-200',
+    color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
     icon: Clock,
     label: 'In Progress'
   },
   'in-progress': { 
-    color: 'bg-blue-50 text-blue-700 border-blue-200',
+    color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
     icon: Clock,
     label: 'In Progress'
   },
   Completed: { 
-    color: 'bg-slate-100 text-slate-600 border-slate-200',
+    color: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
     icon: Check,
     label: 'Completed'
   },
   Cancelled: { 
-    color: 'bg-red-50 text-red-700 border-red-200',
+    color: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
     icon: X,
     label: 'Cancelled'
   }
@@ -56,22 +56,22 @@ const bookingStatusConfig = {
 
 const paymentStatusConfig = {
   Unpaid: { 
-    color: 'bg-amber-50 text-amber-700 border-amber-200',
+    color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
     icon: AlertCircle,
     label: 'Unpaid'
   },
   Pending: { 
-    color: 'bg-blue-50 text-blue-700 border-blue-200',
+    color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
     icon: Clock,
     label: 'Processing'
   },
   Paid: { 
-    color: 'bg-green-50 text-green-700 border-green-200',
+    color: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
     icon: Check,
     label: 'Paid'
   },
   Refunded: { 
-    color: 'bg-slate-100 text-slate-600 border-slate-200',
+    color: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
     icon: CreditCard,
     label: 'Refunded'
   }

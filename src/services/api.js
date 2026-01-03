@@ -1,4 +1,5 @@
 import axios from "axios";
+import URLS from "../config/urls";
 
 /**
  * API Configuration
@@ -6,16 +7,10 @@ import axios from "axios";
  */
 
 // Development URL
-const NODE_URL = "http://localhost:5000";
-
-// Staging URL
-// const NODE_URL = 'https://staging.autoscreen.co.za';
-
-// Production URL
-// const NODE_URL = 'https://api.autoscreen.co.za';
+const NODE_URL = URLS.API;
 
 // Auth Web URL (for redirects)
-export const AUTH_WEB_URL = "http://localhost:7000";
+export const AUTH_WEB_URL = URLS.MAIN_SITE;
 
 /**
  * Export the current environment URL

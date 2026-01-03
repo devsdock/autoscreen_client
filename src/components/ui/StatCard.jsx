@@ -10,19 +10,19 @@ const StatCard = ({
   trendValue,
   linkTo,
   linkLabel = 'View More',
-  iconBgColor = 'bg-primary-50',
-  iconColor = 'text-primary-600',
-  borderColor = 'border-primary',
+  iconBgColor = 'bg-primary-50 dark:bg-primary-900/10',
+  iconColor = 'text-primary-600 dark:text-primary-400',
+  borderColor = 'border-primary-600',
   className = ''
 }) => {
   return (
-    <div className={`bg-white rounded-2xl border-t-4 ${borderColor} p-5 shadow-sm hover:shadow-md transition-all ${className}`}>
+    <div className={`bg-white dark:bg-slate-900 rounded-2xl border-t-4 ${borderColor} p-5 shadow-sm hover:shadow-md border border-transparent dark:border-slate-800 transition-all ${className}`}>
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="text-3xl font-bold text-slate-900">{value}</p>
-          <p className="text-sm text-slate-500 mt-1">{label}</p>
+          <p className="text-3xl font-bold text-slate-900 dark:text-white">{value}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{label}</p>
           {subValue && (
-            <p className="text-xs text-slate-400 mt-0.5">{subValue}</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{subValue}</p>
           )}
         </div>
         <div className="flex items-center gap-1 text-primary">

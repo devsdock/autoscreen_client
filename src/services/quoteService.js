@@ -16,6 +16,20 @@ const quoteService = {
   },
 
   /**
+   * Upload damage images
+   */
+  uploadDamageImages: (formData) => {
+    return request({
+      method: "POST",
+      url: "/api/customer/quotes/upload-images",
+      data: formData,
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
+  /**
    * Get all quotes for customer
    */
   getQuotes: (params = {}) => {

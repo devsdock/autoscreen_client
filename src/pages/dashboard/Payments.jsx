@@ -76,23 +76,23 @@ const Payments = () => {
           icon={Wallet}
           value={formatCurrency(totalSpent)}
           label="Total Spent"
-          iconBgColor="bg-green-50"
-          iconColor="text-green-600"
+          iconBgColor="bg-green-50 dark:bg-green-900/20"
+          iconColor="text-green-600 dark:text-green-400"
         />
         <StatCard
           icon={CreditCard}
           value={formatCurrency(pendingTotal)}
           label="Pending Payments"
-          iconBgColor="bg-amber-50"
-          iconColor="text-amber-600"
+          iconBgColor="bg-amber-50 dark:bg-amber-900/20"
+          iconColor="text-amber-600 dark:text-amber-400"
         />
         <StatCard
           icon={Receipt}
           value={lastPaid ? formatCurrency(lastPaid.amount) : '—'}
           subValue={lastPaid ? `on ${formatDate(lastPaid.date)}` : undefined}
           label="Last Payment"
-          iconBgColor="bg-blue-50"
-          iconColor="text-blue-600"
+          iconBgColor="bg-blue-50 dark:bg-blue-900/20"
+          iconColor="text-blue-600 dark:text-blue-400"
         />
       </div>
       
@@ -126,41 +126,41 @@ const Payments = () => {
           <div className="hidden lg:block overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">
+                <tr className="border-b border-slate-100 dark:border-slate-800">
+                  <th className="text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider px-6 py-3">
                     Payment ID
                   </th>
-                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">
+                  <th className="text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider px-6 py-3">
                     Booking
                   </th>
-                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">
+                  <th className="text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider px-6 py-3">
                     Service
                   </th>
-                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">
+                  <th className="text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider px-6 py-3">
                     Provider
                   </th>
-                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">
+                  <th className="text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider px-6 py-3">
                     Amount
                   </th>
-                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">
+                  <th className="text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider px-6 py-3">
                     Date
                   </th>
-                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">
+                  <th className="text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider px-6 py-3">
                     Method
                   </th>
-                  <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">
+                  <th className="text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider px-6 py-3">
                     Status
                   </th>
-                  <th className="text-right text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-3">
+                  <th className="text-right text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider px-6 py-3">
                     Action
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {sortedPayments.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={payment.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="px-6 py-4">
-                      <span className="font-mono text-sm text-slate-600">#{payment.id}</span>
+                      <span className="font-mono text-sm text-slate-600 dark:text-slate-400">#{payment.id}</span>
                     </td>
                     <td className="px-6 py-4">
                       <Link 
@@ -171,23 +171,23 @@ const Payments = () => {
                       </Link>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-slate-900">{payment.service}</span>
+                      <span className="text-sm text-slate-900 dark:text-white">{payment.service}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-slate-600">{payment.providerName}</span>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">{payment.providerName}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="font-semibold text-slate-900">
+                      <span className="font-semibold text-slate-900 dark:text-white">
                         {formatCurrency(payment.amount)}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-slate-600">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">
                         {payment.date ? formatDate(payment.date) : `Due ${formatDate(payment.dueDate)}`}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-slate-600">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">
                         {payment.method || '—'}
                       </span>
                     </td>
@@ -223,22 +223,22 @@ const Payments = () => {
           </div>
           
           {/* Mobile Cards */}
-          <div className="lg:hidden divide-y divide-slate-100">
+          <div className="lg:hidden divide-y divide-slate-100 dark:divide-slate-800">
             {sortedPayments.map((payment) => (
               <div key={payment.id} className="p-4 space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <span className="font-mono text-sm text-slate-500">#{payment.id}</span>
-                    <p className="font-semibold text-slate-900 mt-1">{payment.service}</p>
-                    <p className="text-sm text-slate-500">{payment.providerName}</p>
+                    <span className="font-mono text-sm text-slate-500 dark:text-slate-400">#{payment.id}</span>
+                    <p className="font-semibold text-slate-900 dark:text-white mt-1">{payment.service}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{payment.providerName}</p>
                   </div>
                   <StatusBadge status={payment.status} type="payment" />
                 </div>
                 
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-lg font-bold text-slate-900">{formatCurrency(payment.amount)}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(payment.amount)}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       {payment.date ? formatDate(payment.date) : `Due ${formatDate(payment.dueDate)}`}
                     </p>
                   </div>

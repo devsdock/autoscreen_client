@@ -8,6 +8,7 @@ import Bookings from './pages/dashboard/Bookings';
 import Payments from './pages/dashboard/Payments';
 import Profile from './pages/dashboard/Profile';
 import Support from './pages/dashboard/Support';
+import Messages from './pages/dashboard/Messages';
 
 // Booking Flow Pages
 import BookSearch from './pages/dashboard/BookSearch';
@@ -49,6 +50,7 @@ const App = () => {
         <Route path="profile" element={<Profile />} />
         <Route path="profile/edit" element={<Profile />} />
         <Route path="support" element={<Support />} />
+        <Route path="messages" element={<Messages />} />
       </Route>
       
       {/* Catch-all redirect */}

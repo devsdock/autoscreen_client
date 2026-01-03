@@ -1,3 +1,5 @@
+import { NodeURL } from "../services/api";
+
 /**
  * Map API dashboard data to frontend format
  * @param {Object} apiData - Data from API
@@ -258,6 +260,11 @@ export const mapUser = (user) => {
     name: user.name,
     email: user.email,
     phone: user.phone || "",
+    avatar: user.profileImage
+      ? user.profileImage.startsWith("http")
+        ? user.profileImage
+        : `${NodeURL}${user.profileImage}`
+      : user.avatar || null, // Map profileImage to avatar with full URL
     preferredContact: user.preferredContact || "whatsapp",
     memberSince: user.createdAt || new Date(),
     isVerified: user.isVerified || false,

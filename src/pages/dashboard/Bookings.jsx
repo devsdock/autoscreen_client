@@ -179,16 +179,16 @@ const Bookings = () => {
                     </p>
                   </div>
                   
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 dark:text-slate-400">
                     <span className="font-medium text-slate-700 dark:text-slate-300">
                       {booking.providerName}
                     </span>
-                    <span className="text-slate-300">•</span>
+                    <span className="text-slate-300 dark:text-slate-700">•</span>
                     <span className="flex items-center gap-1">
-                      <Calendar size={14} className="text-slate-400" />
+                      <Calendar size={14} className="text-slate-400 dark:text-slate-500" />
                       {formatDate(booking.scheduledDate, 'datetime')}
                     </span>
-                    <span className="text-slate-300">•</span>
+                    <span className="text-slate-300 dark:text-slate-700">•</span>
                     <span className="font-bold text-slate-900 dark:text-white">
                       {formatCurrency(booking.price?.total || 0)}
                     </span>
