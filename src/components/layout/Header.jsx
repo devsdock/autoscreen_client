@@ -47,7 +47,9 @@ const Header = () => {
         {/* Notifications */}
         <button className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors relative">
           <Bell size={20} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+          <span className="absolute top-[0.3rem] right-[0.4rem] w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+            1
+          </span>
         </button>
 
         {/* User dropdown */}

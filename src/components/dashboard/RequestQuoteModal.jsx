@@ -192,7 +192,11 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
           },
         },
         preferredDate: formData.preferredDate || null,
-        preferredTimeSlot: formData.preferredTimeSlot?.toLowerCase().replace(/\s*\(.*\)/, '') || "any",
+        preferredTimeSlot: (() => {
+          const slot = formData.preferredTimeSlot?.toLowerCase() || "any";
+          if (slot.includes("any")) return "any";
+          return slot.replace(/\s*\(.*\)/, '').trim();
+        })(),
         customerNotes: formData.notes,
         damageImages: formData.images.map(img => img.data),
       };

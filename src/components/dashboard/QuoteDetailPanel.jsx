@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Car, 
@@ -15,6 +15,7 @@ import {
   Loader2
 } from 'lucide-react';
 import useDashboardStore, { formatDate, formatCurrency } from '../../store/useDashboardStore';
+import { NodeURL } from '../../services/api';
 import StatusBadge from '../ui/StatusBadge';
 import Button from '../ui/Button';
 import ProviderResponseCard from './ProviderResponseCard';
@@ -22,10 +23,17 @@ import Modal from '../ui/Modal';
 
 const QuoteDetailPanel = ({ quote, onClose }) => {
   const navigate = useNavigate();
-  const { quoteResponses, acceptQuote, closeQuoteRequest, addToast } = useDashboardStore();
+  const { quoteResponses, acceptQuote, closeQuoteRequest, addToast, fetchQuoteDetails } = useDashboardStore();
   const [selectedImage, setSelectedImage] = useState(null);
   const [acceptModal, setAcceptModal] = useState({ open: false, response: null });
   const [isAccepting, setIsAccepting] = useState(false);
+
+  // Fetch latest details to ensure we have responses
+  useEffect(() => {
+    if (quote?.id) {
+      fetchQuoteDetails(quote.id);
+    }
+  }, [quote?.id, fetchQuoteDetails]);
   
   if (!quote) {
     return (
@@ -39,8 +47,8 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   }
   
   const responses = quoteResponses.filter(r => r.quoteRequestId === quote.id);
-  const isAccepted = quote.status === 'Accepted';
-  const isClosed = quote.status === 'Closed';
+  const isAccepted = (quote.status || '').toLowerCase() === 'accepted';
+  const isClosed = (quote.status || '').toLowerCase() === 'closed';
   
   const handleAcceptQuote = async () => {
     if (!acceptModal.response) return;
@@ -50,7 +58,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    const bookingId = acceptQuote(quote.id, acceptModal.response.id);
+    const bookingId = await acceptQuote(quote.id, acceptModal.response.id);
     
     setIsAccepting(false);
     setAcceptModal({ open: false, response: null });
@@ -71,20 +79,21 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   };
   
   const getStatusExplanation = () => {
-    switch (quote.status) {
-      case 'Open':
-      case 'Pending':
-      case 'pending':
-        return 'Your quote request is live. Providers in your area will start responding soon.';
-      case 'Responses':
-        return 'Providers have responded! Review the offers below and accept one to proceed.';
-      case 'Accepted':
-        return 'You\'ve accepted a quote. A booking has been created for you.';
-      case 'Closed':
-        return 'This quote request has been closed.';
-      default:
-        return '';
+    const status = quote.status?.toLowerCase() || '';
+    
+    if (['open', 'pending'].includes(status)) {
+      return 'Your quote request is live. Providers in your area will start responding soon.';
     }
+    if (['responses', 'quoted', 'received responses'].includes(status)) {
+      return 'Providers have responded! Review the offers below and accept one to proceed.';
+    }
+    if (status === 'accepted') {
+      return 'You\'ve accepted a quote. A booking has been created for you.';
+    }
+    if (status === 'closed') {
+      return 'This quote request has been closed.';
+    }
+    return '';
   };
   
   return (
@@ -111,18 +120,18 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
       <div className="p-6 space-y-6">
         {/* Status Explanation */}
         <div className={`p-4 rounded-xl flex items-start gap-3 ${
-          quote.status === 'Open' ? 'bg-primary-50 dark:bg-primary-900/20' :
-          quote.status === 'Responses' ? 'bg-warning-50 dark:bg-warning-900/20' :
+          ['Open', 'Pending', 'pending'].includes(quote.status) ? 'bg-primary-50 dark:bg-primary-900/20' :
+          ['Responses', 'quoted', 'Quoted', 'Received Responses'].includes(quote.status) ? 'bg-warning-50 dark:bg-warning-900/20' :
           quote.status === 'Accepted' ? 'bg-success-50 dark:bg-success-900/20' :
           'bg-slate-50 dark:bg-slate-800'
         }`}>
-          {quote.status === 'Open' && <Clock size={20} className="text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" />}
-          {quote.status === 'Responses' && <AlertCircle size={20} className="text-warning-600 dark:text-warning-400 flex-shrink-0 mt-0.5" />}
+          {['Open', 'Pending', 'pending'].includes(quote.status) && <Clock size={20} className="text-primary-600 dark:text-primary-400 flex-shrink-0 mt-0.5" />}
+          {['Responses', 'quoted', 'Quoted', 'Received Responses'].includes(quote.status) && <AlertCircle size={20} className="text-warning-600 dark:text-warning-400 flex-shrink-0 mt-0.5" />}
           {quote.status === 'Accepted' && <CheckCircle2 size={20} className="text-success-600 dark:text-success-400 flex-shrink-0 mt-0.5" />}
           {quote.status === 'Closed' && <X size={20} className="text-slate-500 dark:text-slate-400 flex-shrink-0 mt-0.5" />}
           <p className={`text-sm ${
-            quote.status === 'Open' ? 'text-primary-700 dark:text-primary-300' :
-            quote.status === 'Responses' ? 'text-warning-700 dark:text-warning-300' :
+            ['Open', 'Pending', 'pending'].includes(quote.status) ? 'text-primary-700 dark:text-primary-300' :
+            ['Responses', 'quoted', 'Quoted', 'Received Responses'].includes(quote.status) ? 'text-warning-700 dark:text-warning-300' :
             quote.status === 'Accepted' ? 'text-success-700 dark:text-success-300' :
             'text-slate-600 dark:text-slate-400'
           }`}>
@@ -236,7 +245,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                   className="w-20 h-20 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 hover:border-primary-400 dark:hover:border-primary-500 transition-colors"
                 >
                   <img 
-                    src={typeof img === 'object' ? (img.data || img.url) : img} 
+                    src={typeof img === 'object' ? (img.data || img.url) : (img.startsWith('http') || img.startsWith('data:') ? img : `${NodeURL}${img}`)} 
                     alt={`Damage ${index + 1}`} 
                     className="w-full h-full object-cover" 
                   />
@@ -300,12 +309,11 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
         </p>
       </div>
       
-      {/* Accept Quote Modal */}
       <Modal
         isOpen={acceptModal.open}
         onClose={() => setAcceptModal({ open: false, response: null })}
         title="Accept this quote?"
-        size="sm"
+        size="md"
       >
         {acceptModal.response && (
           <div className="space-y-4">
@@ -334,11 +342,11 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                 Cancel
               </Button>
               <Button 
-                className="flex-1"
+                className="flex-1 whitespace-nowrap"
                 onClick={handleAcceptQuote}
                 loading={isAccepting}
               >
-                Accept & Create Booking
+                Accept & Book
               </Button>
             </div>
           </div>
@@ -358,7 +366,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
             <X size={24} />
           </button>
           <img 
-            src={typeof selectedImage === 'object' ? (selectedImage.data || selectedImage.url) : selectedImage} 
+            src={typeof selectedImage === 'object' ? (selectedImage.data || selectedImage.url) : (selectedImage.startsWith('http') || selectedImage.startsWith('data:') ? selectedImage : `${NodeURL}${selectedImage}`)} 
             alt="Damage" 
             className="max-w-full max-h-full rounded-lg"
             onClick={(e) => e.stopPropagation()}

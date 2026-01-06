@@ -282,10 +282,80 @@ const useDashboardStore = create(
           if (response.success) {
             const { mapQuote } = await import("../utils/dataMappers");
             const mappedQuotes = response.data.map(mapQuote);
-            set({ quotes: mappedQuotes });
+
+            // Extract responses from quotes
+            const allResponses = [];
+            mappedQuotes.forEach((q) => {
+              if (q.responses && Array.isArray(q.responses)) {
+                q.responses.forEach((r) => {
+                  allResponses.push({
+                    ...r,
+                    id: r._id || r.id,
+                    quoteRequestId: q.id,
+                    provider: r.provider || { name: "Provider" }, // Ensure provider exists
+                  });
+                });
+              }
+            });
+
+            set({
+              quotes: mappedQuotes,
+              quoteResponses: allResponses,
+            });
           }
         } catch (error) {
           console.error("Error fetching quotes:", error);
+        }
+      },
+
+      fetchQuoteDetails: async (quoteId) => {
+        try {
+          const quoteService = (await import("../services/quoteService"))
+            .default;
+          const response = await quoteService.getQuote(quoteId);
+          if (response.success) {
+            const { mapQuote } = await import("../utils/dataMappers");
+            const mappedQuote = mapQuote(response.data);
+
+            // Extract responses
+            const quoteResponses = [];
+            if (mappedQuote.responses && Array.isArray(mappedQuote.responses)) {
+              mappedQuote.responses.forEach((r) => {
+                quoteResponses.push({
+                  ...r,
+                  id: r._id || r.id,
+                  quoteRequestId: mappedQuote.id,
+                  provider: r.provider || { name: "Provider" },
+                });
+              });
+            }
+
+            set((state) => {
+              // Update quote in quotes list
+              const updatedQuotes = state.quotes.map((q) =>
+                q.id === mappedQuote.id ? mappedQuote : q
+              );
+
+              // If quote not in list (e.g. direct link), add it
+              if (!state.quotes.find((q) => q.id === mappedQuote.id)) {
+                updatedQuotes.push(mappedQuote);
+              }
+
+              // Update responses: Remove old responses for this quote and add new ones
+              const otherResponses = state.quoteResponses.filter(
+                (r) => r.quoteRequestId !== mappedQuote.id
+              );
+
+              return {
+                quotes: updatedQuotes,
+                quoteResponses: [...otherResponses, ...quoteResponses],
+              };
+            });
+
+            return mappedQuote;
+          }
+        } catch (error) {
+          console.error("Error fetching quote details:", error);
         }
       },
       createQuote: (quoteData) => {
@@ -347,134 +417,50 @@ const useDashboardStore = create(
         get().addToast({ type: "info", message: "Quote request closed" });
       },
 
-      acceptQuote: (quoteId, responseId) => {
-        const quote = get().quotes.find((q) => q.id === quoteId);
-        const response = get().quoteResponses.find((r) => r.id === responseId);
+      acceptQuote: async (quoteId, responseId) => {
+        try {
+          const quoteService = (await import("../services/quoteService"))
+            .default;
+          // Optimistically update local state if needed, or just wait for backend
 
-        if (!quote || !response) return null;
+          const result = await quoteService.acceptQuoteResponse(
+            quoteId,
+            responseId
+          );
 
-        // Update quote status
-        set((state) => ({
-          quotes: state.quotes.map((q) =>
-            q.id === quoteId
-              ? { ...q, status: "Accepted", acceptedResponseId: responseId }
-              : q
-          ),
-        }));
+          if (result.success) {
+            // refresh data to reflect changes
+            await get().fetchQuotes();
+            await get().fetchBookings();
 
-        // Mark selected response as accepted, others as rejected
-        set((state) => ({
-          quoteResponses: state.quoteResponses.map((r) => {
-            if (r.quoteRequestId === quoteId) {
-              return {
-                ...r,
-                status: r.id === responseId ? "Accepted" : "Rejected",
-              };
-            }
-            return r;
-          }),
-        }));
+            get().addActivity({
+              type: "quote_accepted",
+              message: `Quote accepted! Booking created.`,
+              relatedId: quoteId,
+            });
 
-        // Create draft booking
-        const bookingId = generateId("BK");
-        const bookingRef = `B-${new Date().getFullYear()}-${(
-          get().bookings.length + 1
-        )
-          .toString()
-          .padStart(5, "0")}`;
+            get().addToast({
+              type: "success",
+              message: "Quote accepted! Booking created.",
+            });
 
-        const vehicleStr = `${quote.vehicle.year} ${quote.vehicle.make} ${quote.vehicle.model}`;
-        const addressStr = quote.location.addressLine1
-          ? `${quote.location.addressLine1}, ${quote.location.city}`
-          : quote.location.city;
-
-        const newBooking = {
-          id: bookingId,
-          reference: bookingRef,
-          source: "QuoteAccepted",
-          quoteId,
-          quoteResponseId: responseId,
-          customerId: get().user.id,
-          providerId: response.provider.id,
-          providerName: response.provider.name,
-          providerPhone: "+27 11 234 5678",
-          providerRating: response.provider.rating,
-          providerReviews: response.provider.reviewsCount,
-          service: `${quote.glassType} ${quote.serviceType}`,
-          vehicle: vehicleStr,
-          scheduledDate: response.etaText.includes("Available")
-            ? new Date(response.etaText.replace("Available ", "")).toISOString()
-            : new Date().toISOString(),
-          locationType: "Mobile",
-          address: addressStr,
-          notes: quote.notes,
-          status: "Pending",
-          paymentStatus: "Unpaid",
-          price: {
-            service: Math.round(response.price * 0.9),
-            callout: Math.round(response.price * 0.08),
-            materials: Math.round(response.price * 0.02),
-            total: response.price,
-          },
-          timeline: [
-            {
-              status: "Quote Accepted",
-              date: new Date().toISOString(),
-              completed: true,
-            },
-            { status: "Booking Confirmed", date: null, completed: false },
-            { status: "Appointment Scheduled", date: null, completed: false },
-            { status: "Job Completed", date: null, completed: false },
-            { status: "Payment Received", date: null, completed: false },
-          ],
-          createdAt: new Date().toISOString(),
-        };
-
-        set((state) => ({
-          bookings: [newBooking, ...state.bookings],
-        }));
-
-        // Create payment record
-        const paymentId = generateId("PAY");
-        const newPayment = {
-          id: paymentId,
-          bookingId,
-          bookingRef: `#${bookingId}`,
-          customerId: get().user.id,
-          providerId: response.providerId,
-          providerName: response.providerName,
-          service: `${quote.glassType} ${quote.serviceType}`,
-          amount: response.price,
-          breakdown: {
-            service: Math.round(response.price * 0.9),
-            callout: Math.round(response.price * 0.08),
-            materials: Math.round(response.price * 0.02),
-            platformFee: 0,
-          },
-          status: "Unpaid",
-          method: null,
-          date: null,
-          dueDate: response.availability.split("T")[0],
-        };
-
-        set((state) => ({
-          payments: [newPayment, ...state.payments],
-        }));
-
-        // Add activity
-        get().addActivity({
-          type: "quote_accepted",
-          message: `Quote accepted from ${
-            response.providerName
-          } for ${formatCurrency(response.price)}`,
-          relatedId: quoteId,
-        });
-
-        get().addToast({
-          type: "success",
-          message: "Quote accepted! Booking created.",
-        });
-        return bookingId;
+            // Return the booking ID if available in response
+            return result.data?.bookingId || result.data?._id;
+          } else {
+            get().addToast({
+              type: "error",
+              message: result.message || "Failed to accept quote",
+            });
+            return null;
+          }
+        } catch (error) {
+          console.error("Error accepting quote:", error);
+          get().addToast({
+            type: "error",
+            message: "An error occurred while accepting the quote",
+          });
+          return null;
+        }
       },
 
       // Note: closeQuoteRequest is defined above in Quote actions
@@ -827,15 +813,15 @@ const useDashboardStore = create(
         const newPayment = {
           id: paymentId,
           bookingId,
-          bookingRef: booking.reference,
+          bookingRef: booking.reference || `REF-${bookingId}`,
           customerId: get().user.id,
-          providerId: booking.providerId,
-          providerName: booking.providerName,
-          service: booking.service.name,
-          amount: booking.price.total,
+          providerId: booking.providerId || "Provider",
+          providerName: booking.providerName || "Provider",
+          service: booking.service?.name || booking.service || "Go Service",
+          amount: booking.price?.total || 0,
           breakdown: {
-            service: booking.price.subtotal,
-            platformFee: booking.price.platformFee,
+            service: booking.price?.subtotal || 0,
+            platformFee: booking.price?.platformFee || 0,
           },
           status: "Paid",
           method,
@@ -1032,18 +1018,11 @@ const useDashboardStore = create(
       name: "autoscreen-dashboard-v3",
       partialize: (state) => ({
         user: state.user,
-        vehicles: state.vehicles,
-        addresses: state.addresses,
-        quotes: state.quotes,
-        quoteResponses: state.quoteResponses,
-        bookings: state.bookings,
-        payments: state.payments,
-        activities: state.activities,
-        reviews: state.reviews,
-        messages: state.messages,
-        searchCriteria: state.searchCriteria,
-        sidebarCollapsed: state.sidebarCollapsed,
         theme: state.theme,
+        sidebarCollapsed: state.sidebarCollapsed,
+        searchCriteria: state.searchCriteria,
+        // Exclude heavy data arrays (quotes, bookings, etc)
+        // They should be fetched from API on load
       }),
     }
   )

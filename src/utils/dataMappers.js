@@ -89,7 +89,9 @@ export const mapBooking = (booking) => {
     const isQuoteBased =
       booking.source === "QuoteAccepted" ||
       booking.quoteId ||
-      booking.quoteRequestId;
+      booking.quoteRequestId ||
+      booking.quote ||
+      booking.quoteResponse;
 
     // Status progression levels based on specification
     const statusOrder = {

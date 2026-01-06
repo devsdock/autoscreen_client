@@ -28,14 +28,14 @@ const ProviderResponseCard = ({
           {/* Avatar */}
           <div className="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
             <span className="text-lg font-bold text-primary-600 dark:text-primary-400">
-              {provider.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+              {(provider.name || 'P').split(' ').map(n => n[0]).join('').slice(0, 2)}
             </span>
           </div>
           
           <div>
             <div className="flex items-center gap-2">
               <h4 className="font-semibold text-slate-900 dark:text-white">
-                {provider.name}
+                {provider.name || 'Provider'}
               </h4>
               {provider.type === 'Business' && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-xs font-medium rounded-full">
@@ -56,7 +56,7 @@ const ProviderResponseCard = ({
               <div className="flex items-center gap-1">
                 <Star size={14} className="text-warning-500 fill-warning-500" />
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {provider.rating.toFixed(1)}
+                  {(provider.rating || 0).toFixed(1)}
                 </span>
               </div>
               <span className="text-sm text-slate-500 dark:text-slate-400">
@@ -92,7 +92,7 @@ const ProviderResponseCard = ({
         <div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Quoted Price</p>
           <p className="text-2xl font-bold text-slate-900 dark:text-white">
-            {formatCurrency(price)}
+            {formatCurrency(price || 0)}
           </p>
         </div>
         <div className="text-right">
@@ -113,9 +113,15 @@ const ProviderResponseCard = ({
       )}
       
       {/* Service Area */}
-      <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-        Service area: {provider.serviceArea}
-      </p>
+      {(provider.serviceAreas?.length > 0 || provider.serviceArea || provider.address?.city) && (
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+          Service area: {
+            Array.isArray(provider.serviceAreas) 
+              ? provider.serviceAreas.join(', ') 
+              : (provider.serviceArea || provider.address?.city)
+          }
+        </p>
+      )}
       
       {/* Actions */}
       {!isAccepted && !isRejected && !disabled && (

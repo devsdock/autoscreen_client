@@ -5,6 +5,9 @@ import DashboardTopBar from './DashboardTopBar';
 import DashboardRightSidebar from './DashboardRightSidebar';
 import ToastContainer from '../ui/Toast';
 import useDashboardStore from '../../store/useDashboardStore';
+import useAuthStore from '../../store/useAuthStore';
+import useNotificationStore from '../../store/useNotificationStore';
+import socketService from '../../services/socketService';
 
 // Toggle this to show/hide the right sidebar
 // Set to true to enable the right sidebar in the future
@@ -45,6 +48,22 @@ const DashboardLayout = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [setSidebarOpen]);
+
+  // Socket & Notifications Init
+  const { user } = useAuthStore();
+  const { fetchNotifications } = useNotificationStore();
+
+  useEffect(() => {
+    if (user?._id) {
+      console.log('[DashboardLayout] Initializing socket & fetching notifications for user:', user._id);
+      socketService.connect(user._id);
+      fetchNotifications();
+    }
+
+    return () => {
+      socketService.disconnect();
+    };
+  }, [user?._id, fetchNotifications]);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
