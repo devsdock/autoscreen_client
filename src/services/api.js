@@ -4,18 +4,24 @@ import URLS from "../config/urls";
 /**
  * API Configuration
  * Environment URLs for different deployment stages
+ *
+ * URL Pattern: All projects now use ${URLS.API}/api as base
+ * - Admin: ${URLS.API}/api → /admin/...
+ * - Provider: ${URLS.API}/api → /provider/...
+ * - Client: ${URLS.API}/api → /customer/...
+ * - Web: ${URLS.API}/api → /customer/...
  */
 
-// Development URL
-const NODE_URL = URLS.API;
+// API Base URL - includes /api prefix for consistency
+const API_URL = `${URLS.API}/api`;
 
 // Auth Web URL (for redirects)
 export const AUTH_WEB_URL = URLS.MAIN_SITE;
 
 /**
- * Export the current environment URL
+ * Export the current environment URL (for static files/images)
  */
-export const NodeURL = NODE_URL;
+export const NodeURL = URLS.API;
 
 /**
  * Local storage keys for authentication
@@ -37,7 +43,7 @@ const SESSION_STATUS = {
  * Creates and configures the axios instance
  */
 export const client = axios.create({
-  baseURL: NODE_URL,
+  baseURL: API_URL,
   responseType: "json",
 });
 

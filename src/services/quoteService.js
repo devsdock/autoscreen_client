@@ -2,6 +2,7 @@ import { request } from "./api";
 
 /**
  * Quote Service
+ * Endpoints: /customer/quotes/...
  */
 const quoteService = {
   /**
@@ -10,7 +11,7 @@ const quoteService = {
   createQuote: (data) => {
     return request({
       method: "POST",
-      url: "/api/customer/quotes",
+      url: "/customer/quotes",
       data,
     });
   },
@@ -21,7 +22,7 @@ const quoteService = {
   uploadDamageImages: (formData) => {
     return request({
       method: "POST",
-      url: "/api/customer/quotes/upload-images",
+      url: "/customer/quotes/upload-images",
       data: formData,
       headers: {
         "Content-Type": "multipart/form-data",
@@ -41,7 +42,7 @@ const quoteService = {
 
     return request({
       method: "GET",
-      url: `/api/customer/quotes?${queryParams.toString()}`,
+      url: `/customer/quotes?${queryParams.toString()}`,
     });
   },
 
@@ -51,7 +52,7 @@ const quoteService = {
   getQuote: (quoteId) => {
     return request({
       method: "GET",
-      url: `/api/customer/quotes/${quoteId}`,
+      url: `/customer/quotes/${quoteId}`,
     });
   },
 
@@ -61,7 +62,7 @@ const quoteService = {
   getQuoteResponses: (quoteId) => {
     return request({
       method: "GET",
-      url: `/api/customer/quotes/${quoteId}/responses`,
+      url: `/customer/quotes/${quoteId}/responses`,
     });
   },
 
@@ -71,7 +72,7 @@ const quoteService = {
   acceptQuoteResponse: (quoteId, responseId, data = {}) => {
     return request({
       method: "POST",
-      url: `/api/customer/quotes/${quoteId}/accept/${responseId}`,
+      url: `/customer/quotes/${quoteId}/accept/${responseId}`,
       data,
     });
   },
@@ -82,7 +83,7 @@ const quoteService = {
   cancelQuote: (quoteId) => {
     return request({
       method: "PUT",
-      url: `/api/customer/quotes/${quoteId}/cancel`,
+      url: `/customer/quotes/${quoteId}/cancel`,
     });
   },
 };

@@ -2,6 +2,7 @@ import { request } from "./api";
 
 /**
  * Booking Service
+ * Endpoints: /customer/bookings/...
  */
 const bookingService = {
   /**
@@ -17,7 +18,7 @@ const bookingService = {
 
     return request({
       method: "GET",
-      url: `/api/customer/bookings?${queryParams.toString()}`,
+      url: `/customer/bookings?${queryParams.toString()}`,
     });
   },
 
@@ -27,7 +28,7 @@ const bookingService = {
   getBooking: (bookingId) => {
     return request({
       method: "GET",
-      url: `/api/customer/bookings/${bookingId}`,
+      url: `/customer/bookings/${bookingId}`,
     });
   },
 
@@ -37,7 +38,7 @@ const bookingService = {
   getUpcomingBookings: () => {
     return request({
       method: "GET",
-      url: "/api/customer/bookings/upcoming",
+      url: "/customer/bookings/upcoming",
     });
   },
 
@@ -48,7 +49,7 @@ const bookingService = {
     const { page = 1, limit = 10 } = params;
     return request({
       method: "GET",
-      url: `/api/customer/bookings/history?page=${page}&limit=${limit}`,
+      url: `/customer/bookings/history?page=${page}&limit=${limit}`,
     });
   },
 
@@ -58,7 +59,7 @@ const bookingService = {
   cancelBooking: (bookingId, reason) => {
     return request({
       method: "PUT",
-      url: `/api/customer/bookings/${bookingId}/cancel`,
+      url: `/customer/bookings/${bookingId}/cancel`,
       data: { reason },
     });
   },
@@ -69,7 +70,7 @@ const bookingService = {
   rescheduleBooking: (bookingId, data) => {
     return request({
       method: "PUT",
-      url: `/api/customer/bookings/${bookingId}/reschedule`,
+      url: `/customer/bookings/${bookingId}/reschedule`,
       data,
     });
   },
@@ -80,7 +81,7 @@ const bookingService = {
   addReview: (bookingId, data) => {
     return request({
       method: "POST",
-      url: `/api/customer/bookings/${bookingId}/review`,
+      url: `/customer/bookings/${bookingId}/review`,
       data,
     });
   },
@@ -105,7 +106,7 @@ const bookingService = {
 
     return request({
       method: "POST",
-      url: "/api/customer/bookings",
+      url: "/customer/bookings",
       data,
     });
   },
@@ -117,7 +118,7 @@ const bookingService = {
   getBookingStatus: (bookingId) => {
     return request({
       method: "GET",
-      url: `/api/customer/bookings/${bookingId}/status`,
+      url: `/customer/bookings/${bookingId}/status`,
     });
   },
 
@@ -128,7 +129,7 @@ const bookingService = {
   processBookingPayment: (bookingId, paymentData) => {
     return request({
       method: "POST",
-      url: `/api/customer/bookings/${bookingId}/payment`,
+      url: `/customer/bookings/${bookingId}/payment`,
       data: paymentData,
     });
   },
@@ -139,7 +140,7 @@ const bookingService = {
   completeBooking: (bookingId) => {
     return request({
       method: "POST",
-      url: `/api/customer/bookings/${bookingId}/complete`,
+      url: `/customer/bookings/${bookingId}/complete`,
     });
   },
 };

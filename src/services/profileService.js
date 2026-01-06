@@ -2,6 +2,7 @@ import { request, STORAGE_KEYS } from "./api";
 
 /**
  * Customer Profile Service
+ * Endpoints: /customer/profile/...
  */
 const profileService = {
   /**
@@ -10,7 +11,7 @@ const profileService = {
   getProfile: () => {
     return request({
       method: "GET",
-      url: "/api/customer/profile",
+      url: "/customer/profile",
     });
   },
 
@@ -20,7 +21,7 @@ const profileService = {
   updateProfile: (data) => {
     return request({
       method: "PUT",
-      url: "/api/customer/profile",
+      url: "/customer/profile",
       data,
     });
   },
@@ -31,7 +32,7 @@ const profileService = {
   uploadProfileImage: (formData) => {
     return request({
       method: "POST",
-      url: "/api/customer/profile/upload-image",
+      url: "/customer/profile/upload-image",
       data: formData,
       headers: {
         "Content-Type": "multipart/form-data",
@@ -45,7 +46,7 @@ const profileService = {
   getAddresses: () => {
     return request({
       method: "GET",
-      url: "/api/customer/profile/addresses",
+      url: "/customer/profile/addresses",
     });
   },
 
@@ -55,7 +56,7 @@ const profileService = {
   addAddress: (data) => {
     return request({
       method: "POST",
-      url: "/api/customer/profile/addresses",
+      url: "/customer/profile/addresses",
       data,
     });
   },
@@ -66,7 +67,7 @@ const profileService = {
   updateAddress: (addressId, data) => {
     return request({
       method: "PUT",
-      url: `/api/customer/profile/addresses/${addressId}`,
+      url: `/customer/profile/addresses/${addressId}`,
       data,
     });
   },
@@ -77,7 +78,7 @@ const profileService = {
   deleteAddress: (addressId) => {
     return request({
       method: "DELETE",
-      url: `/api/customer/profile/addresses/${addressId}`,
+      url: `/customer/profile/addresses/${addressId}`,
     });
   },
 
@@ -87,7 +88,7 @@ const profileService = {
   getVehicles: () => {
     return request({
       method: "GET",
-      url: "/api/customer/profile/vehicles",
+      url: "/customer/profile/vehicles",
     });
   },
 
@@ -97,7 +98,7 @@ const profileService = {
   addVehicle: (data) => {
     return request({
       method: "POST",
-      url: "/api/customer/profile/vehicles",
+      url: "/customer/profile/vehicles",
       data,
     });
   },
@@ -108,7 +109,7 @@ const profileService = {
   updateVehicle: (vehicleId, data) => {
     return request({
       method: "PUT",
-      url: `/api/customer/profile/vehicles/${vehicleId}`,
+      url: `/customer/profile/vehicles/${vehicleId}`,
       data,
     });
   },
@@ -119,7 +120,7 @@ const profileService = {
   deleteVehicle: (vehicleId) => {
     return request({
       method: "DELETE",
-      url: `/api/customer/profile/vehicles/${vehicleId}`,
+      url: `/customer/profile/vehicles/${vehicleId}`,
     });
   },
 
@@ -129,7 +130,7 @@ const profileService = {
   changePassword: (data) => {
     return request({
       method: "PUT",
-      url: "/api/customer/profile/change-password",
+      url: "/customer/profile/change-password",
       data,
     });
   },
@@ -140,7 +141,7 @@ const profileService = {
   deleteAccount: (data) => {
     return request({
       method: "DELETE",
-      url: "/api/customer/profile/delete-account",
+      url: "/customer/profile/delete-account",
       data,
     });
   },

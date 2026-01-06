@@ -2,6 +2,7 @@ import { request } from "./api";
 
 /**
  * Dashboard Service
+ * Endpoints: /customer/dashboard/...
  */
 const dashboardService = {
   /**
@@ -10,7 +11,7 @@ const dashboardService = {
   getDashboard: () => {
     return request({
       method: "GET",
-      url: "/api/customer/dashboard",
+      url: "/customer/dashboard",
     });
   },
 
@@ -21,7 +22,7 @@ const dashboardService = {
     const { page = 1, limit = 10 } = params;
     return request({
       method: "GET",
-      url: `/api/customer/dashboard/activity?page=${page}&limit=${limit}`,
+      url: `/customer/dashboard/activity?page=${page}&limit=${limit}`,
     });
   },
 
@@ -31,7 +32,7 @@ const dashboardService = {
   getStats: () => {
     return request({
       method: "GET",
-      url: "/api/customer/dashboard/stats",
+      url: "/customer/dashboard/stats",
     });
   },
 };
