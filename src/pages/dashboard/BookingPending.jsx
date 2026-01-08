@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Clock, CheckCircle, CreditCard, ArrowRight, Star, MapPin, 
-  Calendar, Car, FileText, Shield, Loader2
+  Calendar, Car, FileText, Shield, Loader2, Banknote
 } from 'lucide-react';
 import useDashboardStore, { formatCurrency, formatDate } from '../../store/useDashboardStore';
 import bookingService from '../../services/bookingService';
@@ -36,9 +36,10 @@ const BookingPending = () => {
 
     fetchBooking();
     
-    // Polling while searching or accepted
+    // Polling while active but not confirmed
     const interval = setInterval(() => {
-      if (booking?.status === 'searching' || booking?.status === 'accepted') {
+      const activeStatuses = ['searching', 'awaiting-provider-acceptance', 'accepted', 'awaiting-payment'];
+      if (activeStatuses.includes(booking?.status)) {
         fetchBooking();
       }
     }, 5000);
@@ -81,10 +82,16 @@ const BookingPending = () => {
     }
   };
   
-  const statusKey = booking?.status?.toLowerCase() || 'searching';
-  const isPending = statusKey === 'searching';
-  const isAccepted = statusKey === 'accepted';
-  const isConfirmed = statusKey === 'confirmed';
+  const rawStatus = booking?.status?.toLowerCase() || 'searching';
+  
+  // Determine display category
+  let statusCategory = 'searching';
+  if (['accepted', 'awaiting-payment'].includes(rawStatus)) statusCategory = 'accepted';
+  else if (['confirmed', 'paid', 'completed', 'in-progress'].includes(rawStatus)) statusCategory = 'confirmed';
+  
+  const isPending = statusCategory === 'searching';
+  const isAccepted = statusCategory === 'accepted';
+  const isConfirmed = statusCategory === 'confirmed';
 
   const statusConfig = {
     searching: {
@@ -113,7 +120,7 @@ const BookingPending = () => {
     }
   };
 
-  const currentStatus = statusConfig[statusKey] || statusConfig.searching;
+  const currentStatus = statusConfig[statusCategory] || statusConfig.searching;
   const StatusIcon = currentStatus.icon;
   
   return (
@@ -344,10 +351,15 @@ const BookingPending = () => {
               {[
                 { id: 'card', label: 'Credit/Debit Card', icon: CreditCard },
                 { id: 'eft', label: 'EFT Bank Transfer', icon: FileText },
+                { id: 'cash', label: 'Cash Payment', icon: Banknote },
               ].map(method => (
                 <button
                   key={method.id}
-                  onClick={() => setSelectedPaymentMethod(method.id)}
+                  type="button"
+                  onClick={() => {
+                    console.log("Selected Method:", method.id);
+                    setSelectedPaymentMethod(method.id);
+                  }}
                   className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all ${
                     selectedPaymentMethod === method.id
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-sm'

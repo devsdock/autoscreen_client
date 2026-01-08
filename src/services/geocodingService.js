@@ -13,7 +13,6 @@ const geocodingService = {
   getCoordinates: async (address) => {
     try {
       if (!address) return null;
-      console.log("Geocoding address:", address);
 
       // 1. Try Local Lookup First (Fast & Reliable)
       const addressLower = address.toLowerCase();
@@ -25,7 +24,6 @@ const geocodingService = {
 
       for (const city of cityKeys) {
         if (addressLower.includes(city.toLowerCase())) {
-          console.log(`Geocoding: Found local match for ${city}`);
           return CITY_COORDINATES[city];
         }
       }
@@ -42,18 +40,16 @@ const geocodingService = {
 
       if (response.data && response.data.length > 0) {
         const result = response.data[0];
-        console.log("Geocoding result:", result);
+
         return {
           lat: parseFloat(result.lat),
           lng: parseFloat(result.lon),
         };
       } else {
-        console.warn("Geocoding: No results found for", address);
       }
 
       return null;
     } catch (error) {
-      console.error("Geocoding error:", error);
       return null;
     }
   },

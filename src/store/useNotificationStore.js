@@ -20,7 +20,6 @@ const useNotificationStore = create(
             });
           }
         } catch (error) {
-          console.error("Error fetching notifications:", error);
         } finally {
           set({ isLoading: false });
         }
@@ -37,9 +36,7 @@ const useNotificationStore = create(
           }));
 
           await api.patch(`/notifications/${id}/read`);
-        } catch (error) {
-          console.error("Error marking notification as read:", error);
-        }
+        } catch (error) {}
       },
 
       markAllAsRead: async () => {
@@ -53,9 +50,7 @@ const useNotificationStore = create(
           }));
 
           await api.patch("/notifications/read-all");
-        } catch (error) {
-          console.error("Error marking all as read:", error);
-        }
+        } catch (error) {}
       },
 
       addNotification: (notification) => {

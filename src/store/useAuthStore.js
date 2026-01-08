@@ -26,13 +26,7 @@ const useAuthStore = create(
         const storedToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
         const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
 
-        console.log("[Auth] Initializing auth...", {
-          hasToken: !!storedToken,
-          hasUser: !!storedUser,
-        });
-
         if (!storedToken) {
-          console.log("[Auth] No token found, not authenticated");
           set({ isLoading: false, isAuthenticated: false });
           return false;
         }
@@ -42,7 +36,7 @@ const useAuthStore = create(
         if (storedUser) {
           try {
             const parsedUser = JSON.parse(storedUser);
-            console.log("[Auth] Using stored user:", parsedUser);
+
             set({
               user: parsedUser,
               token: storedToken,
@@ -54,21 +48,17 @@ const useAuthStore = create(
             // Optionally validate with backend in background (don't block)
             get().validateTokenInBackground();
             return true;
-          } catch (e) {
-            console.error("[Auth] Failed to parse stored user:", e);
-          }
+          } catch (e) {}
         }
 
         // No stored user, must validate with backend
         try {
-          console.log("[Auth] Validating token with backend...");
           const data = await request({
             method: "GET",
-            url: "/api/customer/auth/me",
+            url: "/customer/auth/me",
           });
 
           if (data.success && data.data) {
-            console.log("[Auth] Token valid, user:", data.data);
             // Store user for future quick loads
             localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data.data));
             set({
@@ -81,11 +71,9 @@ const useAuthStore = create(
             return true;
           }
 
-          console.log("[Auth] Token validation failed, clearing auth");
           get().clearAuth();
           return false;
         } catch (err) {
-          console.error("[Auth] Auth validation error:", err);
           // If backend is down but we have a token, still allow access
           // The token will be validated on actual API calls
           set({
@@ -106,7 +94,7 @@ const useAuthStore = create(
         try {
           const data = await request({
             method: "GET",
-            url: "/api/customer/auth/me",
+            url: "/customer/auth/me",
           });
 
           if (data.success && data.data) {
@@ -115,7 +103,6 @@ const useAuthStore = create(
             set({ user: data.data });
           }
         } catch (err) {
-          console.error("[Auth] Background validation failed:", err);
           // Don't logout on background validation failure
         }
       },
@@ -144,9 +131,7 @@ const useAuthStore = create(
           });
           localStorage.clear();
           sessionStorage.clear();
-        } catch (e) {
-          console.error("[Auth] Error clearing storage:", e);
-        }
+        } catch (e) {}
 
         set({
           user: null,
@@ -163,17 +148,13 @@ const useAuthStore = create(
        * This bypasses the persist middleware entirely
        */
       logout: async () => {
-        console.log("[AuthStore] NUCLEAR LOGOUT - Clearing all auth data...");
-
         // Try to call logout API, but don't block on it
         try {
           await request({
             method: "POST",
-            url: "/api/customer/auth/logout",
+            url: "/customer/auth/logout",
           });
-        } catch (err) {
-          console.error("Logout API error:", err);
-        }
+        } catch (err) {}
 
         try {
           // Remove ALL auth-related keys immediately
@@ -201,14 +182,8 @@ const useAuthStore = create(
           // Clear dashboard store
           try {
             useDashboardStore.getState().clearData();
-          } catch (e) {
-            console.error("Dashboard store clear failed:", e);
-          }
-
-          console.log("[AuthStore] Storage cleared, forcing redirect...");
-        } catch (e) {
-          console.error("[AuthStore] Cleanup error:", e);
-        }
+          } catch (e) {}
+        } catch (e) {}
 
         // DO NOT call set() or clearAuth() - this would trigger persist middleware
         // Instead, force an immediate redirect

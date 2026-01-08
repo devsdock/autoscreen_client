@@ -7,10 +7,15 @@ import geocodingService from '../../services/geocodingService';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import PremiumSelect from '../ui/PremiumSelect';
 import PremiumDatePicker from '../ui/PremiumDatePicker';
+import { getTodayString } from '../../utils/dateUtils';
 
 const RequestQuoteModal = ({ isOpen, onClose }) => {
-  const { createQuote, user, vehicles, addresses } = useDashboardStore();
+  const { createQuote, user, vehicles, addresses, quotes } = useDashboardStore();
   const fileInputRef = useRef(null);
+  
+  const hasActiveQuote = useMemo(() => {
+    return quotes.some(q => (q.status || '').toLowerCase() === 'pending');
+  }, [quotes]);
   
   const [formData, setFormData] = useState({
     vehicleMake: '',
@@ -277,6 +282,25 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
 
 
         
+        
+        {/* Active Quote Alert */}
+        {hasActiveQuote ? (
+          <div className="flex-1 p-8 flex flex-col items-center justify-center text-center space-y-4">
+             <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center">
+                <Clock size={32} />
+             </div>
+             <div className="max-w-xs">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Request In Progress</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                  You already have an active quote request. Please wait for providers to respond or cancel your current request before creating a new one.
+                </p>
+             </div>
+             <Button variant="secondary" onClick={() => onClose()}>
+                Got it
+             </Button>
+          </div>
+        ) : (
+          <>
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Vehicle Section */}
@@ -399,7 +423,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                 value={formData.preferredDate}
                 onChange={(val) => handleChange('preferredDate', val)}
                 placeholder="Select a date"
-                minDate={new Date().toISOString().split('T')[0]}
+                minDate={getTodayString()}
               />
               
               <PremiumSelect
@@ -493,6 +517,8 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
             Submit Quote Request
           </Button>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

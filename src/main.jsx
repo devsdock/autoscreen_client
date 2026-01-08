@@ -9,10 +9,9 @@ import ErrorBoundary from './components/ErrorBoundary'
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter basename="/customer">
         <App />
       </BrowserRouter>
     </ErrorBoundary>
   </React.StrictMode>
 )
-

@@ -20,6 +20,22 @@ const PremiumSelect = ({
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef(null);
 
+  // Helper to get string value from polymorphic option
+  const getOptValue = (opt) => {
+    if (typeof opt === 'object' && opt !== null) {
+      return opt.value !== undefined ? opt.value : opt.id !== undefined ? opt.id : String(opt);
+    }
+    return String(opt);
+  };
+
+  // Helper to get display label from polymorphic option
+  const getOptLabel = (opt) => {
+    if (typeof opt === 'object' && opt !== null) {
+      return opt.label || opt.name || String(getOptValue(opt));
+    }
+    return String(opt);
+  };
+
   useEffect(() => {
     if (autoOpen && !disabled && !loading) {
       setIsOpen(true);
@@ -39,16 +55,26 @@ const PremiumSelect = ({
 
   const filteredOptions = useMemo(() => {
     if (!searchable || !searchQuery) return options;
-    return options.filter(opt => 
-      String(opt).toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    return options.filter(opt => {
+      const label = getOptLabel(opt);
+      return label.toLowerCase().includes(searchQuery.toLowerCase());
+    });
   }, [options, searchable, searchQuery]);
 
   useEffect(() => {
     if (!isOpen) setSearchQuery('');
   }, [isOpen]);
 
-  const displayValue = value || placeholder;
+  // Determine what to display in a robust way
+  const displayValue = useMemo(() => {
+    if (!value) return placeholder;
+    
+    // Find matching option to show label instead of raw value
+    const match = options.find(opt => getOptValue(opt) === value);
+    if (match) return getOptLabel(match);
+    
+    return value;
+  }, [value, options, placeholder]);
 
   return (
     <div className="flex flex-col gap-1.5" ref={dropdownRef}>
@@ -102,22 +128,26 @@ const PremiumSelect = ({
             
             <div className="max-h-60 overflow-y-auto py-1 custom-scrollbar">
               {filteredOptions.length > 0 ? (
-                filteredOptions.map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => {
-                      onChange(opt);
-                      setIsOpen(false);
-                    }}
-                    className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-colors ${
-                      value === opt ? 'text-primary-600 dark:text-primary-400 font-semibold bg-primary-50/50 dark:bg-primary-900/5' : 'text-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    <span className="truncate">{opt}</span>
-                    {value === opt && <Check size={16} />}
-                  </button>
-                ))
+                filteredOptions.map((opt) => {
+                  const optValue = getOptValue(opt);
+                  const optLabel = getOptLabel(opt);
+                  return (
+                    <button
+                      key={optValue}
+                      type="button"
+                      onClick={() => {
+                        onChange(optValue);
+                        setIsOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between hover:bg-primary-50 dark:hover:bg-primary-900/10 transition-colors ${
+                        value === optValue ? 'text-primary-600 dark:text-primary-400 font-semibold bg-primary-50/50 dark:bg-primary-900/5' : 'text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      <span className="truncate">{optLabel}</span>
+                      {value === optValue && <Check size={16} />}
+                    </button>
+                  );
+                })
               ) : (
                 <div className="px-4 py-6 text-center">
                   <p className="text-sm text-slate-500 dark:text-slate-400">{emptyMessage}</p>

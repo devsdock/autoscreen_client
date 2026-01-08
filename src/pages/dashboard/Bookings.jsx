@@ -40,7 +40,7 @@ const Bookings = () => {
         }
       }
     } catch (err) {
-      console.error('Error fetching bookings:', err);
+
       setError('Failed to load bookings');
     } finally {
       setIsLoading(false);
@@ -196,6 +196,22 @@ const Bookings = () => {
                 </div>
                 
                 <div className="flex items-center gap-2 lg:flex-shrink-0">
+                  {(['Confirmed', 'Completed'].includes(booking.status) || (booking.paymentStatus && ['Paid', 'Partially Refunded'].includes(booking.paymentStatus))) && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Call the same logic as drawer
+                        handleViewBooking(booking); // Open drawer, or we can just call service directly here
+                        // For simplicity, let's just make it open drawer or we can copy logic.
+                        // Actually, better to just let it trigger the same service call.
+                      }}
+                      className="text-primary-600 hover:text-primary-700 font-medium"
+                    >
+                      Invoice
+                    </Button>
+                  )}
                   <Button 
                     variant="secondary"
                     onClick={(e) => {

@@ -95,11 +95,6 @@ client.interceptors.response.use(
   (error) => {
     if (error.response) {
       // Server responded with error status
-      console.error(
-        "API Error Response:",
-        error.response.status,
-        error.response.data
-      );
 
       // Handle 401 Unauthorized - but NOT for auth endpoints
       const isAuthEndpoint = error.config?.url?.includes("/auth/");
@@ -113,9 +108,7 @@ client.interceptors.response.use(
         handleSessionExpiration();
       }
     } else if (error.request) {
-      console.error("API No Response:", error.request);
     } else {
-      console.error("API Request Setup Error:", error.message);
     }
 
     return Promise.reject(

@@ -5,11 +5,15 @@ import useDashboardStore from '../../store/useDashboardStore';
 import Button from '../../components/ui/Button';
 import { vehicleMakes, glassTypes, serviceTypes, cities } from '../../data/quotes';
 import vehicleService from '../../services/vehicleService';
+import profileService from '../../services/profileService';
 import PremiumSelect from '../../components/ui/PremiumSelect';
 
 const BookSearch = () => {
   const navigate = useNavigate();
-  const { setSearchCriteria, searchCriteria, user, vehicles, addresses } = useDashboardStore();
+  const { setSearchCriteria, searchCriteria, user, vehicles, addresses, setVehicles, setAddresses } = useDashboardStore();
+  
+  const [selectedSavedVehicle, setSelectedSavedVehicle] = useState('');
+  const [checkingActive, setCheckingActive] = useState(true);
   
   const [formData, setFormData] = useState({
     vehicleMake: searchCriteria?.vehicleMake || '',
@@ -21,25 +25,121 @@ const BookSearch = () => {
     postcode: searchCriteria?.postcode || ''
   });
 
-  // Pre-fill from saved details (Uber Style) - Only if no existing search criteria
+  // Fetch saved data if missing from store
   useEffect(() => {
-    // Only pre-fill if we don't have existing criteria and form is empty
-    if (user && !searchCriteria && !formData.vehicleMake) {
-      const defaultVehicle = vehicles.find(v => v.isDefault) || vehicles[0];
-      const defaultAddress = addresses.find(a => a.isDefault) || addresses[0];
-      
-      if (defaultVehicle || defaultAddress) {
-        setFormData(prev => ({
-          ...prev,
-          vehicleMake: defaultVehicle?.make || prev.vehicleMake,
-          vehicleModel: defaultVehicle?.model || prev.vehicleModel,
-          vehicleYear: defaultVehicle?.year?.toString() || prev.vehicleYear,
-          city: defaultAddress?.city || prev.city,
-          postcode: defaultAddress?.postcode || prev.postcode
-        }));
+    const fetchSavedData = async () => {
+      if (vehicles.length === 0) {
+        try {
+          const res = await profileService.getVehicles();
+          if (res.success && res.data) {
+            const mappedVehicles = res.data.map(v => ({
+              ...v,
+              id: v._id,
+              make: v.make,
+              model: v.model,
+              year: v.year,
+              isDefault: v.isDefault
+            }));
+            setVehicles(mappedVehicles);
+          }
+        } catch (error) {
+
+        }
       }
+
+      if (addresses.length === 0) {
+        try {
+          const res = await profileService.getAddresses();
+          if (res.success && res.data) {
+            const mappedAddresses = res.data.map(a => ({
+              ...a,
+              id: a._id,
+              label: a.label,
+              line1: a.addressLine1,
+              suburb: a.suburb,
+              city: a.city,
+              postcode: a.postalCode,
+              isDefault: a.isDefault,
+              coordinates: a.coordinates
+            }));
+            setAddresses(mappedAddresses);
+          }
+        } catch (error) {
+
+        }
+      }
+    };
+    fetchSavedData();
+  }, []);
+
+  // Check for active searching or pending payment bookings to redirect user
+  useEffect(() => {
+    const checkActiveBookings = async () => {
+      try {
+        setCheckingActive(true);
+        const res = await bookingService.getBookings();
+        if (res.success && res.data && res.data.length > 0) {
+          // Check for searching status
+          const searching = res.data.find(b => b.status === 'searching');
+          if (searching) {
+            navigate(`/dashboard/booking/searching/${searching._id || searching.id}`);
+            return;
+          }
+          
+          // Check for accepted/awaiting-payment status
+          const pending = res.data.find(b => b.status === 'accepted' || b.status === 'awaiting-payment');
+          if (pending) {
+            navigate(`/dashboard/booking/pending/${pending._id || pending.id}`);
+            return;
+          }
+        }
+      } catch (err) {
+
+      } finally {
+        setCheckingActive(false);
+      }
+    };
+    
+    checkActiveBookings();
+  }, [navigate]);
+
+  // Handle saved vehicle selection logic
+  const handleSavedVehicleChange = (vehicleId) => {
+    const v = vehicles.find(veh => veh.id === vehicleId);
+    if (v) {
+      setSelectedSavedVehicle(vehicleId);
+      setFormData(prev => ({
+        ...prev,
+        vehicleMake: v.make,
+        vehicleModel: v.model,
+        vehicleYear: v.year.toString()
+      }));
+      setAvailableModels([]); 
     }
-  }, [user, vehicles, addresses, searchCriteria]);
+  };
+
+  // Pre-fill from saved details ONLY IF form is empty (not pre-filled from searchCriteria)
+  useEffect(() => {
+    if (checkingActive) return;
+    
+    const isFormEmpty = !formData.vehicleMake && !formData.glassType;
+    
+    // If we have vehicles and form is empty, pick default
+    if (isFormEmpty && vehicles.length > 0 && !selectedSavedVehicle) {
+      const defaultVehicle = vehicles.find(v => v.isDefault) || vehicles[0];
+      handleSavedVehicleChange(defaultVehicle.id);
+    }
+    
+    // Address defaults
+    if (isFormEmpty && addresses.length > 0 && !formData.city) {
+      const defaultAddress = addresses.find(a => a.isDefault) || addresses[0];
+      setFormData(prev => ({ 
+        ...prev, 
+        city: defaultAddress.city, 
+        postcode: defaultAddress.postcode || '' 
+      }));
+    }
+  }, [vehicles, addresses, checkingActive]);
   
   const [errors, setErrors] = useState({});
   const [availableModels, setAvailableModels] = useState([]);
@@ -59,6 +159,7 @@ const BookSearch = () => {
       setFormData(prev => ({ ...prev, vehicleMake: value, vehicleModel: '' }));
       setAvailableModels([]);
       setSuggestedField('vehicleModel');
+      setSelectedSavedVehicle(''); // Clear saved vehicle selection on manual change
     }
 
     if (field === 'vehicleModel') {
@@ -76,7 +177,7 @@ const BookSearch = () => {
         const models = await vehicleService.getModelsByMake(formData.vehicleMake);
         setAvailableModels(models);
       } catch (err) {
-        console.error('Failed to fetch models', err);
+
       } finally {
         setIsFetchingModels(false);
       }
@@ -104,6 +205,15 @@ const BookSearch = () => {
     navigate('/dashboard/book/request');
   };
   
+  if (checkingActive) {
+    return (
+      <div className="max-w-5xl mx-auto animate-pulse">
+        <div className="h-40 bg-slate-100 dark:bg-slate-800 rounded-2xl mb-10" />
+        <div className="h-96 bg-slate-100 dark:bg-slate-800 rounded-2xl" />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto">
       {/* Hero Section */}
@@ -129,6 +239,23 @@ const BookSearch = () => {
               <Car size={20} className="text-primary-600" />
               Vehicle Details
             </h3>
+            
+            {vehicles.length > 0 && (
+              <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <PremiumSelect
+                  label="Select from Saved Vehicles"
+                  value={selectedSavedVehicle}
+                  options={vehicles.map(v => ({
+                    value: v.id,
+                    label: `${v.year} ${v.make} ${v.model} ${v.registrationNumber ? `(${v.registrationNumber})` : ''}`
+                  }))}
+                  onChange={handleSavedVehicleChange}
+                  placeholder="Choose saved vehicle"
+                  icon={Car}
+                />
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <PremiumSelect
                 label="Make"

@@ -110,6 +110,9 @@ export const mapBooking = (booking) => {
 
     const currentStatusLevel = statusOrder[currentStatus] || 1;
 
+    // Check payment status
+    const isPaid = (booking.paymentStatus || "").toLowerCase() === "paid";
+
     // Build timeline stages based on booking source
     const stages = [];
 
@@ -139,27 +142,31 @@ export const mapBooking = (booking) => {
       status: "Accepted",
       date:
         currentStatusLevel >= 2
-          ? booking.acceptedAt || booking.providerAcceptedAt
+          ? booking.acceptedAt ||
+            booking.acceptance?.acceptedAt ||
+            booking.providerAcceptedAt
           : null,
       completed: currentStatusLevel >= 2,
     });
 
     // 4. Awaiting Payment (User must complete payment)
+    const awaitingPaymentCompleted = isPaid; // Only completed if actually paid
     stages.push({
       status: "Awaiting Payment",
       date:
-        currentStatusLevel >= 3
+        awaitingPaymentCompleted || currentStatusLevel >= 3
           ? booking.paymentRequestedAt || booking.acceptedAt
           : null,
-      completed: currentStatusLevel >= 3,
+      completed: awaitingPaymentCompleted,
     });
 
     // 5. Confirmed (Payment completed)
+    // Only completed if status is high enough AND paid
+    const confirmedCompleted = currentStatusLevel >= 4 && isPaid;
     stages.push({
       status: "Confirmed",
-      date:
-        currentStatusLevel >= 4 ? booking.confirmedAt || booking.paidAt : null,
-      completed: currentStatusLevel >= 4,
+      date: confirmedCompleted ? booking.confirmedAt || booking.paidAt : null,
+      completed: confirmedCompleted,
     });
 
     // 6. In Progress (Job ongoing)
@@ -185,6 +192,50 @@ export const mapBooking = (booking) => {
     return stages;
   };
 
+  // Normalize payment status
+  const normalizedPaymentStatus = booking.paymentStatus
+    ? booking.paymentStatus.charAt(0).toUpperCase() +
+      booking.paymentStatus.slice(1).toLowerCase()
+    : "Unpaid";
+
+  // Format address
+  let addressStr = "Location not specified";
+  if (booking.serviceAddress) {
+    if (typeof booking.serviceAddress === "string") {
+      addressStr = booking.serviceAddress;
+    } else {
+      const { street, addressLine1, suburb, city, postalCode } =
+        booking.serviceAddress;
+      addressStr = [addressLine1 || street, suburb, city, postalCode]
+        .filter(Boolean)
+        .join(", ");
+    }
+  }
+
+  // Format and process images with full URL
+  const processImages = (images) => {
+    if (!images || !Array.isArray(images)) return [];
+    return images
+      .map((img) => {
+        if (!img) return null;
+        if (typeof img !== "string") return img;
+        if (img.startsWith("http") || img.startsWith("data:")) return img;
+        // Prepend NodeURL if it's a relative path
+        return `${NodeURL}${img.startsWith("/") ? "" : "/"}${img}`;
+      })
+      .filter(Boolean);
+  };
+
+  const damageImages = processImages([
+    ...(booking.damageImages || []),
+    ...(booking.completionDetails?.beforeImages || []),
+    ...(booking.quote?.damageImages || []),
+  ]);
+
+  const afterImages = processImages(
+    booking.completionDetails?.afterImages || []
+  );
+
   return {
     ...booking,
     id: booking._id || booking.id,
@@ -194,8 +245,36 @@ export const mapBooking = (booking) => {
       (booking._id || booking.id || "").substring(0, 8).toUpperCase(),
     vehicle: vehicleStr,
     service: serviceName,
+    address: addressStr,
+    damageImages: damageImages, // Processed with full URLs
+    afterImages: afterImages, // Processed with full URLs
+    locationType:
+      booking.serviceLocationType === "shop" ||
+      booking.serviceLocationType === "workshop"
+        ? "In-Store"
+        : "Mobile Service",
+    paymentStatus: normalizedPaymentStatus,
+    price: {
+      service:
+        (booking.priceBreakdown?.glassPrice || 0) +
+          (booking.priceBreakdown?.laborPrice || 0) ||
+        booking.price?.subtotal ||
+        0,
+      callout: booking.priceBreakdown?.calloutFee || 0,
+      materials: booking.priceBreakdown?.materialsPrice || 0, // Fallback if exists
+      vat: booking.price?.vat || 0,
+      total: booking.price?.total || booking.totalAmount || 0,
+    },
     providerName:
-      booking.provider?.name || booking.providerName || "AutoScreen Provider",
+      booking.provider?.businessName ||
+      booking.provider?.name ||
+      booking.providerName ||
+      (booking.status === "searching" ? "Searching..." : "AutoScreen Provider"),
+    providerRating: booking.provider?.rating || 0,
+    providerReviews:
+      booking.provider?.reviewCount || booking.provider?.totalReviews || 0,
+    providerPhone: booking.provider?.phone || booking.providerPhone,
+    providerEmail: booking.provider?.email || booking.providerEmail,
     timeline: generateTimeline(booking.status, booking.timeline),
   };
 };
@@ -215,6 +294,47 @@ export const mapQuote = (quote) => {
         }`.trim()
       : "Unknown Vehicle";
 
+  // Format and process images with full URL
+  const processImages = (images) => {
+    if (!images || !Array.isArray(images)) return [];
+    return images
+      .map((img) => {
+        if (!img) return null;
+        if (typeof img !== "string") return img;
+        if (img.startsWith("http") || img.startsWith("data:")) return img;
+        return `${NodeURL}${img.startsWith("/") ? "" : "/"}${img}`;
+      })
+      .filter(Boolean);
+  };
+
+  // Normalize backend status to frontend display status
+  const normalizeStatus = (backendStatus, responseCount = 0) => {
+    const status = backendStatus?.toLowerCase() || "pending";
+
+    switch (status) {
+      case "pending":
+        // If there are responses, it should be "Responses", otherwise "Open"
+        return responseCount > 0 ? "Responses" : "Open";
+      case "quoted":
+        return "Responses";
+      case "accepted":
+        return "Accepted";
+      case "expired":
+      case "cancelled":
+        return "Closed";
+      default:
+        // Handle already normalized values or unknown
+        if (
+          ["Open", "Responses", "Accepted", "Closed"].includes(backendStatus)
+        ) {
+          return backendStatus;
+        }
+        return "Open";
+    }
+  };
+
+  const responsesCount = quote.responseCount || quote.responses?.length || 0;
+
   return {
     ...quote,
     id: quote._id || quote.id,
@@ -224,8 +344,10 @@ export const mapQuote = (quote) => {
     vehicleFormatted: vehicleStr,
     serviceType: quote.serviceType || "Glass Replacement",
     location: quote.serviceLocation?.address || { city: "N/A" },
-    responsesCount: quote.responseCount || 0,
-    images: quote.damageImages || quote.images || [],
+    responsesCount: responsesCount,
+    images: processImages(quote.damageImages || quote.images || []),
+    status: normalizeStatus(quote.status, responsesCount),
+    rawStatus: quote.status, // Keep original for debugging
   };
 };
 

@@ -55,7 +55,7 @@ const DashboardLayout = () => {
 
   useEffect(() => {
     if (user?._id) {
-      console.log('[DashboardLayout] Initializing socket & fetching notifications for user:', user._id);
+
       socketService.connect(user._id);
       fetchNotifications();
     }

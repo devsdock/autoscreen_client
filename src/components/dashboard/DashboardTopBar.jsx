@@ -117,18 +117,6 @@ const DashboardTopBar = () => {
         >
           <Menu size={20} />
         </button>
-        
-        {/* Search bar */}
-        <div className="relative">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search something"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-64 lg:w-80 pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-0 rounded-lg text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all"
-          />
-        </div>
       </div>
 
       {/* Right side - Theme + Notifications + Help + Profile */}
@@ -181,8 +169,8 @@ const DashboardTopBar = () => {
                       key={notif._id}
                       onClick={() => {
                         if (!notif.isRead) markAsRead(notif._id);
-                        if (notif.type.includes('quote')) navigate(`/dashboard/quotes?id=${notif.data?.quoteId || ''}`);
-                        if (notif.type.includes('booking')) navigate(`/dashboard/bookings?id=${notif.data?.bookingId || ''}`);
+                        if (notif.type.includes('quote')) navigate(`/dashboard/quotes/${notif.data?.quoteId || ''}`);
+                        if (notif.type.includes('booking')) navigate(`/dashboard/bookings/${notif.data?.bookingId || ''}`);
                         setNotifOpen(false);
                       }}
                       className={`

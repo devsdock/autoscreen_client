@@ -105,9 +105,14 @@ const Quotes = () => {
     }
   };
   
-  const handleRequestModalClose = (newQuoteId) => {
+  const handleRequestModalClose = async (newQuoteId) => {
     setShowRequestModal(false);
     if (newQuoteId) {
+      // Refresh the list to show the new quote
+      setIsLoading(true);
+      await fetchQuotes();
+      setIsLoading(false);
+      
       setSelectedQuoteId(newQuoteId);
       navigate(`/dashboard/quotes/${newQuoteId}`);
     }

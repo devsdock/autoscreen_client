@@ -91,17 +91,26 @@ const bookingService = {
   // ============================================
 
   /**
+   * Upload damage images
+   */
+  uploadDamageImages: (formData) => {
+    return request({
+      method: "POST",
+      url: "/customer/bookings/upload-images",
+      data: formData,
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
+  /**
    * Create a new booking request (broadcast to providers)
    * This creates booking in "searching" status and broadcasts to nearby providers
    */
   createBookingRequest: (data) => {
-    console.log("Creating booking request with data:", data);
     if (!data.serviceAddress?.coordinates) {
-      console.warn(
-        "⚠️ WARNING: No coordinates in booking request! Backend will fall back to city matching."
-      );
     } else {
-      console.log("✅ Coordinates present:", data.serviceAddress.coordinates);
     }
 
     return request({
@@ -141,6 +150,16 @@ const bookingService = {
     return request({
       method: "POST",
       url: `/customer/bookings/${bookingId}/complete`,
+    });
+  },
+
+  /**
+   * Get invoice data
+   */
+  getInvoice: (bookingId) => {
+    return request({
+      method: "GET",
+      url: `/customer/bookings/${bookingId}/invoice`,
     });
   },
 };

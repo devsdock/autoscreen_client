@@ -241,7 +241,7 @@ const Support = () => {
                     <Button 
                       variant="primary" 
                       className="w-full" 
-                      onClick={() => window.location.href = '/dashboard/messages'}
+                      onClick={() => window.location.href = '/customer/dashboard/messages'}
                     >
                       <MessageSquare size={16} />
                       View in Messages

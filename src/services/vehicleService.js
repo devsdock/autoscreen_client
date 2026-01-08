@@ -25,7 +25,6 @@ const vehicleService = {
       }
       return [];
     } catch (error) {
-      console.error(`Error fetching models for ${make}:`, error);
       return [];
     }
   },
@@ -44,7 +43,6 @@ const vehicleService = {
       }
       return [];
     } catch (error) {
-      console.error("Error fetching makes:", error);
       return [];
     }
   },

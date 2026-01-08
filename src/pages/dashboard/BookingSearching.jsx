@@ -15,7 +15,7 @@ const POLL_INTERVAL = 3000;
 const BookingSearching = () => {
   const { bookingId } = useParams();
   const navigate = useNavigate();
-  const { addToast } = useDashboardStore();
+  const { addToast, setSearchCriteria } = useDashboardStore();
   
   const [booking, setBooking] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,7 +50,7 @@ const BookingSearching = () => {
           setIsLoading(false);
         }
       } catch (error) {
-        console.error('Error loading booking:', error);
+
         setIsLoading(false);
       }
     };
@@ -84,7 +84,7 @@ const BookingSearching = () => {
           }
         }
       } catch (error) {
-        console.error('Error polling status:', error);
+
       }
     };
     
@@ -92,12 +92,27 @@ const BookingSearching = () => {
     return () => clearInterval(interval);
   }, [booking, bookingId, navigate, addToast]);
   
+  const handleModify = () => {
+    // Populate store with current booking details so form is pre-filled
+    const criteria = {
+      vehicleMake: booking.vehicle?.make || '',
+      vehicleModel: booking.vehicle?.model || '',
+      vehicleYear: (booking.vehicle?.year || new Date().getFullYear()).toString(),
+      glassType: booking.glassType || '',
+      serviceType: booking.serviceType || '',
+      city: booking.serviceAddress?.city || '',
+      postcode: booking.serviceAddress?.postalCode || ''
+    };
+    setSearchCriteria(criteria);
+    navigate('/dashboard/book');
+  };
+  
   const handleCancel = async () => {
     setIsCancelling(true);
     try {
       await bookingService.cancelBooking(bookingId, cancelReason);
       addToast({ type: 'info', message: 'Booking request cancelled' });
-      navigate('/dashboard/bookings');
+      handleModify(); // This will pre-fill the form and navigate back
     } catch (error) {
       addToast({ type: 'error', message: 'Failed to cancel request' });
     } finally {
@@ -339,16 +354,13 @@ const BookingSearching = () => {
               <Button 
                 variant="secondary" 
                 className="flex-1"
-                onClick={() => navigate('/dashboard/book')}
+                onClick={handleModify}
               >
                 Modify Request
               </Button>
               <Button 
                 className="flex-1"
-                onClick={() => {
-                  // TODO: Retry with same details
-                  navigate('/dashboard/book');
-                }}
+                onClick={handleModify}
               >
                 Try Again
                 <ArrowRight size={18} />
@@ -359,7 +371,7 @@ const BookingSearching = () => {
         
         {isCancelled && (
           <div className="text-center">
-            <Button onClick={() => navigate('/dashboard/book')}>
+            <Button onClick={handleModify}>
               Create New Request
             </Button>
           </div>

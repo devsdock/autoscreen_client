@@ -3,7 +3,13 @@ import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const PremiumDatePicker = ({ label, value, onChange, placeholder, minDate, error, availableDates, required }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [viewDate, setViewDate] = useState(value ? new Date(value) : new Date());
+  const [viewDate, setViewDate] = useState(() => {
+    if (value) {
+      const [y, m, d] = value.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+    return new Date();
+  });
   const dropdownRef = useRef(null);
 
   const months = [
@@ -33,15 +39,23 @@ const PremiumDatePicker = ({ label, value, onChange, placeholder, minDate, error
 
   const isSelected = (day) => {
     if (!value) return false;
-    const d = new Date(value);
-    return d.getDate() === day && 
-           d.getMonth() === viewDate.getMonth() && 
-           d.getFullYear() === viewDate.getFullYear();
+    const [y, m, d] = value.split('-').map(Number);
+    return d === day && 
+           (m - 1) === viewDate.getMonth() && 
+           y === viewDate.getFullYear();
+  };
+
+  // Helper to format date as YYYY-MM-DD in local timezone (prevents UTC shift)
+  const formatLocalDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const isDisabled = (day) => {
     const date = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatLocalDate(date);
 
     // Check if date is in availableDates if provided
     if (availableDates && availableDates.length > 0) {
@@ -49,7 +63,8 @@ const PremiumDatePicker = ({ label, value, onChange, placeholder, minDate, error
     }
 
     if (!minDate) return false;
-    const min = new Date(minDate);
+    const [my, mm, md] = minDate.split('-').map(Number);
+    const min = new Date(my, mm - 1, md);
     min.setHours(0, 0, 0, 0);
     return date < min;
   };
@@ -57,7 +72,7 @@ const PremiumDatePicker = ({ label, value, onChange, placeholder, minDate, error
   const handleDateSelect = (day) => {
     if (isDisabled(day)) return;
     const selectedDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
-    const formattedDate = selectedDate.toISOString().split('T')[0];
+    const formattedDate = formatLocalDate(selectedDate);
     onChange(formattedDate);
     setIsOpen(false);
   };
@@ -74,7 +89,10 @@ const PremiumDatePicker = ({ label, value, onChange, placeholder, minDate, error
 
   const formatDateLabel = (dateStr) => {
     if (!dateStr) return null;
-    return new Date(dateStr).toLocaleDateString('en-GB', { 
+    // Parse YYYY-MM-DD string safely without timezone shift
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('en-GB', { 
       day: 'numeric', 
       month: 'short', 
       year: 'numeric' 
@@ -170,7 +188,7 @@ const PremiumDatePicker = ({ label, value, onChange, placeholder, minDate, error
               <button 
                 type="button"
                 onClick={() => {
-                  onChange(new Date().toISOString().split('T')[0]);
+                  onChange(formatLocalDate(new Date()));
                   setIsOpen(false);
                 }}
                 className="flex-1 py-2 text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors"

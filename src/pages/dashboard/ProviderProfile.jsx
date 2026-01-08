@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import useDashboardStore, { formatCurrency, formatDate } from '../../store/useDashboardStore';
 import Button from '../../components/ui/Button';
+import { getTodayString } from '../../utils/dateUtils';
 
 const ProviderProfile = () => {
   const { id } = useParams();
@@ -24,7 +25,7 @@ const ProviderProfile = () => {
   // Get next available slots
   const nextAvailableSlots = useMemo(() => {
     if (!provider?.availability) return [];
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayString();
     return provider.availability
       .filter(a => a.date >= today)
       .slice(0, 3)

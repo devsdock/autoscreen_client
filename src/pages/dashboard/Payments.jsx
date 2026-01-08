@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, CreditCard, Wallet, Calendar, Receipt, Download } from 'lucide-react';
 import useDashboardStore, { formatDate, formatCurrency } from '../../store/useDashboardStore';
+import bookingService from '../../services/bookingService';
 import PageHeader from '../../components/ui/PageHeader';
 import Card, { CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import StatCard from '../../components/ui/StatCard';
@@ -13,14 +14,69 @@ import EmptyState from '../../components/ui/EmptyState';
 import PaymentModal from '../../components/dashboard/PaymentModal';
 
 const Payments = () => {
-  const { payments, getPaymentSummary, addToast } = useDashboardStore();
+  const { addToast } = useDashboardStore();
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch payments from bookings
+  useEffect(() => {
+    const fetchPayments = async () => {
+      setLoading(true);
+      try {
+        const res = await bookingService.getBookings({ limit: 50 });
+        if (res.success && res.data) {
+          const mappedPayments = res.data
+            .filter(booking => !['searching', 'expired'].includes(booking.status))
+            .map(booking => {
+              const paymentStatus = booking.paymentStatus?.toLowerCase();
+              const bookingStatus = booking.status?.toLowerCase();
+              
+              // Determine status for display
+              let status = 'Unpaid';
+              if (paymentStatus === 'paid') status = 'Paid';
+              else if (paymentStatus === 'refunded' || paymentStatus === 'partially_refunded') status = 'Refunded';
+              else if (bookingStatus === 'cancelled') status = 'Refunded';
+              else if (bookingStatus === 'accepted' || bookingStatus === 'awaiting-payment') status = 'Unpaid';
+              else status = 'Pending';
+              
+              return {
+                id: booking._id,
+                bookingId: booking._id,
+                bookingRef: booking.bookingNumber,
+                service: booking.serviceType,
+                providerName: booking.provider?.businessName || booking.provider?.name || 'Pending Provider',
+                amount: booking.price?.total || 0,
+                date: booking.paidAt || booking.createdAt,
+                dueDate: booking.scheduledDate,
+                method: booking.paymentMethod || '—',
+                status: status,
+                originalStatus: booking.status, 
+                breakdown: {
+                  service: booking.priceBreakdown?.laborPrice || booking.price?.subtotal || booking.price?.total || 0,
+                  callout: booking.priceBreakdown?.calloutFee || 0,
+                  materials: booking.priceBreakdown?.glassPrice || 0
+                }
+              };
+            });
+          setPayments(mappedPayments);
+        }
+      } catch (err) {
+        console.error("Failed to fetch payments", err);
+        addToast({ type: 'error', message: 'Failed to load payments' });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPayments();
+  }, [addToast]);
   
-  const summary = getPaymentSummary();
-  const totalSpent = summary.paid.total;
-  const pendingTotal = summary.unpaid.total + summary.pending.total;
+  // Calculate summary stats
+  const totalSpent = payments.filter(p => p.status === 'Paid').reduce((sum, p) => sum + p.amount, 0);
+  const pendingTotal = payments.filter(p => p.status === 'Unpaid').reduce((sum, p) => sum + p.amount, 0);
   const lastPaid = payments.filter(p => p.status === 'Paid').sort((a, b) => 
     new Date(b.date) - new Date(a.date)
   )[0];
@@ -128,7 +184,7 @@ const Payments = () => {
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800">
                   <th className="text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider px-6 py-3">
-                    Payment ID
+                    S.No
                   </th>
                   <th className="text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider px-6 py-3">
                     Booking
@@ -157,10 +213,12 @@ const Payments = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {sortedPayments.map((payment) => (
+                {sortedPayments.map((payment, index) => (
                   <tr key={payment.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="px-6 py-4">
-                      <span className="font-mono text-sm text-slate-600 dark:text-slate-400">#{payment.id}</span>
+                      <span className="font-mono text-sm text-slate-600 dark:text-slate-400">
+                        {(index + 1).toString().padStart(2, '0')}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <Link 
@@ -188,7 +246,7 @@ const Payments = () => {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-slate-600 dark:text-slate-400">
-                        {payment.method || '—'}
+                        {payment.method && payment.method !== '—' ? payment.method : '—'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -224,11 +282,13 @@ const Payments = () => {
           
           {/* Mobile Cards */}
           <div className="lg:hidden divide-y divide-slate-100 dark:divide-slate-800">
-            {sortedPayments.map((payment) => (
+            {sortedPayments.map((payment, index) => (
               <div key={payment.id} className="p-4 space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <span className="font-mono text-sm text-slate-500 dark:text-slate-400">#{payment.id}</span>
+                    <span className="font-mono text-sm text-slate-500 dark:text-slate-400">
+                      #{(index + 1).toString().padStart(2, '0')}
+                    </span>
                     <p className="font-semibold text-slate-900 dark:text-white mt-1">{payment.service}</p>
                     <p className="text-sm text-slate-500 dark:text-slate-400">{payment.providerName}</p>
                   </div>
@@ -270,6 +330,11 @@ const Payments = () => {
         payment={selectedPayment}
         isOpen={!!selectedPayment}
         onClose={() => setSelectedPayment(null)}
+        onSuccess={() => {
+          setPayments(prev => prev.map(p => 
+            p.id === selectedPayment.id ? { ...p, status: 'Paid' } : p
+          ));
+        }}
       />
     </div>
   );

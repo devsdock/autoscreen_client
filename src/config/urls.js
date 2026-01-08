@@ -16,10 +16,16 @@ export const URLS = {
   MAIN_SITE: getUrl("VITE_MAIN_SITE_URL", "http://localhost:7000"),
 
   // Customer Portal (Self)
-  CUSTOMER_PORTAL: getUrl("VITE_CUSTOMER_PORTAL_URL", "http://localhost:7002"),
+  CUSTOMER_PORTAL: getUrl(
+    "VITE_CUSTOMER_PORTAL_URL",
+    "http://localhost:7002/customer"
+  ),
 
   // Provider Portal (Fitter/Business)
-  PROVIDER_PORTAL: getUrl("VITE_PROVIDER_PORTAL_URL", "http://localhost:7003"),
+  PROVIDER_PORTAL: getUrl(
+    "VITE_PROVIDER_PORTAL_URL",
+    "http://localhost:7003/provider"
+  ),
 
   // API Backend
   API: getUrl("VITE_API_URL", "http://localhost:5000"),

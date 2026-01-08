@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { 
   Plus,
   ChevronDown,
@@ -77,7 +77,7 @@ const Overview = () => {
         }
       }
     } catch (err) {
-      console.error('Dashboard fetch error:', err);
+
       setError(err?.message || 'Failed to load dashboard data');
       // Will fall back to store data
     } finally {
@@ -183,7 +183,7 @@ const Overview = () => {
           fetchData();
         }
       } catch (err) {
-        console.error('Cancel booking error:', err);
+
         alert(err.message || 'Failed to cancel booking');
       }
     }

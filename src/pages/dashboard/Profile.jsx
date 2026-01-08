@@ -171,7 +171,7 @@ const Profile = () => {
         setAddresses(mappedAddresses);
       }
     } catch (error) {
-      console.error("Error fetching profile:", error);
+
       addToast({ type: "error", message: "Failed to load profile data" });
       // Fall back to store/auth data if available
       if (authUser) {
@@ -200,7 +200,7 @@ const Profile = () => {
         const models = await vehicleService.getModelsByMake(vehicleForm.make);
         setAvailableModels(models);
       } catch (err) {
-        console.error('Failed to fetch models', err);
+
         setAvailableModels([]);
       } finally {
         setIsFetchingModels(false);
@@ -255,7 +255,7 @@ const Profile = () => {
             authData.state.user = res.data;
             localStorage.setItem('autoscreen-auth', JSON.stringify(authData));
           } catch (e) {
-            console.error('Failed to update auth storage:', e);
+
           }
         }
         
@@ -263,7 +263,7 @@ const Profile = () => {
         addToast({ type: "success", message: "Profile updated successfully" });
       }
     } catch (error) {
-      console.error("Error updating profile:", error);
+
       addToast({ type: "error", message: "Failed to update profile" });
     } finally {
       setIsSaving(false);
@@ -311,7 +311,7 @@ const Profile = () => {
         addToast({ type: "success", message: "Profile photo updated successfully" });
       }
     } catch (error) {
-      console.error("Error updating avatar:", error);
+
       addToast({ type: "error", message: error.message || "Failed to update profile photo" });
     } finally {
       setUploadingAvatar(false);
@@ -380,7 +380,7 @@ const Profile = () => {
         });
       }
     } catch (error) {
-      console.error("Error saving vehicle:", error);
+
       addToast({ type: "error", message: "Failed to save vehicle" });
     } finally {
       setIsSaving(false);
@@ -405,7 +405,7 @@ const Profile = () => {
         addToast({ type: "success", message: "Vehicle removed" });
       }
     } catch (error) {
-      console.error("Error deleting vehicle:", error);
+
       addToast({ type: "error", message: "Failed to remove vehicle" });
     } finally {
       setDeleteVehicleId(null);
@@ -477,7 +477,7 @@ const Profile = () => {
         });
       }
     } catch (error) {
-      console.error("Error saving address:", error);
+
       addToast({ type: "error", message: "Failed to save address" });
     } finally {
       setIsSaving(false);
@@ -502,7 +502,7 @@ const Profile = () => {
         addToast({ type: "success", message: "Address removed" });
       }
     } catch (error) {
-      console.error("Error deleting address:", error);
+
       addToast({ type: "error", message: "Failed to remove address" });
     } finally {
       setDeleteAddressId(null);
@@ -530,7 +530,7 @@ const Profile = () => {
         addToast({ type: "success", message: "Preferences updated" });
       }
     } catch (error) {
-      console.error("Error updating notifications:", error);
+
       // Revert on error
       setNotifications(notifications);
       addToast({ type: "error", message: "Failed to update preferences" });
@@ -561,7 +561,7 @@ const Profile = () => {
         addToast({ type: "success", message: "Password changed successfully" });
       }
     } catch (error) {
-      console.error("Error changing password:", error);
+
       addToast({ type: "error", message: error.message || "Failed to change password" });
     } finally {
       setIsSaving(false);
@@ -579,7 +579,7 @@ const Profile = () => {
         await logout();
       }
     } catch (error) {
-      console.error("Error deleting account:", error);
+
       addToast({ type: "error", message: "Failed to delete account" });
     } finally {
       setIsSaving(false);

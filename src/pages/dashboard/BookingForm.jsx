@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import useDashboardStore, { formatCurrency, formatDate } from '../../store/useDashboardStore';
 import bookingService from '../../services/bookingService';
+import profileService from '../../services/profileService';
 import vehicleService from '../../services/vehicleService';
 import geocodingService from '../../services/geocodingService';
 import Button from '../../components/ui/Button';
@@ -14,6 +15,7 @@ import { glassTypes } from '../../data/providers';
 import { vehicleMakes, cities } from '../../data/quotes';
 import PremiumSelect from '../../components/ui/PremiumSelect';
 import PremiumDatePicker from '../../components/ui/PremiumDatePicker';
+import { getTodayString, formatLocalDate } from '../../utils/dateUtils';
 
 const steps = [
   { id: 1, title: 'Service', icon: FileText },
@@ -29,8 +31,100 @@ const BookingForm = () => {
     addresses, 
     vehicles,
     addAddress,
-    addToast 
+    addToast,
+    setAddresses,
+    setVehicles
   } = useDashboardStore();
+
+  // Check for active searching/accepted bookings on mount
+  useEffect(() => {
+    const checkActiveBookings = async () => {
+      try {
+        // Check for searching bookings
+        const searchingRes = await bookingService.getBookings({ status: 'searching' });
+        if (searchingRes.success && searchingRes.data?.length > 0) {
+          const activeBooking = searchingRes.data[0];
+          addToast({ 
+            type: 'info', 
+            message: 'You have an active booking request searching for providers.' 
+          });
+          navigate(`/dashboard/booking/searching/${activeBooking._id || activeBooking.id}`);
+          return;
+        }
+
+        // Check for accepted bookings that still need payment
+        const acceptedRes = await bookingService.getBookings({ status: 'accepted' });
+        if (acceptedRes.success && acceptedRes.data?.length > 0) {
+          // Check if it's unpaid
+          const unpaidBooking = acceptedRes.data.find(b => 
+            (b.paymentStatus || '').toLowerCase() === 'unpaid'
+          );
+          if (unpaidBooking) {
+            addToast({ 
+              type: 'info', 
+              message: 'You have an accepted booking pending payment.' 
+            });
+            // These would normally show up in the detail drawer or a specific pending page
+            // For now, let's just let them know they should check their bookings
+          }
+        }
+      } catch (err) {
+
+      }
+    };
+
+    checkActiveBookings();
+  }, []);
+
+  // Fetch saved data if missing from store
+  useEffect(() => {
+    const fetchSavedData = async () => {
+      // Fetch vehicles
+      if (vehicles.length === 0) {
+        try {
+          const res = await profileService.getVehicles();
+          if (res.success && res.data) {
+            const mappedVehicles = res.data.map(v => ({
+              ...v,
+              id: v._id,
+              make: v.make,
+              model: v.model,
+              year: v.year,
+              isDefault: v.isDefault
+            }));
+            setVehicles(mappedVehicles);
+          }
+        } catch (error) {
+
+        }
+      }
+
+      // Fetch addresses
+      if (addresses.length === 0) {
+        try {
+          const res = await profileService.getAddresses();
+          if (res.success && res.data) {
+            const mappedAddresses = res.data.map(a => ({
+              ...a,
+              id: a._id,
+              label: a.label,
+              line1: a.addressLine1, // Consistency for BookingForm
+              suburb: a.suburb,
+              city: a.city,
+              postcode: a.postalCode,
+              isDefault: a.isDefault,
+              coordinates: a.coordinates
+            }));
+            setAddresses(mappedAddresses);
+          }
+        } catch (error) {
+
+        }
+      }
+    };
+    
+    fetchSavedData();
+  }, []);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -106,7 +200,7 @@ const BookingForm = () => {
   // Get available dates
   const availableDates = useMemo(() => {
     if (provider?.availability) {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayString();
       return provider.availability.filter(a => a.date >= today);
     }
     
@@ -116,7 +210,7 @@ const BookingForm = () => {
       const d = new Date();
       d.setDate(d.getDate() + i);
       dates.push({
-        date: d.toISOString().split('T')[0],
+        date: formatLocalDate(d),
         slots: ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-16:00', '16:00-18:00']
       });
     }
@@ -184,7 +278,7 @@ const BookingForm = () => {
         const models = await vehicleService.getModelsByMake(formData.vehicle.make);
         setAvailableModels(models);
       } catch (err) {
-        console.error('Failed to fetch models', err);
+
       } finally {
         setIsFetchingModels(false);
       }
@@ -233,7 +327,8 @@ const BookingForm = () => {
     const newImages = files.map(file => ({
       id: URL.createObjectURL(file),
       url: URL.createObjectURL(file),
-      name: file.name
+      name: file.name,
+      file: file // Store the original file for upload
     }));
     updateFormData('uploadedImages', [...formData.uploadedImages, ...newImages]);
   };
@@ -261,27 +356,57 @@ const BookingForm = () => {
       
       // Fallback: Try just suburb and city if full address fails
       if (!coords && newAddress.suburb && newAddress.city) {
-        console.log('Geocoding fallback: Suburb + City');
+
         coords = await geocodingService.getCoordinates(`${newAddress.suburb}, ${newAddress.city}, South Africa`);
       }
       
       // Fallback: Try just city if that fails
       if (!coords && newAddress.city) {
-        console.log('Geocoding fallback: City only');
+
         coords = await geocodingService.getCoordinates(`${newAddress.city}, South Africa`);
       }
     } catch (err) {
-      console.error('Geocoding failed', err);
+
     } finally {
       setIsGeocoding(false);
     }
 
-    const addressToAdd = { ...newAddress, coordinates: coords };
+    const apiPayload = {
+      label: newAddress.label,
+      addressLine1: newAddress.line1,
+      suburb: newAddress.suburb,
+      city: newAddress.city,
+      postalCode: newAddress.postcode,
+      coordinates: coords,
+      isDefault: addresses.length === 0
+    };
+
+    let addressToAdd = { ...newAddress, coordinates: coords };
+
+    // Sync with backend profile
+    try {
+      const res = await profileService.addAddress(apiPayload);
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        // Backend returns array of addresses, get the last one (newest)
+        const savedBackendAddress = res.data[res.data.length - 1];
+        
+        addressToAdd = {
+          ...addressToAdd,
+          ...savedBackendAddress,
+          id: savedBackendAddress._id,
+          line1: savedBackendAddress.addressLine1 // Keep local consistency
+        };
+      }
+    } catch (e) {
+
+      addToast({ type: 'error', message: 'Failed to save address to profile' });
+    }
+
     const id = addAddress(addressToAdd);
-    
+
     setFormData(prev => ({
       ...prev,
-      address: { id, ...addressToAdd }
+      address: { ...addressToAdd, id: id }
     }));
     setIsAddressModalOpen(false);
     setNewAddress({ label: 'Home', line1: '', suburb: '', city: '', postcode: '' });
@@ -295,6 +420,28 @@ const BookingForm = () => {
 
     setIsSubmitting(true);
     try {
+      // 1. Upload images first
+      let uploadedImageUrls = [];
+      const imagesToUpload = formData.uploadedImages.filter(img => img.file);
+      
+      if (imagesToUpload.length > 0) {
+        try {
+          const imageFormData = new FormData();
+          imagesToUpload.forEach(img => {
+            imageFormData.append('damageImages', img.file);
+          });
+          
+          const uploadRes = await bookingService.uploadDamageImages(imageFormData);
+          if (uploadRes.success && uploadRes.data?.images) {
+            uploadedImageUrls = uploadRes.data.images;
+
+          }
+        } catch (uploadErr) {
+
+          addToast({ type: 'warning', message: 'Failed to upload images, continuing with booking...' });
+        }
+      }
+
       const bookingData = {
         provider: provider?.id || null, // Optional for broadcast flow
         serviceType: (formData.service.name || '').toLowerCase().includes('repair') ? 'repair' : 'replacement',
@@ -306,7 +453,7 @@ const BookingForm = () => {
         },
         scheduledDate: formData.scheduledDate,
         scheduledTimeSlot: formData.timeSlot,
-        serviceLocationType: 'mobile',
+        serviceLocationType: 'mobile', // Default to mobile for now as per flow
         city: searchCriteria?.city || 'Johannesburg', // Used for radius matching
         serviceAddress: {
           addressLine1: formData.address.line1,
@@ -319,31 +466,32 @@ const BookingForm = () => {
           subtotal: formData.service.fromPrice || 0,
           total: (formData.service.fromPrice || 0) + Math.round((formData.service.fromPrice || 0) * 0.05)
         },
-        customerNotes: formData.remarks
+        customerNotes: formData.remarks,
+        damageImages: uploadedImageUrls // Add uploaded images to booking
       };
 
       // Final safety net: Ensure coordinates are present
       if (!bookingData.serviceAddress.coordinates) {
-        console.log('Coordinates missing in formData, attempting JIT geocoding...');
+
         try {
            const addrStr = `${bookingData.serviceAddress.addressLine1 || ''}, ${bookingData.serviceAddress.city}, South Africa`.replace(/^, /, '');
            const jitCoords = await geocodingService.getCoordinates(addrStr);
            if (jitCoords) {
              bookingData.serviceAddress.coordinates = jitCoords;
-             console.log('JIT Geocoding successful:', jitCoords);
+
            }
         } catch (e) {
-          console.error('JIT Geocoding failed', e);
+
         }
       }
 
       const res = await bookingService.createBookingRequest(bookingData);
-      console.log('Booking API response:', res);
+
       
       const newBookingId = res?.data?.bookingId || res?.bookingId;
       
       if (!newBookingId) {
-        console.error('No booking ID in response:', res);
+
         addToast({ type: 'error', message: 'Booking created but no ID returned' });
         return;
       }
@@ -351,7 +499,7 @@ const BookingForm = () => {
       addToast({ type: 'success', message: 'Booking request sent!' });
       navigate(`/dashboard/booking/searching/${newBookingId}`);
     } catch (error) {
-      console.error('Error creating booking:', error);
+
       addToast({ type: 'error', message: error?.error || error?.message || 'Failed to create booking' });
     } finally {
       setIsSubmitting(false);
@@ -602,7 +750,7 @@ const BookingForm = () => {
                 value={formData.scheduledDate}
                 onChange={(val) => updateFormData('scheduledDate', val)}
                 placeholder="Pick an available date"
-                minDate={new Date().toISOString().split('T')[0]}
+                minDate={getTodayString()}
                 availableDates={availableDates.map(d => d.date)}
                 error={errors.scheduledDate}
               />

@@ -15,14 +15,10 @@ class SocketService {
     });
 
     this.socket.on("connect", () => {
-      console.log("[Socket] Customer connected to Socket server");
-      console.log("[Socket] Joining customer room:", customerId);
       this.socket.emit("join-customer", customerId);
     });
 
     this.socket.on("new-notification", (notification) => {
-      console.log("[Socket] Customer notification received:", notification);
-
       // 1. Add to notification store
       useNotificationStore.getState().addNotification(notification);
 
@@ -30,13 +26,9 @@ class SocketService {
       this.refreshData(notification);
     });
 
-    this.socket.on("disconnect", () => {
-      console.log("[Socket] Customer disconnected from Socket server");
-    });
+    this.socket.on("disconnect", () => {});
 
-    this.socket.on("connect_error", (error) => {
-      console.error("[Socket] Customer connection error:", error);
-    });
+    this.socket.on("connect_error", (error) => {});
   }
 
   async refreshData(notification) {
@@ -48,7 +40,6 @@ class SocketService {
 
       // Handle Quote Response
       if (type === "quote_response_received") {
-        console.log("Refreshing quotes due to new response...");
         await fetchQuotes();
         if (data.quoteId) {
           await fetchQuoteDetails(data.quoteId);
@@ -61,12 +52,9 @@ class SocketService {
         type === "booking_confirmed" ||
         type === "booking_status_updated"
       ) {
-        console.log("Refreshing bookings due to status update...");
         await fetchBookings();
       }
-    } catch (error) {
-      console.error("Error refreshing customer data from socket event:", error);
-    }
+    } catch (error) {}
   }
 
   disconnect() {

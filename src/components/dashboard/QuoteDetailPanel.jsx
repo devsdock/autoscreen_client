@@ -47,27 +47,38 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   }
   
   const responses = quoteResponses.filter(r => r.quoteRequestId === quote.id);
-  const isAccepted = (quote.status || '').toLowerCase() === 'accepted';
-  const isClosed = (quote.status || '').toLowerCase() === 'closed';
+  const isAccepted = quote.status === 'Accepted' || quote.status?.toLowerCase() === 'accepted';
+  const isClosed = quote.status === 'Closed' || ['closed', 'expired', 'cancelled'].includes(quote.status?.toLowerCase());
   
   const handleAcceptQuote = async () => {
     if (!acceptModal.response) return;
     
     setIsAccepting(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    const bookingId = await acceptQuote(quote.id, acceptModal.response.id);
-    
-    setIsAccepting(false);
-    setAcceptModal({ open: false, response: null });
-    
-    // Show success message
-    addToast({ 
-      type: 'success', 
-      message: 'Quote accepted! Booking created successfully.' 
-    });
+    try {
+      const bookingId = await acceptQuote(quote.id, acceptModal.response.id);
+      
+      setIsAccepting(false);
+      setAcceptModal({ open: false, response: null });
+      
+      if (bookingId) {
+        addToast({ 
+          type: 'success', 
+          message: 'Quote accepted! Redirecting to booking details...' 
+        });
+        // Navigate to the specific booking pending page for smooth flow
+        navigate(`/dashboard/booking/pending/${bookingId}`);
+      } else {
+        addToast({ 
+          type: 'success', 
+          message: 'Quote accepted! Booking created successfully.' 
+        });
+      }
+    } catch (error) {
+      console.error("Accept quote error:", error);
+      setIsAccepting(false);
+      setAcceptModal({ open: false, response: null });
+    }
   };
   
   const handleCloseRequest = () => {

@@ -23,7 +23,21 @@ export const formatCurrency = (amount) => {
 
 // Helper to format date
 export const formatDate = (dateString, format = "short") => {
-  const date = new Date(dateString);
+  if (!dateString) return "-";
+
+  let date;
+  if (
+    typeof dateString === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(dateString)
+  ) {
+    const [y, m, d] = dateString.split("-").map(Number);
+    date = new Date(y, m - 1, d);
+  } else {
+    date = new Date(dateString);
+  }
+
+  if (isNaN(date.getTime())) return "-";
+
   if (format === "short") {
     return date.toLocaleDateString("en-ZA", {
       day: "numeric",
@@ -57,7 +71,10 @@ export const formatDate = (dateString, format = "short") => {
 
 // Helper for relative time
 export const getRelativeTime = (dateString) => {
+  if (!dateString) return "-";
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "-";
+
   const now = new Date();
   const diffMs = now - date;
   const diffMins = Math.floor(diffMs / 60000);
@@ -78,13 +95,13 @@ const useDashboardStore = create(
   persist(
     (set, get) => ({
       // User data
-      user: userData,
+      user: null,
 
       // Vehicles
-      vehicles: vehiclesData,
+      vehicles: [],
 
       // Addresses
-      addresses: addressesData,
+      addresses: [],
 
       // Quotes
       quotes: [],
@@ -200,7 +217,7 @@ const useDashboardStore = create(
       // Vehicle actions
       setVehicles: (vehicles) => set({ vehicles }),
       addVehicle: (vehicle) => {
-        const id = generateId("VEH");
+        const id = vehicle.id || vehicle._id || generateId("VEH");
         set((state) => ({
           vehicles: [...state.vehicles, { ...vehicle, id }],
         }));
@@ -231,7 +248,7 @@ const useDashboardStore = create(
       // Address actions
       setAddresses: (addresses) => set({ addresses }),
       addAddress: (address) => {
-        const id = generateId("ADDR");
+        const id = address.id || address._id || generateId("ADDR");
         set((state) => {
           let addresses = state.addresses;
           if (address.isDefault) {
@@ -303,9 +320,7 @@ const useDashboardStore = create(
               quoteResponses: allResponses,
             });
           }
-        } catch (error) {
-          console.error("Error fetching quotes:", error);
-        }
+        } catch (error) {}
       },
 
       fetchQuoteDetails: async (quoteId) => {
@@ -354,9 +369,7 @@ const useDashboardStore = create(
 
             return mappedQuote;
           }
-        } catch (error) {
-          console.error("Error fetching quote details:", error);
-        }
+        } catch (error) {}
       },
       createQuote: (quoteData) => {
         const id = generateId("QT");
@@ -454,7 +467,6 @@ const useDashboardStore = create(
             return null;
           }
         } catch (error) {
-          console.error("Error accepting quote:", error);
           get().addToast({
             type: "error",
             message: "An error occurred while accepting the quote",
@@ -477,9 +489,7 @@ const useDashboardStore = create(
             const mappedBookings = response.data.map(mapBooking);
             set({ bookings: mappedBookings });
           }
-        } catch (error) {
-          console.error("Error fetching bookings:", error);
-        }
+        } catch (error) {}
       },
       confirmBooking: (bookingId) => {
         set((state) => ({
@@ -580,10 +590,11 @@ const useDashboardStore = create(
       },
 
       // Payment actions
-      processPayment: (paymentId, method) => {
+      processPayment: async (paymentId, method) => {
         const payment = get().payments.find((p) => p.id === paymentId);
         if (!payment) return;
 
+        // Optimistic update
         set((state) => ({
           payments: state.payments.map((p) =>
             p.id === paymentId
@@ -597,7 +608,7 @@ const useDashboardStore = create(
           ),
         }));
 
-        // Update booking payment status and timeline
+        // Update booking payment status and timeline locally
         set((state) => ({
           bookings: state.bookings.map((b) => {
             if (b.id !== payment.bookingId) return b;
@@ -620,6 +631,27 @@ const useDashboardStore = create(
           )} completed for booking ${payment.bookingRef}`,
           relatedId: paymentId,
         });
+
+        // Persist to Backend
+        try {
+          const bookingService = (await import("../services/bookingService"))
+            .default;
+          if (payment.bookingId) {
+            await bookingService.processBookingPayment(payment.bookingId, {
+              paymentMethod: method,
+              amount: payment.amount,
+              paymentId: paymentId,
+            });
+          }
+        } catch (error) {
+          get().addToast({
+            type: "error",
+            message: "Connection error: Payment saved locally only.",
+          });
+          // We keep local state as "Paid" so user sees success, but warn them.
+          // In real app, we might revert.
+        }
+
         get().addToast({ type: "success", message: "Payment successful!" });
       },
 
@@ -1015,7 +1047,7 @@ const useDashboardStore = create(
       },
     }),
     {
-      name: "autoscreen-dashboard-v3",
+      name: "autoscreen-dashboard-v4",
       partialize: (state) => ({
         user: state.user,
         theme: state.theme,
