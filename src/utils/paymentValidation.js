@@ -33,8 +33,8 @@ export const formatExpiry = (value) => {
   // Limit to 4 digits
   const limited = digitsOnly.slice(0, 4);
 
-  // Add slash after 2 digits
-  if (limited.length >= 2) {
+  // Only add slash if there are 3 or more digits (makes backspace easier)
+  if (limited.length >= 3) {
     return limited.slice(0, 2) + "/" + limited.slice(2);
   }
 
@@ -143,8 +143,16 @@ export const validateCardholderName = (name) => {
 export const validateCardForm = (cardDetails) => {
   const errors = {};
 
-  if (!cardDetails.number || !validateCardNumber(cardDetails.number)) {
-    errors.number = "Please enter a valid 16-digit card number";
+  const cleanNumber = cardDetails.number
+    ? cardDetails.number.replace(/\s/g, "")
+    : "";
+
+  if (!cleanNumber) {
+    errors.number = "Card number is required";
+  } else if (cleanNumber.length !== 16) {
+    errors.number = `Card number must be 16 digits (currently ${cleanNumber.length})`;
+  } else if (!validateCardNumber(cardDetails.number)) {
+    errors.number = "Invalid card number (check for typos)";
   }
 
   if (!cardDetails.expiry || !validateExpiry(cardDetails.expiry)) {

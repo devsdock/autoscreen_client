@@ -83,16 +83,7 @@ const BookingPending = () => {
 
   const handlePaymentSuccess = () => {
     addToast({ type: "success", message: "Payment successful!" });
-    // Refetch booking to get updated status
-    const fetchBooking = async () => {
-      try {
-        const res = await bookingService.getBooking(bookingId);
-        setBooking(res.data);
-      } catch (error) {
-        console.error("Error fetching booking:", error);
-      }
-    };
-    fetchBooking();
+    navigate(`/dashboard/booking/confirmation/${bookingId}`);
   };
 
   const rawStatus = booking?.status?.toLowerCase() || "searching";

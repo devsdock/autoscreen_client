@@ -19,6 +19,7 @@ import StatusBadge from "../ui/StatusBadge";
 import Rating from "../ui/Rating";
 import Button from "../ui/Button";
 import ConfirmModal from "../ui/ConfirmModal";
+import Modal, { ModalActions } from "../ui/Modal";
 import PaymentModal from "./PaymentModal";
 import useDashboardStore, {
   formatDate,
