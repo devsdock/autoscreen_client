@@ -155,7 +155,10 @@ export const mapBooking = (booking) => {
       status: "Awaiting Payment",
       date:
         awaitingPaymentCompleted || currentStatusLevel >= 3
-          ? booking.paymentRequestedAt || booking.acceptedAt
+          ? booking.actualTimes?.confirmedAt ||
+            booking.confirmedAt ||
+            booking.paymentRequestedAt ||
+            booking.acceptedAt
           : null,
       completed: awaitingPaymentCompleted,
     });
@@ -165,7 +168,11 @@ export const mapBooking = (booking) => {
     const confirmedCompleted = currentStatusLevel >= 4 && isPaid;
     stages.push({
       status: "Confirmed",
-      date: confirmedCompleted ? booking.confirmedAt || booking.paidAt : null,
+      date: confirmedCompleted
+        ? booking.actualTimes?.confirmedAt ||
+          booking.confirmedAt ||
+          booking.paidAt
+        : null,
       completed: confirmedCompleted,
     });
 
@@ -174,7 +181,9 @@ export const mapBooking = (booking) => {
       status: "In Progress",
       date:
         currentStatusLevel >= 5
-          ? booking.startedAt || booking.inProgressAt
+          ? booking.actualTimes?.startedAt ||
+            booking.startedAt ||
+            booking.inProgressAt
           : null,
       completed: currentStatusLevel >= 5,
     });

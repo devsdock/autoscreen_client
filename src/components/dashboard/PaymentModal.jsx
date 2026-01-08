@@ -1,15 +1,22 @@
 import { useState } from 'react';
-import { CreditCard, Building2, Zap, Lock, Banknote } from 'lucide-react';
+import { CreditCard, Building2, Zap, Lock, Banknote, AlertCircle } from 'lucide-react';
 import Modal, { ModalActions } from '../ui/Modal';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import useDashboardStore, { formatCurrency } from '../../store/useDashboardStore';
+import { 
+  formatCardNumber, 
+  formatExpiry, 
+  formatCVV, 
+  validateCardForm 
+} from '../../utils/paymentValidation';
 
 const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
   const { processPayment } = useDashboardStore();
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [paymentMethod, setPaymentMethod] = useState(null); // Start with null - force selection
   const [instantProvider, setInstantProvider] = useState('PayFast');
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
   const [cardDetails, setCardDetails] = useState({
     number: '',
     expiry: '',
@@ -23,35 +30,46 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
     let formattedValue = value;
     
     if (field === 'number') {
-      formattedValue = value.replace(/\D/g, '').slice(0, 16);
-      formattedValue = formattedValue.replace(/(\d{4})/g, '$1 ').trim();
-    }
-    
-    if (field === 'expiry') {
-      formattedValue = value.replace(/\D/g, '').slice(0, 4);
-      if (formattedValue.length >= 2) {
-        formattedValue = formattedValue.slice(0, 2) + '/' + formattedValue.slice(2);
-      }
-    }
-    
-    if (field === 'cvv') {
-      formattedValue = value.replace(/\D/g, '').slice(0, 3);
+      formattedValue = formatCardNumber(value);
+    } else if (field === 'expiry') {
+      formattedValue = formatExpiry(value);
+    } else if (field === 'cvv') {
+      formattedValue = formatCVV(value);
     }
     
     setCardDetails(prev => ({ ...prev, [field]: formattedValue }));
+    
+    // Clear error for this field when user types
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: null }));
+    }
   };
   
   const handleSubmit = async () => {
+    // Validate payment method is selected
+    if (!paymentMethod) {
+      setErrors({ general: 'Please select a payment method' });
+      return;
+    }
+    
+    // Validate card details if card payment is selected
+    if (paymentMethod === 'card') {
+      const validation = validateCardForm(cardDetails);
+      if (!validation.isValid) {
+        setErrors(validation.errors);
+        return;
+      }
+    }
+    
     setLoading(true);
+    setErrors({});
     
     // Simulate payment processing delay
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    let methodLabel = 'EFT';
+    let methodLabel = paymentMethod;
     if (paymentMethod === 'card') {
-      methodLabel = `Card •••• ${cardDetails.number.slice(-4)}`;
-    } else if (paymentMethod === 'cash') {
-      methodLabel = 'Cash';
+      methodLabel = `Card •••• ${cardDetails.number.replace(/\s/g, '').slice(-4)}`;
     } else if (paymentMethod === 'instant') {
       methodLabel = `Instant EFT (${instantProvider})`;
     }
@@ -59,22 +77,17 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
     // DIRECT API CALL to ensure server persistence
     try {
        const bookingService = (await import('../../services/bookingService')).default;
-       // Determine Booking ID:
-       // If from BookingPending, payment.id is the Booking ID.
-       // If from Payments page, payment.bookingId is the Booking ID.
        const targetBookingId = payment.bookingId || payment.id;
        
        if (targetBookingId) {
           await bookingService.processBookingPayment(targetBookingId, {
             paymentMethod: methodLabel,
             amount: payment.amount,
-            // Include paymentId if available (for Payments page context)
             paymentId: payment.bookingId ? payment.id : undefined 
           });
        }
     } catch (error) {
-
-       // We continue to update local state optimistically, but could warn user
+       // Continue optimistically
     }
 
     // Update Local Store (Optimistic)
@@ -86,8 +99,9 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
   };
   
   const handleClose = () => {
-    setPaymentMethod('card');
+    setPaymentMethod(null);
     setCardDetails({ number: '', expiry: '', cvv: '', name: '' });
+    setErrors({});
     onClose();
   };
   
@@ -130,9 +144,17 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
         
         {/* Payment Method Selection */}
         <div className="space-y-4">
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Select Payment Method
-          </label>
+          <div className="flex items-center justify-between">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Select Payment Method <span className="text-red-500">*</span>
+            </label>
+            {errors.general && (
+              <span className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                <AlertCircle size={12} />
+                {errors.general}
+              </span>
+            )}
+          </div>
           <div className="space-y-2">
             {[
               { id: 'card', label: 'Credit/Debit Card', icon: CreditCard },
@@ -146,10 +168,12 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
                   key={method.id}
                   type="button"
                   onClick={() => {
-
                     setPaymentMethod(method.id);
+                    if (errors.general) {
+                      setErrors(prev => ({ ...prev, general: null }));
+                    }
                   }}
-                  className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all ${
+                  className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
                     isActive
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-sm'
                       : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -183,36 +207,40 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
           {paymentMethod === 'card' && (
             <div className="space-y-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50">
               <Input
-                label="Card Number"
+                label={<>Card Number <span className="text-red-500">*</span></>}
                 placeholder="1234 5678 9012 3456"
                 value={cardDetails.number}
                 onChange={(e) => handleCardChange('number', e.target.value)}
                 icon={CreditCard}
-                className="bg-white dark:bg-slate-900"
+                error={errors.number}
+                className={`bg-white dark:bg-slate-900 ${errors.number ? 'border-red-500' : ''}`}
               />
               <div className="grid grid-cols-2 gap-4">
                 <Input
-                  label="Expiry Date"
+                  label={<>Expiry Date <span className="text-red-500">*</span></>}
                   placeholder="MM/YY"
                   value={cardDetails.expiry}
                   onChange={(e) => handleCardChange('expiry', e.target.value)}
-                  className="bg-white dark:bg-slate-900"
+                  error={errors.expiry}
+                  className={`bg-white dark:bg-slate-900 ${errors.expiry ? 'border-red-500' : ''}`}
                 />
                 <Input
-                  label="CVV"
+                  label={<>CVV <span className="text-red-500">*</span></>}
                   placeholder="123"
                   type="password"
                   value={cardDetails.cvv}
                   onChange={(e) => handleCardChange('cvv', e.target.value)}
-                  className="bg-white dark:bg-slate-900"
+                  error={errors.cvv}
+                  className={`bg-white dark:bg-slate-900 ${errors.cvv ? 'border-red-500' : ''}`}
                 />
               </div>
               <Input
-                label="Cardholder Name"
+                label={<>Cardholder Name <span className="text-red-500">*</span></>}
                 placeholder="Name on card"
                 value={cardDetails.name}
                 onChange={(e) => handleCardChange('name', e.target.value)}
-                className="bg-white dark:bg-slate-900"
+                error={errors.name}
+                className={`bg-white dark:bg-slate-900 ${errors.name ? 'border-red-500' : ''}`}
               />
             </div>
           )}
@@ -298,13 +326,13 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
       </div>
       
       <ModalActions>
-        <Button variant="secondary" onClick={handleClose}>
+        <Button variant="secondary" onClick={handleClose} disabled={loading}>
           Cancel
         </Button>
         <Button 
           onClick={handleSubmit} 
           loading={loading}
-          disabled={false}
+          disabled={!paymentMethod || loading}
         >
           {paymentMethod === 'eft' ? 'Mark as Paid (Simulation)' : `Pay ${formatCurrency(payment.amount)}`}
         </Button>
