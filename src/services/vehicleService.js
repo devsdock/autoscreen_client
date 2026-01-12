@@ -39,7 +39,7 @@ const vehicleService = {
       );
 
       if (response.data && response.data.Results) {
-        return response.data.Results.map((item) => item.Make_Name).sort();
+        return response.data.Results.map((item) => item.MakeName).sort();
       }
       return [];
     } catch (error) {

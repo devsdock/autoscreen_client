@@ -421,13 +421,37 @@ const useDashboardStore = create(
         return id;
       },
 
-      closeQuoteRequest: (quoteId) => {
-        set((state) => ({
-          quotes: state.quotes.map((q) =>
-            q.id === quoteId ? { ...q, status: "Closed" } : q
-          ),
-        }));
-        get().addToast({ type: "info", message: "Quote request closed" });
+      closeQuoteRequest: async (quoteId) => {
+        try {
+          const quoteService = (await import("../services/quoteService"))
+            .default;
+          const response = await quoteService.cancelQuote(quoteId);
+
+          if (response.success) {
+            set((state) => ({
+              quotes: state.quotes.map((q) =>
+                q.id === quoteId ? { ...q, status: "Cancelled" } : q
+              ),
+            }));
+            get().addToast({
+              type: "success",
+              message: "Quote request closed successfully",
+            });
+            return true;
+          } else {
+            get().addToast({
+              type: "error",
+              message: response.message || "Failed to close quote request",
+            });
+            return false;
+          }
+        } catch (error) {
+          get().addToast({
+            type: "error",
+            message: "An error occurred while closing the quote request",
+          });
+          return false;
+        }
       },
 
       acceptQuote: async (quoteId, responseId) => {

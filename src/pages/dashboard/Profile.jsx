@@ -46,7 +46,7 @@ const Profile = () => {
     updateUser: updateStoreUser,
     addToast,
   } = useDashboardStore();
-  
+
   // Get AuthStore for session persistence
   const { user: authUser, setUser: setAuthUser } = useAuthStore();
 
@@ -79,8 +79,25 @@ const Profile = () => {
     registration: "",
   });
   const [availableModels, setAvailableModels] = useState([]);
+  const [availableMakes, setAvailableMakes] = useState(vehicleMakes);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [isFetchingMakes, setIsFetchingMakes] = useState(false);
   const [deleteVehicleId, setDeleteVehicleId] = useState(null);
+
+  useEffect(() => {
+    const fetchMakes = async () => {
+      setIsFetchingMakes(true);
+      try {
+        const makes = await vehicleService.getAllMakes();
+        if (makes && makes.length > 0) setAvailableMakes(makes);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsFetchingMakes(false);
+      }
+    };
+    fetchMakes();
+  }, []);
 
   // Address modal state
   const [addressModal, setAddressModal] = useState({
@@ -171,7 +188,6 @@ const Profile = () => {
         setAddresses(mappedAddresses);
       }
     } catch (error) {
-
       addToast({ type: "error", message: "Failed to load profile data" });
       // Fall back to store/auth data if available
       if (authUser) {
@@ -182,7 +198,7 @@ const Profile = () => {
       setIsLoading(false);
     }
   };
-  
+
   useEffect(() => {
     fetchProfileData();
   }, []);
@@ -194,13 +210,12 @@ const Profile = () => {
         setAvailableModels([]);
         return;
       }
-      
+
       setIsFetchingModels(true);
       try {
         const models = await vehicleService.getModelsByMake(vehicleForm.make);
         setAvailableModels(models);
       } catch (err) {
-
         setAvailableModels([]);
       } finally {
         setIsFetchingModels(false);
@@ -237,33 +252,30 @@ const Profile = () => {
       const res = await profileService.updateProfile(updateData);
       if (res.success) {
         const mappedUser = mapUser(res.data);
-        
+
         // Update local state
         setUser(mappedUser);
-        
+
         // Update dashboard store
         updateStoreUser(mappedUser);
-        
+
         // Update AuthStore to persist session data
         setAuthUser(res.data);
-        
+
         // Also update localStorage for auth
-        const storedAuth = localStorage.getItem('autoscreen-auth');
+        const storedAuth = localStorage.getItem("autoscreen-auth");
         if (storedAuth) {
           try {
             const authData = JSON.parse(storedAuth);
             authData.state.user = res.data;
-            localStorage.setItem('autoscreen-auth', JSON.stringify(authData));
-          } catch (e) {
-
-          }
+            localStorage.setItem("autoscreen-auth", JSON.stringify(authData));
+          } catch (e) {}
         }
-        
+
         setIsEditing(false);
         addToast({ type: "success", message: "Profile updated successfully" });
       }
     } catch (error) {
-
       addToast({ type: "error", message: "Failed to update profile" });
     } finally {
       setIsSaving(false);
@@ -285,34 +297,46 @@ const Profile = () => {
       // Create FormData for file upload
       const formData = new FormData();
       formData.append("profileImage", file);
-      
+
       // Upload to server
       const res = await profileService.uploadProfileImage(formData);
-      
+
       if (res.success) {
         // Backend returns profileImage path like /uploads/profiles/filename.jpg
         const imageUrl = `${NodeURL}${res.data.profileImage}`;
-        
+
         // Backend returns profileImage, map to avatar for frontend
         const updatedUser = {
           ...authUser,
           profileImage: res.data.profileImage,
-          avatar: imageUrl
+          avatar: imageUrl,
         };
-        
+
         // Update all stores and persistence
-        setUser(prev => ({ ...prev, avatar: imageUrl, profileImage: res.data.profileImage }));
-        updateStoreUser({ avatar: imageUrl, profileImage: res.data.profileImage });
+        setUser((prev) => ({
+          ...prev,
+          avatar: imageUrl,
+          profileImage: res.data.profileImage,
+        }));
+        updateStoreUser({
+          avatar: imageUrl,
+          profileImage: res.data.profileImage,
+        });
         setAuthUser(updatedUser);
-        
+
         // Re-fetch profile to get updated data from server
         await fetchProfileData();
-        
-        addToast({ type: "success", message: "Profile photo updated successfully" });
+
+        addToast({
+          type: "success",
+          message: "Profile photo updated successfully",
+        });
       }
     } catch (error) {
-
-      addToast({ type: "error", message: error.message || "Failed to update profile photo" });
+      addToast({
+        type: "error",
+        message: error.message || "Failed to update profile photo",
+      });
     } finally {
       setUploadingAvatar(false);
     }
@@ -380,7 +404,6 @@ const Profile = () => {
         });
       }
     } catch (error) {
-
       addToast({ type: "error", message: "Failed to save vehicle" });
     } finally {
       setIsSaving(false);
@@ -405,7 +428,6 @@ const Profile = () => {
         addToast({ type: "success", message: "Vehicle removed" });
       }
     } catch (error) {
-
       addToast({ type: "error", message: "Failed to remove vehicle" });
     } finally {
       setDeleteVehicleId(null);
@@ -477,7 +499,6 @@ const Profile = () => {
         });
       }
     } catch (error) {
-
       addToast({ type: "error", message: "Failed to save address" });
     } finally {
       setIsSaving(false);
@@ -502,7 +523,6 @@ const Profile = () => {
         addToast({ type: "success", message: "Address removed" });
       }
     } catch (error) {
-
       addToast({ type: "error", message: "Failed to remove address" });
     } finally {
       setDeleteAddressId(null);
@@ -519,18 +539,20 @@ const Profile = () => {
       const res = await profileService.updateProfile({
         notificationPreferences: newNotifications,
       });
-      
+
       if (res.success) {
         updateStoreUser({ notificationPreferences: newNotifications });
-        
+
         // Update AuthStore
-        const updatedUser = { ...authUser, notificationPreferences: newNotifications };
+        const updatedUser = {
+          ...authUser,
+          notificationPreferences: newNotifications,
+        };
         setAuthUser(updatedUser);
-        
+
         addToast({ type: "success", message: "Preferences updated" });
       }
     } catch (error) {
-
       // Revert on error
       setNotifications(notifications);
       addToast({ type: "error", message: "Failed to update preferences" });
@@ -544,7 +566,10 @@ const Profile = () => {
     }
 
     if (passwordForm.newPassword.length < 8) {
-      addToast({ type: "error", message: "Password must be at least 8 characters" });
+      addToast({
+        type: "error",
+        message: "Password must be at least 8 characters",
+      });
       return;
     }
 
@@ -557,12 +582,18 @@ const Profile = () => {
 
       if (res.success) {
         setPasswordModal(false);
-        setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+        setPasswordForm({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
         addToast({ type: "success", message: "Password changed successfully" });
       }
     } catch (error) {
-
-      addToast({ type: "error", message: error.message || "Failed to change password" });
+      addToast({
+        type: "error",
+        message: error.message || "Failed to change password",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -579,7 +610,6 @@ const Profile = () => {
         await logout();
       }
     } catch (error) {
-
       addToast({ type: "error", message: "Failed to delete account" });
     } finally {
       setIsSaving(false);
@@ -632,9 +662,9 @@ const Profile = () => {
                   accept="image/*"
                   className="hidden"
                 />
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="mt-2 text-primary-600 dark:text-primary-400 font-medium"
                   onClick={() => avatarInputRef.current?.click()}
                   loading={uploadingAvatar}
@@ -750,23 +780,37 @@ const Profile = () => {
 
                   <div className="space-y-3">
                     <div className="flex items-center gap-3 text-sm">
-                      <Mail size={16} className="text-slate-400 dark:text-slate-500" />
-                      <span className="text-slate-700 dark:text-slate-300">{user?.email}</span>
+                      <Mail
+                        size={16}
+                        className="text-slate-400 dark:text-slate-500"
+                      />
+                      <span className="text-slate-700 dark:text-slate-300">
+                        {user?.email}
+                      </span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
-                      <Phone size={16} className="text-slate-400 dark:text-slate-500" />
+                      <Phone
+                        size={16}
+                        className="text-slate-400 dark:text-slate-500"
+                      />
                       <span className="text-slate-700 dark:text-slate-300">
                         {user?.phone || "Not set"}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
-                      <MessageSquare size={16} className="text-slate-400 dark:text-slate-500" />
+                      <MessageSquare
+                        size={16}
+                        className="text-slate-400 dark:text-slate-500"
+                      />
                       <span className="text-slate-700 dark:text-slate-300 capitalize">
                         Preferred: {user?.preferredContact || "whatsapp"}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
-                      <Calendar size={16} className="text-slate-400 dark:text-slate-500" />
+                      <Calendar
+                        size={16}
+                        className="text-slate-400 dark:text-slate-500"
+                      />
                       <span className="text-slate-700 dark:text-slate-300">
                         {totalBookings} total bookings
                       </span>
@@ -795,7 +839,10 @@ const Profile = () => {
               {vehicles.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="w-12 h-12 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
-                    <Car size={24} className="text-slate-400 dark:text-slate-500" />
+                    <Car
+                      size={24}
+                      className="text-slate-400 dark:text-slate-500"
+                    />
                   </div>
                   <p className="text-slate-500 dark:text-slate-400 text-sm">
                     No vehicles saved yet
@@ -810,14 +857,18 @@ const Profile = () => {
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
-                          <Car size={20} className="text-primary-600 dark:text-primary-400" />
+                          <Car
+                            size={20}
+                            className="text-primary-600 dark:text-primary-400"
+                          />
                         </div>
                         <div>
                           <p className="font-medium text-slate-900 dark:text-white">
-                            {vehicle.year || ''} {vehicle.make || ''} {vehicle.model || ''}
+                            {vehicle.year || ""} {vehicle.make || ""}{" "}
+                            {vehicle.model || ""}
                           </p>
                           <p className="text-sm text-slate-500 dark:text-slate-400">
-                            {vehicle.bodyType || 'Sedan'}
+                            {vehicle.bodyType || "Sedan"}
                             {vehicle.registrationNumber &&
                               ` · ${vehicle.registrationNumber}`}
                           </p>
@@ -865,7 +916,10 @@ const Profile = () => {
               {addresses.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="w-12 h-12 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
-                    <MapPin size={24} className="text-slate-400 dark:text-slate-500" />
+                    <MapPin
+                      size={24}
+                      className="text-slate-400 dark:text-slate-500"
+                    />
                   </div>
                   <p className="text-slate-500 dark:text-slate-400 text-sm">
                     No addresses saved yet
@@ -880,7 +934,10 @@ const Profile = () => {
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
-                          <MapPin size={20} className="text-primary-600 dark:text-primary-400" />
+                          <MapPin
+                            size={20}
+                            className="text-primary-600 dark:text-primary-400"
+                          />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
@@ -896,7 +953,7 @@ const Profile = () => {
                           <p className="text-sm text-slate-500 dark:text-slate-400">
                             {[address.street, address.suburb, address.city]
                               .filter(Boolean)
-                              .join(', ')}
+                              .join(", ")}
                           </p>
                         </div>
                       </div>
@@ -958,13 +1015,19 @@ const Profile = () => {
                     <p className="text-sm font-medium text-slate-900 dark:text-white">
                       {label}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{description}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {description}
+                    </p>
                   </div>
                   <button
                     onClick={() => toggleNotification(key)}
                     className={`
                       relative w-11 h-6 rounded-full transition-colors
-                      ${notifications[key] ? "bg-primary-600" : "bg-slate-200 dark:bg-slate-700"}
+                      ${
+                        notifications[key]
+                          ? "bg-primary-600"
+                          : "bg-slate-200 dark:bg-slate-700"
+                      }
                     `}
                   >
                     <span
@@ -1051,13 +1114,14 @@ const Profile = () => {
         <div className="space-y-4">
           <PremiumSelect
             label="Make"
-            options={vehicleMakes}
+            options={availableMakes}
             value={vehicleForm.make}
             onChange={(val) =>
               setVehicleForm((prev) => ({ ...prev, make: val, model: "" }))
             }
             required
             searchable
+            loading={isFetchingMakes}
             placeholder="Select make"
           />
           <PremiumSelect
@@ -1071,8 +1135,14 @@ const Profile = () => {
             searchable
             disabled={!vehicleForm.make}
             loading={isFetchingModels}
-            placeholder={!vehicleForm.make ? "Select make first" : "Search or select model"}
-            emptyMessage={!vehicleForm.make ? "Please select a make first" : "No models found"}
+            placeholder={
+              !vehicleForm.make ? "Select make first" : "Search or select model"
+            }
+            emptyMessage={
+              !vehicleForm.make
+                ? "Please select a make first"
+                : "No models found"
+            }
           />
           <div className="grid grid-cols-2 gap-4">
             <PremiumSelect
@@ -1249,14 +1319,24 @@ const Profile = () => {
             label="Current Password"
             type="password"
             value={passwordForm.currentPassword}
-            onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+            onChange={(e) =>
+              setPasswordForm((prev) => ({
+                ...prev,
+                currentPassword: e.target.value,
+              }))
+            }
             required
           />
           <Input
             label="New Password"
             type="password"
             value={passwordForm.newPassword}
-            onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+            onChange={(e) =>
+              setPasswordForm((prev) => ({
+                ...prev,
+                newPassword: e.target.value,
+              }))
+            }
             required
             helperText="At least 8 characters"
           />
@@ -1264,7 +1344,12 @@ const Profile = () => {
             label="Confirm New Password"
             type="password"
             value={passwordForm.confirmPassword}
-            onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+            onChange={(e) =>
+              setPasswordForm((prev) => ({
+                ...prev,
+                confirmPassword: e.target.value,
+              }))
+            }
             required
           />
         </div>

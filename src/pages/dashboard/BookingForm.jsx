@@ -1,80 +1,113 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { 
-  ArrowLeft, ArrowRight, Check, Car, Calendar, MapPin, MessageSquare, 
-  FileText, Clock, Star, Shield, Building2, User, Plus, X, Upload, Trash2, Search
-} from 'lucide-react';
-import useDashboardStore, { formatCurrency, formatDate } from '../../store/useDashboardStore';
-import bookingService from '../../services/bookingService';
-import profileService from '../../services/profileService';
-import vehicleService from '../../services/vehicleService';
-import geocodingService from '../../services/geocodingService';
-import Button from '../../components/ui/Button';
-import Modal, { ModalActions } from '../../components/ui/Modal';
-import { glassTypes } from '../../data/providers';
-import { vehicleMakes, cities } from '../../data/quotes';
-import PremiumSelect from '../../components/ui/PremiumSelect';
-import PremiumDatePicker from '../../components/ui/PremiumDatePicker';
-import { getTodayString, formatLocalDate } from '../../utils/dateUtils';
+import { useState, useMemo, useEffect, useRef } from "react";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Car,
+  Calendar,
+  MapPin,
+  MessageSquare,
+  FileText,
+  Clock,
+  Star,
+  Shield,
+  Building2,
+  User,
+  Plus,
+  X,
+  Upload,
+  Trash2,
+  Search,
+} from "lucide-react";
+import useDashboardStore, {
+  formatCurrency,
+  formatDate,
+} from "../../store/useDashboardStore";
+import bookingService from "../../services/bookingService";
+import profileService from "../../services/profileService";
+import vehicleService from "../../services/vehicleService";
+import geocodingService from "../../services/geocodingService";
+import Button from "../../components/ui/Button";
+import Modal, { ModalActions } from "../../components/ui/Modal";
+import { glassTypes } from "../../data/providers";
+import { vehicleMakes, cities } from "../../data/quotes";
+import PremiumSelect from "../../components/ui/PremiumSelect";
+import PremiumDatePicker from "../../components/ui/PremiumDatePicker";
+import { getTodayString, formatLocalDate } from "../../utils/dateUtils";
 
 const steps = [
-  { id: 1, title: 'Service', icon: FileText },
-  { id: 2, title: 'Date & Time', icon: Calendar },
-  { id: 3, title: 'Address', icon: MapPin },
-  { id: 4, title: 'Details', icon: MessageSquare },
-  { id: 5, title: 'Review', icon: Check }
+  { id: 1, title: "Service", icon: FileText },
+  { id: 2, title: "Date & Time", icon: Calendar },
+  { id: 3, title: "Address", icon: MapPin },
+  { id: 4, title: "Details", icon: MessageSquare },
+  { id: 5, title: "Review", icon: Check },
 ];
 
 const BookingForm = () => {
-  const { 
-    searchCriteria, 
-    addresses, 
+  const {
+    searchCriteria,
+    addresses,
     vehicles,
     addAddress,
     addToast,
     setAddresses,
-    setVehicles
+    setVehicles,
   } = useDashboardStore();
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const hasCheckedActive = useRef(false);
 
   // Check for active searching/accepted bookings on mount
   useEffect(() => {
+    if (hasCheckedActive.current) return;
+    hasCheckedActive.current = true;
+
     const checkActiveBookings = async () => {
       try {
         // Check for searching bookings
-        const searchingRes = await bookingService.getBookings({ status: 'searching' });
+        const searchingRes = await bookingService.getBookings({
+          status: "searching",
+        });
         if (searchingRes.success && searchingRes.data?.length > 0) {
           const activeBooking = searchingRes.data[0];
-          addToast({ 
-            type: 'info', 
-            message: 'You have an active booking request searching for providers.' 
+          addToast({
+            type: "info",
+            message:
+              "You have an active booking request searching for providers.",
           });
-          navigate(`/dashboard/booking/searching/${activeBooking._id || activeBooking.id}`);
+          navigate(
+            `/dashboard/booking/searching/${
+              activeBooking._id || activeBooking.id
+            }`
+          );
           return;
         }
 
         // Check for accepted bookings that still need payment
-        const acceptedRes = await bookingService.getBookings({ status: 'accepted' });
+        const acceptedRes = await bookingService.getBookings({
+          status: "accepted",
+        });
         if (acceptedRes.success && acceptedRes.data?.length > 0) {
           // Check if it's unpaid
-          const unpaidBooking = acceptedRes.data.find(b => 
-            (b.paymentStatus || '').toLowerCase() === 'unpaid'
+          const unpaidBooking = acceptedRes.data.find(
+            (b) => (b.paymentStatus || "").toLowerCase() === "unpaid"
           );
           if (unpaidBooking) {
-            addToast({ 
-              type: 'info', 
-              message: 'You have an accepted booking pending payment.' 
+            addToast({
+              type: "info",
+              message: "You have an accepted booking pending payment.",
             });
             // These would normally show up in the detail drawer or a specific pending page
             // For now, let's just let them know they should check their bookings
           }
         }
-      } catch (err) {
-
-      }
+      } catch (err) {}
     };
 
     checkActiveBookings();
-  }, []);
+  }, [addToast, navigate]);
 
   // Fetch saved data if missing from store
   useEffect(() => {
@@ -84,19 +117,17 @@ const BookingForm = () => {
         try {
           const res = await profileService.getVehicles();
           if (res.success && res.data) {
-            const mappedVehicles = res.data.map(v => ({
+            const mappedVehicles = res.data.map((v) => ({
               ...v,
               id: v._id,
               make: v.make,
               model: v.model,
               year: v.year,
-              isDefault: v.isDefault
+              isDefault: v.isDefault,
             }));
             setVehicles(mappedVehicles);
           }
-        } catch (error) {
-
-        }
+        } catch (error) {}
       }
 
       // Fetch addresses
@@ -104,7 +135,7 @@ const BookingForm = () => {
         try {
           const res = await profileService.getAddresses();
           if (res.success && res.data) {
-            const mappedAddresses = res.data.map(a => ({
+            const mappedAddresses = res.data.map((a) => ({
               ...a,
               id: a._id,
               label: a.label,
@@ -113,97 +144,113 @@ const BookingForm = () => {
               city: a.city,
               postcode: a.postalCode,
               isDefault: a.isDefault,
-              coordinates: a.coordinates
+              coordinates: a.coordinates,
             }));
             setAddresses(mappedAddresses);
           }
-        } catch (error) {
-
-        }
+        } catch (error) {}
       }
     };
-    
+
     fetchSavedData();
-  }, []);
-  
-  const navigate = useNavigate();
-  const location = useLocation();
+  }, [addresses.length, setAddresses, setVehicles, vehicles.length]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const provider = null; // Uber Flow: No specific provider pre-selected
   const preSelectedService = location.state?.selectedService;
-  
+
   const [currentStep, setCurrentStep] = useState(1);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [newAddress, setNewAddress] = useState({
-    label: 'Home',
-    line1: '',
-    suburb: '',
-    city: '',
-    postcode: ''
+    label: "Home",
+    line1: "",
+    suburb: "",
+    city: "",
+    postcode: "",
   });
-  
+
   const [formData, setFormData] = useState({
     // Step 1: Service & Vehicle
     // Service must be explicitly selected by the user
     service: null,
     vehicle: {
-      make: searchCriteria?.vehicleMake || '',
-      model: searchCriteria?.vehicleModel || '',
-      year: searchCriteria?.vehicleYear || new Date().getFullYear().toString()
+      make: searchCriteria?.vehicleMake || "",
+      model: searchCriteria?.vehicleModel || "",
+      year: searchCriteria?.vehicleYear || new Date().getFullYear().toString(),
     },
-    glassType: searchCriteria?.glassType || '',
-    
+    glassType: searchCriteria?.glassType || "",
+
     // Step 2: Date & Time
-    scheduledDate: '',
-    timeSlot: '',
-    
+    scheduledDate: "",
+    timeSlot: "",
+
     // Step 3: Address
     address: null,
-    
+
     // Step 4: Remarks & Images
-    remarks: '',
-    uploadedImages: []
+    remarks: "",
+    uploadedImages: [],
   });
-  
+
   const [errors, setErrors] = useState({});
   const [availableModels, setAvailableModels] = useState([]);
+  const [availableMakes, setAvailableMakes] = useState(vehicleMakes);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
-  const [modelSearchQuery, setModelSearchQuery] = useState('');
+  const [isFetchingMakes, setIsFetchingMakes] = useState(false); // Add loading state
+  const [modelSearchQuery, setModelSearchQuery] = useState("");
   const [suggestedField, setSuggestedField] = useState(null);
+
+  // Fetch makes on mount
+  useEffect(() => {
+    const fetchMakes = async () => {
+      setIsFetchingMakes(true);
+      try {
+        const makes = await vehicleService.getAllMakes();
+        if (makes && makes.length > 0) {
+          setAvailableMakes(makes);
+        }
+      } catch (err) {
+        console.error("Failed to fetch makes", err);
+      } finally {
+        setIsFetchingMakes(false);
+      }
+    };
+    fetchMakes();
+  }, []);
 
   // Pre-fill from saved details (Uber Style)
   useEffect(() => {
     // Fill Vehicle
     if (!formData.vehicle.make && vehicles.length > 0) {
-      const defaultVehicle = vehicles.find(v => v.isDefault) || vehicles[0];
-      setFormData(prev => ({
+      const defaultVehicle = vehicles.find((v) => v.isDefault) || vehicles[0];
+      setFormData((prev) => ({
         ...prev,
         vehicle: {
           make: defaultVehicle.make,
           model: defaultVehicle.model,
-          year: defaultVehicle.year.toString()
-        }
+          year: defaultVehicle.year.toString(),
+        },
       }));
     }
 
     // Fill Address
     if (!formData.address && addresses.length > 0) {
-      const defaultAddress = addresses.find(a => a.isDefault) || addresses[0];
-      setFormData(prev => ({
+      const defaultAddress = addresses.find((a) => a.isDefault) || addresses[0];
+      setFormData((prev) => ({
         ...prev,
-        address: defaultAddress
+        address: defaultAddress,
       }));
     }
   }, [vehicles, addresses]);
-  
+
   // Get available dates
   const availableDates = useMemo(() => {
     if (provider?.availability) {
       const today = getTodayString();
-      return provider.availability.filter(a => a.date >= today);
+      return provider.availability.filter((a) => a.date >= today);
     }
-    
+
     // Uber Flow: Generate next 7 days as available
     const dates = [];
     for (let i = 0; i < 7; i++) {
@@ -211,59 +258,73 @@ const BookingForm = () => {
       d.setDate(d.getDate() + i);
       dates.push({
         date: formatLocalDate(d),
-        slots: ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-16:00', '16:00-18:00']
+        slots: [
+          "08:00-10:00",
+          "10:00-12:00",
+          "12:00-14:00",
+          "14:00-16:00",
+          "16:00-18:00",
+        ],
       });
     }
     return dates;
   }, [provider]);
-  
+
   // Get available slots for selected date
   const availableSlots = useMemo(() => {
     if (!formData.scheduledDate) return [];
-    
+
     if (provider?.availability) {
-      const dateEntry = provider.availability.find(a => a.date === formData.scheduledDate);
+      const dateEntry = provider.availability.find(
+        (a) => a.date === formData.scheduledDate
+      );
       return dateEntry?.slots || [];
     }
-    
+
     // Uber Flow: Return standard time slots
-    return ['08:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-16:00', '16:00-18:00'];
+    return [
+      "08:00-10:00",
+      "10:00-12:00",
+      "12:00-14:00",
+      "14:00-16:00",
+      "16:00-18:00",
+    ];
   }, [formData.scheduledDate, provider]);
-  
+
   // No provider check needed for Uber style
-  
+
   const updateFormData = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: null }));
+      setErrors((prev) => ({ ...prev, [field]: null }));
     }
 
-    if (field === 'scheduledDate') {
-      setFormData(prev => ({ ...prev, scheduledDate: value, timeSlot: '' }));
-      setSuggestedField('timeSlot');
+    if (field === "scheduledDate") {
+      setFormData((prev) => ({ ...prev, scheduledDate: value, timeSlot: "" }));
+      setSuggestedField("timeSlot");
     }
 
-    if (field === 'timeSlot') {
+    if (field === "timeSlot") {
       setSuggestedField(null);
     }
   };
-  
+
   const updateVehicle = (field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      vehicle: { ...prev.vehicle, [field]: value }
+      vehicle: { ...prev.vehicle, [field]: value },
     }));
-    
-    if (field === 'make') {
-      setFormData(prev => ({
+
+    if (field === "make") {
+      setFormData((prev) => ({
         ...prev,
-        vehicle: { ...prev.vehicle, make: value, model: '' }
+        vehicle: { ...prev.vehicle, make: value, model: "" },
       }));
       setAvailableModels([]);
-      setSuggestedField('model');
+      setSuggestedField("model");
     }
 
-    if (field === 'model') {
+    if (field === "model") {
       setSuggestedField(null);
     }
   };
@@ -272,13 +333,14 @@ const BookingForm = () => {
   useEffect(() => {
     const fetchModels = async () => {
       if (!formData.vehicle.make) return;
-      
+
       setIsFetchingModels(true);
       try {
-        const models = await vehicleService.getModelsByMake(formData.vehicle.make);
+        const models = await vehicleService.getModelsByMake(
+          formData.vehicle.make
+        );
         setAvailableModels(models);
       } catch (err) {
-
       } finally {
         setIsFetchingModels(false);
       }
@@ -286,62 +348,72 @@ const BookingForm = () => {
 
     fetchModels();
   }, [formData.vehicle.make]);
-  
+
   const validateStep = (step) => {
     const newErrors = {};
-    
+
     switch (step) {
       case 1:
-        if (!formData.service) newErrors.service = 'Please select a service';
-        if (!formData.vehicle.make) newErrors.vehicleMake = 'Vehicle make is required';
-        if (!formData.vehicle.model) newErrors.vehicleModel = 'Vehicle model is required';
-        if (!formData.glassType) newErrors.glassType = 'Glass type is required';
+        if (!formData.service) newErrors.service = "Please select a service";
+        if (!formData.vehicle.make)
+          newErrors.vehicleMake = "Vehicle make is required";
+        if (!formData.vehicle.model)
+          newErrors.vehicleModel = "Vehicle model is required";
+        if (!formData.glassType) newErrors.glassType = "Glass type is required";
         break;
       case 2:
-        if (!formData.scheduledDate) newErrors.scheduledDate = 'Please select a date';
-        if (!formData.timeSlot) newErrors.timeSlot = 'Please select a time slot';
+        if (!formData.scheduledDate)
+          newErrors.scheduledDate = "Please select a date";
+        if (!formData.timeSlot)
+          newErrors.timeSlot = "Please select a time slot";
         break;
       case 3:
-        if (!formData.address) newErrors.address = 'Please select an address';
+        if (!formData.address) newErrors.address = "Please select an address";
         break;
       default:
         break;
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-  
+
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, 5));
+      setCurrentStep((prev) => Math.min(prev + 1, 5));
     }
   };
-  
+
   const handleBack = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
-  
+
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
-    const newImages = files.map(file => ({
+    const newImages = files.map((file) => ({
       id: URL.createObjectURL(file),
       url: URL.createObjectURL(file),
       name: file.name,
-      file: file // Store the original file for upload
+      file: file, // Store the original file for upload
     }));
-    updateFormData('uploadedImages', [...formData.uploadedImages, ...newImages]);
+    updateFormData("uploadedImages", [
+      ...formData.uploadedImages,
+      ...newImages,
+    ]);
   };
-  
+
   const handleRemoveImage = (imageId) => {
-    updateFormData('uploadedImages', formData.uploadedImages.filter(img => img.id !== imageId));
+    updateFormData(
+      "uploadedImages",
+      formData.uploadedImages.filter((img) => img.id !== imageId)
+    );
   };
-  
+
   const [isGeocoding, setIsGeocoding] = useState(false);
 
   const handleAddAddress = async () => {
     if (!newAddress.line1 || !newAddress.city) {
-      addToast({ type: 'error', message: 'Please fill in required fields' });
+      addToast({ type: "error", message: "Please fill in required fields" });
       return;
     }
 
@@ -349,24 +421,30 @@ const BookingForm = () => {
     let coords = null;
     try {
       // Construct clean address for better matching
-      const parts = [newAddress.line1, newAddress.suburb, newAddress.city, 'South Africa'].filter(Boolean);
-      const fullAddress = parts.join(', ');
-      
+      const parts = [
+        newAddress.line1,
+        newAddress.suburb,
+        newAddress.city,
+        "South Africa",
+      ].filter(Boolean);
+      const fullAddress = parts.join(", ");
+
       coords = await geocodingService.getCoordinates(fullAddress);
-      
+
       // Fallback: Try just suburb and city if full address fails
       if (!coords && newAddress.suburb && newAddress.city) {
-
-        coords = await geocodingService.getCoordinates(`${newAddress.suburb}, ${newAddress.city}, South Africa`);
+        coords = await geocodingService.getCoordinates(
+          `${newAddress.suburb}, ${newAddress.city}, South Africa`
+        );
       }
-      
+
       // Fallback: Try just city if that fails
       if (!coords && newAddress.city) {
-
-        coords = await geocodingService.getCoordinates(`${newAddress.city}, South Africa`);
+        coords = await geocodingService.getCoordinates(
+          `${newAddress.city}, South Africa`
+        );
       }
     } catch (err) {
-
     } finally {
       setIsGeocoding(false);
     }
@@ -378,7 +456,7 @@ const BookingForm = () => {
       city: newAddress.city,
       postalCode: newAddress.postcode,
       coordinates: coords,
-      isDefault: addresses.length === 0
+      isDefault: addresses.length === 0,
     };
 
     let addressToAdd = { ...newAddress, coordinates: coords };
@@ -389,32 +467,37 @@ const BookingForm = () => {
       if (res.success && Array.isArray(res.data) && res.data.length > 0) {
         // Backend returns array of addresses, get the last one (newest)
         const savedBackendAddress = res.data[res.data.length - 1];
-        
+
         addressToAdd = {
           ...addressToAdd,
           ...savedBackendAddress,
           id: savedBackendAddress._id,
-          line1: savedBackendAddress.addressLine1 // Keep local consistency
+          line1: savedBackendAddress.addressLine1, // Keep local consistency
         };
       }
     } catch (e) {
-
-      addToast({ type: 'error', message: 'Failed to save address to profile' });
+      addToast({ type: "error", message: "Failed to save address to profile" });
     }
 
     const id = addAddress(addressToAdd);
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      address: { ...addressToAdd, id: id }
+      address: { ...addressToAdd, id: id },
     }));
     setIsAddressModalOpen(false);
-    setNewAddress({ label: 'Home', line1: '', suburb: '', city: '', postcode: '' });
+    setNewAddress({
+      label: "Home",
+      line1: "",
+      suburb: "",
+      city: "",
+      postcode: "",
+    });
   };
-  
+
   const handleSubmit = async () => {
     if (!formData.service || !formData.address || !formData.vehicle) {
-      addToast({ type: 'error', message: 'Incomplete booking details' });
+      addToast({ type: "error", message: "Incomplete booking details" });
       return;
     }
 
@@ -422,98 +505,110 @@ const BookingForm = () => {
     try {
       // 1. Upload images first
       let uploadedImageUrls = [];
-      const imagesToUpload = formData.uploadedImages.filter(img => img.file);
-      
+      const imagesToUpload = formData.uploadedImages.filter((img) => img.file);
+
       if (imagesToUpload.length > 0) {
         try {
           const imageFormData = new FormData();
-          imagesToUpload.forEach(img => {
-            imageFormData.append('damageImages', img.file);
+          imagesToUpload.forEach((img) => {
+            imageFormData.append("damageImages", img.file);
           });
-          
-          const uploadRes = await bookingService.uploadDamageImages(imageFormData);
+
+          const uploadRes = await bookingService.uploadDamageImages(
+            imageFormData
+          );
           if (uploadRes.success && uploadRes.data?.images) {
             uploadedImageUrls = uploadRes.data.images;
-
           }
         } catch (uploadErr) {
-
-          addToast({ type: 'warning', message: 'Failed to upload images, continuing with booking...' });
+          addToast({
+            type: "warning",
+            message: "Failed to upload images, continuing with booking...",
+          });
         }
       }
 
       const bookingData = {
         provider: provider?.id || null, // Optional for broadcast flow
-        serviceType: (formData.service.name || '').toLowerCase().includes('repair') ? 'repair' : 'replacement',
-        glassType: (formData.glassType || 'windscreen').toLowerCase().replace(' ', '_'),
+        serviceType: (formData.service.name || "")
+          .toLowerCase()
+          .includes("repair")
+          ? "repair"
+          : "replacement",
+        glassType: (formData.glassType || "windscreen")
+          .toLowerCase()
+          .replace(" ", "_"),
         vehicle: {
           make: formData.vehicle.make,
           model: formData.vehicle.model,
-          year: parseInt(formData.vehicle.year) || new Date().getFullYear()
+          year: parseInt(formData.vehicle.year) || new Date().getFullYear(),
         },
         scheduledDate: formData.scheduledDate,
         scheduledTimeSlot: formData.timeSlot,
-        serviceLocationType: 'mobile', // Default to mobile for now as per flow
-        city: searchCriteria?.city || 'Johannesburg', // Used for radius matching
+        serviceLocationType: "mobile", // Default to mobile for now as per flow
+        city: searchCriteria?.city || "Johannesburg", // Used for radius matching
         serviceAddress: {
           addressLine1: formData.address.line1,
           city: formData.address.city,
-          province: 'Gauteng', // Hardcoded for now
+          province: "Gauteng", // Hardcoded for now
           postalCode: formData.address.postcode,
-          coordinates: formData.address.coordinates
+          coordinates: formData.address.coordinates,
         },
         price: {
           subtotal: formData.service.fromPrice || 0,
-          total: (formData.service.fromPrice || 0) + Math.round((formData.service.fromPrice || 0) * 0.05)
+          total:
+            (formData.service.fromPrice || 0) +
+            Math.round((formData.service.fromPrice || 0) * 0.05),
         },
         customerNotes: formData.remarks,
-        damageImages: uploadedImageUrls // Add uploaded images to booking
+        damageImages: uploadedImageUrls, // Add uploaded images to booking
       };
 
       // Final safety net: Ensure coordinates are present
       if (!bookingData.serviceAddress.coordinates) {
-
         try {
-           const addrStr = `${bookingData.serviceAddress.addressLine1 || ''}, ${bookingData.serviceAddress.city}, South Africa`.replace(/^, /, '');
-           const jitCoords = await geocodingService.getCoordinates(addrStr);
-           if (jitCoords) {
-             bookingData.serviceAddress.coordinates = jitCoords;
-
-           }
-        } catch (e) {
-
-        }
+          const addrStr = `${bookingData.serviceAddress.addressLine1 || ""}, ${
+            bookingData.serviceAddress.city
+          }, South Africa`.replace(/^, /, "");
+          const jitCoords = await geocodingService.getCoordinates(addrStr);
+          if (jitCoords) {
+            bookingData.serviceAddress.coordinates = jitCoords;
+          }
+        } catch (e) {}
       }
 
       const res = await bookingService.createBookingRequest(bookingData);
 
-      
       const newBookingId = res?.data?.bookingId || res?.bookingId;
-      
-      if (!newBookingId) {
 
-        addToast({ type: 'error', message: 'Booking created but no ID returned' });
+      if (!newBookingId) {
+        addToast({
+          type: "error",
+          message: "Booking created but no ID returned",
+        });
         return;
       }
-      
-      addToast({ type: 'success', message: 'Booking request sent!' });
+
+      addToast({ type: "success", message: "Booking request sent!" });
       navigate(`/dashboard/booking/searching/${newBookingId}`);
     } catch (error) {
-
-      addToast({ type: 'error', message: error?.error || error?.message || 'Failed to create booking' });
+      addToast({
+        type: "error",
+        message: error?.error || error?.message || "Failed to create booking",
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 20 }, (_, i) => currentYear - i);
-  
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Back Button */}
       <div className="mb-4">
-        <Link 
+        <Link
           to="/dashboard/book"
           className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-xl transition-colors bg-transparent text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-primary-400 hover:text-primary-600"
         >
@@ -521,13 +616,13 @@ const BookingForm = () => {
           Back to Search
         </Link>
       </div>
-      
+
       {/* Search Context Summary (Uber Style) */}
       {!provider && (
         <div className="bg-primary-600 rounded-xl p-4 mb-6 shadow-md text-white">
           <h2 className="font-semibold text-lg flex items-center gap-2">
             <Search size={20} />
-            Finding best provider in {searchCriteria?.city || 'your area'}
+            Finding best provider in {searchCriteria?.city || "your area"}
           </h2>
           <p className="text-primary-100 text-sm">
             We'll broadcast your request to all trusted providers nearby.
@@ -542,7 +637,9 @@ const BookingForm = () => {
             {provider.name.charAt(0)}
           </div>
           <div className="flex-1">
-            <h2 className="font-semibold text-slate-900 dark:text-white">{provider.name}</h2>
+            <h2 className="font-semibold text-slate-900 dark:text-white">
+              {provider.name}
+            </h2>
             <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
               <Star size={14} className="text-amber-400" fill="currentColor" />
               {provider.rating} ({provider.reviewsCount} reviews)
@@ -553,7 +650,7 @@ const BookingForm = () => {
           </div>
         </div>
       )}
-      
+
       {/* Stepper */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-6">
         <div className="flex items-center justify-between">
@@ -561,124 +658,163 @@ const BookingForm = () => {
             const Icon = step.icon;
             const isActive = currentStep === step.id;
             const isCompleted = currentStep > step.id;
-            
+
             return (
               <div key={step.id} className="flex items-center">
                 <div className="flex flex-col items-center">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                    isCompleted 
-                      ? 'bg-green-500 text-white' 
-                      : isActive 
-                        ? 'bg-primary-600 text-white' 
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                  }`}>
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                      isCompleted
+                        ? "bg-green-500 text-white"
+                        : isActive
+                        ? "bg-primary-600 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                    }`}
+                  >
                     {isCompleted ? <Check size={20} /> : <Icon size={20} />}
                   </div>
-                  <span className={`text-xs mt-1 font-medium ${
-                    isActive ? 'text-primary-600 dark:text-primary-400' : 'text-slate-500 dark:text-slate-400'
-                  }`}>
+                  <span
+                    className={`text-xs mt-1 font-medium ${
+                      isActive
+                        ? "text-primary-600 dark:text-primary-400"
+                        : "text-slate-500 dark:text-slate-400"
+                    }`}
+                  >
                     {step.title}
                   </span>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className={`w-12 md:w-20 h-0.5 mx-2 ${
-                    currentStep > step.id ? 'bg-green-500' : 'bg-slate-200 dark:bg-slate-700'
-                  }`} />
+                  <div
+                    className={`w-12 md:w-20 h-0.5 mx-2 ${
+                      currentStep > step.id
+                        ? "bg-green-500"
+                        : "bg-slate-200 dark:bg-slate-700"
+                    }`}
+                  />
                 )}
               </div>
             );
           })}
         </div>
       </div>
-      
+
       {/* Form Content */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
         {/* Step 1: Service & Vehicle */}
         {currentStep === 1 && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Select Service Type</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+                Select Service Type
+              </h3>
               <div className="space-y-3">
                 {(() => {
                   // Get selected glass type or default to Windscreen
-                  const glassType = searchCriteria?.glassType || 'Windscreen';
+                  const glassType = searchCriteria?.glassType || "Windscreen";
                   // Format glass type name for display
-                  const glassName = glassType.charAt(0).toUpperCase() + glassType.slice(1);
-                  
+                  const glassName =
+                    glassType.charAt(0).toUpperCase() + glassType.slice(1);
+
                   // Dynamic services based on glass type
                   const services = [
-                    { 
-                      id: 'SVC-REPLACE', 
-                      name: `${glassName} Replacement`, 
-                      description: `Full replacement with standard ${glassType.toLowerCase()} glass`, 
-                      fromPrice: glassType.toLowerCase().includes('windscreen') ? 1500 : 1200, 
-                      durationMins: 90 
+                    {
+                      id: "SVC-REPLACE",
+                      name: `${glassName} Replacement`,
+                      description: `Full replacement with standard ${glassType.toLowerCase()} glass`,
+                      fromPrice: glassType.toLowerCase().includes("windscreen")
+                        ? 1500
+                        : 1200,
+                      durationMins: 90,
                     },
-                    { 
-                      id: 'SVC-REPAIR', 
-                      name: `${glassName} Repair`, 
-                      description: `Professional chip and crack repair for ${glassType.toLowerCase()}`, 
-                      fromPrice: glassType.toLowerCase().includes('windscreen') ? 450 : 350, 
-                      durationMins: 45 
-                    }
+                    {
+                      id: "SVC-REPAIR",
+                      name: `${glassName} Repair`,
+                      description: `Professional chip and crack repair for ${glassType.toLowerCase()}`,
+                      fromPrice: glassType.toLowerCase().includes("windscreen")
+                        ? 450
+                        : 350,
+                      durationMins: 45,
+                    },
                   ];
-                  
+
                   return services;
-                })().map(service => (
-                  <div 
+                })().map((service) => (
+                  <div
                     key={service.id}
-                    onClick={() => updateFormData('service', service)}
+                    onClick={() => updateFormData("service", service)}
                     className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                      formData.service?.id === service.id || formData.service?.name === service.name
-                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-600'
-                        : 'border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700'
+                      formData.service?.id === service.id ||
+                      formData.service?.name === service.name
+                        ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-600"
+                        : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700"
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <h4 className="font-semibold text-slate-900 dark:text-white">{service.name}</h4>
-                          {(formData.service?.id === service.id || formData.service?.name === service.name) && (
-                            <Check size={18} className="text-primary-600 dark:text-primary-400" />
+                          <h4 className="font-semibold text-slate-900 dark:text-white">
+                            {service.name}
+                          </h4>
+                          {(formData.service?.id === service.id ||
+                            formData.service?.name === service.name) && (
+                            <Check
+                              size={18}
+                              className="text-primary-600 dark:text-primary-400"
+                            />
                           )}
                         </div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{service.description}</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          {service.description}
+                        </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
                           <Clock size={12} /> ~{service.durationMins} mins
                         </p>
                       </div>
                       <div className="text-right pl-4">
                         <p className="text-xs text-slate-500">Est.</p>
-                        <p className="text-lg font-bold text-primary-600 dark:text-primary-400">{formatCurrency(service.fromPrice)}</p>
+                        <p className="text-lg font-bold text-primary-600 dark:text-primary-400">
+                          {formatCurrency(service.fromPrice)}
+                        </p>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-              {errors.service && <p className="text-sm text-danger-500 mt-2">{errors.service}</p>}
+              {errors.service && (
+                <p className="text-sm text-danger-500 mt-2">{errors.service}</p>
+              )}
             </div>
-            
+
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Vehicle Details</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+                Vehicle Details
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {vehicles.length > 0 && (
                   <div className="md:col-span-3 mb-2">
-                    <label className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2 block">Quick Select Saved Vehicle</label>
+                    <label className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2 block">
+                      Quick Select Saved Vehicle
+                    </label>
                     <div className="flex flex-wrap gap-2">
-                      {vehicles.map(v => (
+                      {vehicles.map((v) => (
                         <button
                           key={v.id}
                           type="button"
                           onClick={() => {
-                            setFormData(prev => ({
+                            setFormData((prev) => ({
                               ...prev,
-                              vehicle: { make: v.make, model: v.model, year: v.year.toString() }
+                              vehicle: {
+                                make: v.make,
+                                model: v.model,
+                                year: v.year.toString(),
+                              },
                             }));
                           }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 ${
-                            formData.vehicle.make === v.make && formData.vehicle.model === v.model
-                              ? 'bg-primary-50 border-primary-200 text-primary-700 dark:bg-primary-900/30 dark:border-primary-800 dark:text-primary-300'
-                              : 'bg-white border-slate-200 text-slate-600 hover:border-primary-200 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400'
+                            formData.vehicle.make === v.make &&
+                            formData.vehicle.model === v.model
+                              ? "bg-primary-50 border-primary-200 text-primary-700 dark:bg-primary-900/30 dark:border-primary-800 dark:text-primary-300"
+                              : "bg-white border-slate-200 text-slate-600 hover:border-primary-200 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400"
                           }`}
                         >
                           <Car size={12} />
@@ -693,44 +829,53 @@ const BookingForm = () => {
                   label="Make"
                   required
                   value={formData.vehicle.make}
-                  options={vehicleMakes}
-                  onChange={(val) => updateVehicle('make', val)}
+                  options={availableMakes}
+                  onChange={(val) => updateVehicle("make", val)}
                   placeholder="Select make"
                   error={errors.vehicleMake}
                   searchable
+                  loading={isFetchingMakes}
                 />
-                
+
                 <PremiumSelect
                   label="Model"
                   required
                   value={formData.vehicle.model}
                   options={availableModels}
-                  onChange={(val) => updateVehicle('model', val)}
-                  placeholder={!formData.vehicle.make ? "Select make first" : "Search model"}
+                  onChange={(val) => updateVehicle("model", val)}
+                  placeholder={
+                    !formData.vehicle.make
+                      ? "Select make first"
+                      : "Search model"
+                  }
                   error={errors.vehicleModel}
                   searchable
                   disabled={!formData.vehicle.make}
                   loading={isFetchingModels}
-                  emptyMessage={!formData.vehicle.make ? "Please select a make first" : "No models found"}
-                  autoOpen={suggestedField === 'model'}
+                  emptyMessage={
+                    !formData.vehicle.make
+                      ? "Please select a make first"
+                      : "No models found"
+                  }
+                  autoOpen={suggestedField === "model"}
                 />
 
                 <PremiumSelect
                   label="Year"
                   value={formData.vehicle.year}
                   options={years.map(String)}
-                  onChange={(val) => updateVehicle('year', val)}
+                  onChange={(val) => updateVehicle("year", val)}
                   placeholder="Select year"
                 />
               </div>
-              
+
               <div className="mt-4">
                 <PremiumSelect
                   label="Glass Type"
                   required
                   value={formData.glassType}
                   options={glassTypes}
-                  onChange={(val) => updateFormData('glassType', val)}
+                  onChange={(val) => updateFormData("glassType", val)}
                   placeholder="Select glass type"
                   error={errors.glassType}
                   searchable
@@ -739,7 +884,7 @@ const BookingForm = () => {
             </div>
           </div>
         )}
-        
+
         {/* Step 2: Date & Time */}
         {currentStep === 2 && (
           <div className="space-y-6">
@@ -748,24 +893,26 @@ const BookingForm = () => {
                 label="Select Date"
                 required
                 value={formData.scheduledDate}
-                onChange={(val) => updateFormData('scheduledDate', val)}
+                onChange={(val) => updateFormData("scheduledDate", val)}
                 placeholder="Pick an available date"
                 minDate={getTodayString()}
-                availableDates={availableDates.map(d => d.date)}
+                availableDates={availableDates.map((d) => d.date)}
                 error={errors.scheduledDate}
               />
-              
+
               <PremiumSelect
                 label="Select Time Slot"
                 required
                 icon={Clock}
                 value={formData.timeSlot}
                 options={availableSlots}
-                onChange={(val) => updateFormData('timeSlot', val)}
-                placeholder={!formData.scheduledDate ? "Select date first" : "Pick a time"}
+                onChange={(val) => updateFormData("timeSlot", val)}
+                placeholder={
+                  !formData.scheduledDate ? "Select date first" : "Pick a time"
+                }
                 disabled={!formData.scheduledDate}
                 error={errors.timeSlot}
-                autoOpen={suggestedField === 'timeSlot'}
+                autoOpen={suggestedField === "timeSlot"}
               />
             </div>
 
@@ -773,36 +920,46 @@ const BookingForm = () => {
               <div className="bg-primary-50 dark:bg-primary-900/10 p-4 rounded-xl border border-primary-100 dark:border-primary-900/20">
                 <p className="text-sm text-primary-700 dark:text-primary-300 flex items-center gap-2">
                   <Calendar size={16} />
-                  Earliest available: {new Date(availableDates[0].date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long' })}
+                  Earliest available:{" "}
+                  {new Date(availableDates[0].date).toLocaleDateString(
+                    "en-ZA",
+                    { day: "numeric", month: "long" }
+                  )}
                 </p>
               </div>
             )}
           </div>
         )}
-        
+
         {/* Step 3: Address */}
         {currentStep === 3 && (
           <div className="space-y-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Select Service Address</h3>
-              <Button variant="secondary" size="sm" onClick={() => setIsAddressModalOpen(true)}>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Select Service Address
+              </h3>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsAddressModalOpen(true)}
+              >
                 <Plus size={16} />
                 Add New
               </Button>
             </div>
-            
+
             {addresses.length > 0 ? (
               <div className="space-y-3">
-                {addresses.map(addr => {
+                {addresses.map((addr) => {
                   const isSelected = formData.address?.id === addr.id;
                   return (
                     <button
                       key={addr.id}
-                      onClick={() => updateFormData('address', addr)}
+                      onClick={() => updateFormData("address", addr)}
                       className={`w-full p-4 rounded-xl border text-left transition-all ${
                         isSelected
-                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                          : 'border-slate-200 dark:border-slate-700 hover:border-primary-300'
+                          ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20"
+                          : "border-slate-200 dark:border-slate-700 hover:border-primary-300"
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -811,14 +968,29 @@ const BookingForm = () => {
                             <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-xs font-medium text-slate-600 dark:text-slate-400">
                               {addr.label}
                             </span>
-                            {isSelected && <Check size={16} className="text-primary-600 dark:text-primary-400" />}
+                            {isSelected && (
+                              <Check
+                                size={16}
+                                className="text-primary-600 dark:text-primary-400"
+                              />
+                            )}
                           </div>
-                          <p className="font-medium text-slate-900 dark:text-white mt-1">{addr.line1}</p>
+                          <p className="font-medium text-slate-900 dark:text-white mt-1">
+                            {addr.line1}
+                          </p>
                           <p className="text-sm text-slate-500 dark:text-slate-400">
-                            {addr.suburb && `${addr.suburb}, `}{addr.city} {addr.postcode}
+                            {addr.suburb && `${addr.suburb}, `}
+                            {addr.city} {addr.postcode}
                           </p>
                         </div>
-                        <MapPin size={20} className={isSelected ? 'text-primary-600 dark:text-primary-400' : 'text-slate-400'} />
+                        <MapPin
+                          size={20}
+                          className={
+                            isSelected
+                              ? "text-primary-600 dark:text-primary-400"
+                              : "text-slate-400"
+                          }
+                        />
                       </div>
                     </button>
                   );
@@ -827,34 +999,40 @@ const BookingForm = () => {
             ) : (
               <div className="text-center py-8 bg-slate-50 dark:bg-slate-800 rounded-xl">
                 <MapPin size={32} className="mx-auto text-slate-400 mb-3" />
-                <p className="text-slate-500 dark:text-slate-400 mb-3">No saved addresses</p>
+                <p className="text-slate-500 dark:text-slate-400 mb-3">
+                  No saved addresses
+                </p>
                 <Button onClick={() => setIsAddressModalOpen(true)}>
                   <Plus size={16} />
                   Add Address
                 </Button>
               </div>
             )}
-            {errors.address && <p className="text-sm text-danger-500 mt-2">{errors.address}</p>}
+            {errors.address && (
+              <p className="text-sm text-danger-500 mt-2">{errors.address}</p>
+            )}
           </div>
         )}
-        
+
         {/* Step 4: Remarks & Images */}
         {currentStep === 4 && (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Additional Details</h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+                Additional Details
+              </h3>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                 Remarks or special instructions (optional)
               </label>
               <textarea
                 value={formData.remarks}
-                onChange={(e) => updateFormData('remarks', e.target.value)}
+                onChange={(e) => updateFormData("remarks", e.target.value)}
                 placeholder="e.g., Crack is on the passenger side, approximately 15cm long. Please call before arriving."
                 rows={4}
                 className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 resize-none"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                 Upload photos of the damage (optional)
@@ -871,19 +1049,24 @@ const BookingForm = () => {
                 <label htmlFor="image-upload" className="cursor-pointer">
                   <Upload size={32} className="mx-auto text-slate-400 mb-3" />
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    <span className="text-primary-600 dark:text-primary-400 font-medium">Click to upload</span> or drag and drop
+                    <span className="text-primary-600 dark:text-primary-400 font-medium">
+                      Click to upload
+                    </span>{" "}
+                    or drag and drop
                   </p>
-                  <p className="text-xs text-slate-500 mt-1">PNG, JPG up to 10MB</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    PNG, JPG up to 10MB
+                  </p>
                 </label>
               </div>
-              
+
               {formData.uploadedImages.length > 0 && (
                 <div className="grid grid-cols-3 md:grid-cols-4 gap-3 mt-4">
-                  {formData.uploadedImages.map(img => (
+                  {formData.uploadedImages.map((img) => (
                     <div key={img.id} className="relative group">
-                      <img 
-                        src={img.url} 
-                        alt="Upload preview" 
+                      <img
+                        src={img.url}
+                        alt="Upload preview"
                         className="w-full aspect-square object-cover rounded-lg"
                       />
                       <button
@@ -899,74 +1082,104 @@ const BookingForm = () => {
             </div>
           </div>
         )}
-        
+
         {/* Step 5: Review & Submit */}
         {currentStep === 5 && (
           <div className="space-y-6">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Review Your Booking</h3>
-            
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+              Review Your Booking
+            </h3>
+
             {/* Radios Broadcast Strategy (Uber Style) */}
             <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 border border-primary-100">
-              <p className="text-xs text-primary-600 dark:text-primary-400 mb-2 font-medium">Matching Strategy</p>
+              <p className="text-xs text-primary-600 dark:text-primary-400 mb-2 font-medium">
+                Matching Strategy
+              </p>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary-600 flex items-center justify-center text-white animate-pulse">
                   <Search size={20} />
                 </div>
                 <div>
-                  <p className="font-medium text-slate-900 dark:text-white">Radius Broadcast</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Finding best available provider in {formData.address?.city || searchCriteria?.city}</p>
+                  <p className="font-medium text-slate-900 dark:text-white">
+                    Radius Broadcast
+                  </p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Finding best available provider in{" "}
+                    {formData.address?.city || searchCriteria?.city}
+                  </p>
                 </div>
               </div>
             </div>
-            
+
             {/* Service & Vehicle */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Service</p>
-                <p className="font-medium text-slate-900 dark:text-white">{formData.service?.name}</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">{formData.glassType}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                  Service
+                </p>
+                <p className="font-medium text-slate-900 dark:text-white">
+                  {formData.service?.name}
+                </p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {formData.glassType}
+                </p>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Vehicle</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                  Vehicle
+                </p>
                 <p className="font-medium text-slate-900 dark:text-white">
-                  {formData.vehicle.year} {formData.vehicle.make} {formData.vehicle.model}
+                  {formData.vehicle.year} {formData.vehicle.make}{" "}
+                  {formData.vehicle.model}
                 </p>
               </div>
             </div>
-            
+
             {/* Date & Address */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Date & Time</p>
-                <p className="font-medium text-slate-900 dark:text-white">
-                  {formatDate(formData.scheduledDate, 'long')}
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                  Date & Time
                 </p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">{formData.timeSlot}</p>
+                <p className="font-medium text-slate-900 dark:text-white">
+                  {formatDate(formData.scheduledDate, "long")}
+                </p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {formData.timeSlot}
+                </p>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Address</p>
-                <p className="font-medium text-slate-900 dark:text-white">{formData.address?.line1}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                  Address
+                </p>
+                <p className="font-medium text-slate-900 dark:text-white">
+                  {formData.address?.line1}
+                </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   {formData.address?.suburb && `${formData.address.suburb}, `}
                   {formData.address?.city} {formData.address?.postcode}
                 </p>
               </div>
             </div>
-            
+
             {/* Remarks & Images */}
             {(formData.remarks || formData.uploadedImages.length > 0) && (
               <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Additional Details</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                  Additional Details
+                </p>
                 {formData.remarks && (
-                  <p className="text-sm text-slate-700 dark:text-slate-300 mb-3">{formData.remarks}</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 mb-3">
+                    {formData.remarks}
+                  </p>
                 )}
                 {formData.uploadedImages.length > 0 && (
                   <div className="flex gap-2">
-                    {formData.uploadedImages.slice(0, 4).map(img => (
-                      <img 
+                    {formData.uploadedImages.slice(0, 4).map((img) => (
+                      <img
                         key={img.id}
-                        src={img.url} 
-                        alt="Upload" 
+                        src={img.url}
+                        alt="Upload"
                         className="w-16 h-16 object-cover rounded-lg"
                       />
                     ))}
@@ -979,30 +1192,41 @@ const BookingForm = () => {
                 )}
               </div>
             )}
-            
+
             {/* Price Estimate */}
             <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 border border-primary-200 dark:border-primary-800">
-              <p className="text-xs text-primary-600 dark:text-primary-400 mb-2 font-medium">Price Estimate</p>
+              <p className="text-xs text-primary-600 dark:text-primary-400 mb-2 font-medium">
+                Price Estimate
+              </p>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between text-slate-600 dark:text-slate-400">
                   <span>Service</span>
-                  <span>{formatCurrency(formData.service?.fromPrice || 0)}</span>
+                  <span>
+                    {formatCurrency(formData.service?.fromPrice || 0)}
+                  </span>
                 </div>
                 <div className="flex justify-between text-slate-600 dark:text-slate-400">
                   <span>Platform fee (5%)</span>
-                  <span>{formatCurrency(Math.round((formData.service?.fromPrice || 0) * 0.05))}</span>
+                  <span>
+                    {formatCurrency(
+                      Math.round((formData.service?.fromPrice || 0) * 0.05)
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between font-semibold text-slate-900 dark:text-white pt-2 border-t border-primary-200 dark:border-primary-700">
                   <span>Total</span>
                   <span className="text-primary-600 dark:text-primary-400">
-                    {formatCurrency((formData.service?.fromPrice || 0) + Math.round((formData.service?.fromPrice || 0) * 0.05))}
+                    {formatCurrency(
+                      (formData.service?.fromPrice || 0) +
+                        Math.round((formData.service?.fromPrice || 0) * 0.05)
+                    )}
                   </span>
                 </div>
               </div>
             </div>
           </div>
         )}
-        
+
         {/* Navigation */}
         <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
           {currentStep > 1 ? (
@@ -1013,7 +1237,7 @@ const BookingForm = () => {
           ) : (
             <div />
           )}
-          
+
           {currentStep < 5 ? (
             <Button onClick={handleNext}>
               Next
@@ -1021,7 +1245,9 @@ const BookingForm = () => {
             </Button>
           ) : (
             <Button onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? 'Sending...' : (
+              {isSubmitting ? (
+                "Sending..."
+              ) : (
                 <>
                   <Check size={18} />
                   Send Booking Request
@@ -1031,7 +1257,7 @@ const BookingForm = () => {
           )}
         </div>
       </div>
-      
+
       {/* Add Address Modal */}
       <Modal
         isOpen={isAddressModalOpen}
@@ -1043,27 +1269,37 @@ const BookingForm = () => {
             <PremiumSelect
               label="Label"
               value={newAddress.label}
-              options={['Home', 'Work', 'Other']}
-              onChange={(val) => setNewAddress(prev => ({ ...prev, label: val }))}
+              options={["Home", "Work", "Other"]}
+              onChange={(val) =>
+                setNewAddress((prev) => ({ ...prev, label: val }))
+              }
               placeholder="Select label"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Street Address *</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              Street Address *
+            </label>
             <input
               type="text"
               value={newAddress.line1}
-              onChange={(e) => setNewAddress(prev => ({ ...prev, line1: e.target.value }))}
+              onChange={(e) =>
+                setNewAddress((prev) => ({ ...prev, line1: e.target.value }))
+              }
               placeholder="123 Main Road"
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Suburb</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              Suburb
+            </label>
             <input
               type="text"
               value={newAddress.suburb}
-              onChange={(e) => setNewAddress(prev => ({ ...prev, suburb: e.target.value }))}
+              onChange={(e) =>
+                setNewAddress((prev) => ({ ...prev, suburb: e.target.value }))
+              }
               placeholder="Sandton"
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
             />
@@ -1075,17 +1311,26 @@ const BookingForm = () => {
                 required
                 value={newAddress.city}
                 options={cities}
-                onChange={(val) => setNewAddress(prev => ({ ...prev, city: val }))}
+                onChange={(val) =>
+                  setNewAddress((prev) => ({ ...prev, city: val }))
+                }
                 placeholder="Search city"
                 searchable
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Postcode</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                Postcode
+              </label>
               <input
                 type="text"
                 value={newAddress.postcode}
-                onChange={(e) => setNewAddress(prev => ({ ...prev, postcode: e.target.value }))}
+                onChange={(e) =>
+                  setNewAddress((prev) => ({
+                    ...prev,
+                    postcode: e.target.value,
+                  }))
+                }
                 placeholder="2196"
                 className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
               />
@@ -1093,9 +1338,18 @@ const BookingForm = () => {
           </div>
         </div>
         <ModalActions>
-          <Button variant="secondary" onClick={() => setIsAddressModalOpen(false)}>Cancel</Button>
-          <Button onClick={handleAddAddress} loading={isGeocoding} disabled={isGeocoding}>
-            {isGeocoding ? 'Verifying Location...' : 'Add Address'}
+          <Button
+            variant="secondary"
+            onClick={() => setIsAddressModalOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAddAddress}
+            loading={isGeocoding}
+            disabled={isGeocoding}
+          >
+            {isGeocoding ? "Verifying Location..." : "Add Address"}
           </Button>
         </ModalActions>
       </Modal>
@@ -1104,6 +1358,3 @@ const BookingForm = () => {
 };
 
 export default BookingForm;
-
-
-
