@@ -162,6 +162,17 @@ const bookingService = {
       url: `/customer/bookings/${bookingId}/invoice`,
     });
   },
+
+  /**
+   * Check availability of providers
+   */
+  checkAvailability: (data) => {
+    return request({
+      method: "POST",
+      url: "/customer/bookings/check-availability",
+      data,
+    });
+  },
 };
 
 export default bookingService;

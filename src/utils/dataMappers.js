@@ -284,6 +284,19 @@ export const mapBooking = (booking) => {
       booking.provider?.reviewCount || booking.provider?.totalReviews || 0,
     providerPhone: booking.provider?.phone || booking.providerPhone,
     providerEmail: booking.provider?.email || booking.providerEmail,
+    suggestions: (booking.suggestions || []).map((s) => ({
+      ...s,
+      providerName: s.provider?.businessName || s.provider?.name || "Provider",
+    })),
+    // Use latest suggestion for display if available
+    suggestedAlternateSlot:
+      booking.suggestions?.length > 0
+        ? booking.suggestions[booking.suggestions.length - 1].slot
+        : booking.suggestedAlternateSlot,
+    alternateSlotNote:
+      booking.suggestions?.length > 0
+        ? booking.suggestions[booking.suggestions.length - 1].note
+        : booking.alternateSlotNote,
     timeline: generateTimeline(booking.status, booking.timeline),
   };
 };

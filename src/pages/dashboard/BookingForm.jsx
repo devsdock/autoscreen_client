@@ -200,6 +200,60 @@ const BookingForm = () => {
   const [isFetchingMakes, setIsFetchingMakes] = useState(false); // Add loading state
   const [modelSearchQuery, setModelSearchQuery] = useState("");
   const [suggestedField, setSuggestedField] = useState(null);
+  const [providerCount, setProviderCount] = useState(null);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
+
+  // Check availability when relevant fields change
+  useEffect(() => {
+    const checkTimer = setTimeout(async () => {
+      // Basic validation - need service type and location (address or city)
+      const hasLocation =
+        formData.address || (formData.city && formData.city.length > 0);
+
+      if (formData.service && hasLocation) {
+        setCheckingAvailability(true);
+        try {
+          // Basic payload construction
+          const payload = {
+            serviceType: formData.service?.type || formData.service, // Handle if service is object
+            glassType: formData.glassType,
+            vehicle: formData.vehicle,
+            serviceAddress: formData.address || { city: formData.city },
+            scheduledDate: formData.scheduledDate,
+            scheduledTimeSlot: formData.timeSlot,
+            serviceLocationType: "mobile",
+          };
+
+          // If service is object (from selection), ensure we send string ID or type
+          if (typeof payload.serviceType === "object") {
+            payload.serviceType =
+              payload.serviceType.id || payload.serviceType.type;
+          }
+
+          const res = await bookingService.checkAvailability(payload);
+          if (res.success) {
+            setProviderCount(res.data.count);
+          }
+        } catch (e) {
+          setProviderCount(0);
+        } finally {
+          setCheckingAvailability(false);
+        }
+      } else {
+        setProviderCount(null);
+      }
+    }, 1000); // Debounce 1s
+
+    return () => clearTimeout(checkTimer);
+  }, [
+    formData.service,
+    formData.glassType,
+    formData.vehicle,
+    formData.address,
+    formData.city,
+    formData.scheduledDate,
+    formData.timeSlot,
+  ]);
 
   // Fetch makes on mount
   useEffect(() => {
@@ -259,11 +313,13 @@ const BookingForm = () => {
       dates.push({
         date: formatLocalDate(d),
         slots: [
-          "08:00-10:00",
-          "10:00-12:00",
-          "12:00-14:00",
-          "14:00-16:00",
-          "16:00-18:00",
+          "06:00 - 08:00",
+          "08:00 - 10:00",
+          "10:00 - 12:00",
+          "12:00 - 14:00",
+          "14:00 - 16:00",
+          "16:00 - 18:00",
+          "18:00 - 20:00",
         ],
       });
     }
@@ -283,11 +339,13 @@ const BookingForm = () => {
 
     // Uber Flow: Return standard time slots
     return [
-      "08:00-10:00",
-      "10:00-12:00",
-      "12:00-14:00",
-      "14:00-16:00",
-      "16:00-18:00",
+      "06:00 - 08:00",
+      "08:00 - 10:00",
+      "10:00 - 12:00",
+      "12:00 - 14:00",
+      "14:00 - 16:00",
+      "16:00 - 18:00",
+      "18:00 - 20:00",
     ];
   }, [formData.scheduledDate, provider]);
 
@@ -1236,6 +1294,30 @@ const BookingForm = () => {
             </Button>
           ) : (
             <div />
+          )}
+
+          {/* Provider Availability Indicator */}
+          {providerCount !== null && (
+            <div
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold ${
+                providerCount > 0
+                  ? "bg-green-50 border-green-100 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400"
+                  : "bg-orange-50 border-orange-100 text-orange-700 dark:bg-orange-900/20 dark:border-orange-800 dark:text-orange-400"
+              }`}
+            >
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  providerCount > 0
+                    ? "bg-green-500 animate-pulse"
+                    : "bg-orange-500"
+                }`}
+              />
+              {checkingAvailability
+                ? "Checking..."
+                : providerCount > 0
+                ? `${providerCount} providers available nearby`
+                : "No providers found yet"}
+            </div>
           )}
 
           {currentStep < 5 ? (

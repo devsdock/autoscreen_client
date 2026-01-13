@@ -26,6 +26,7 @@ import useDashboardStore, {
   formatCurrency,
 } from "../../store/useDashboardStore";
 import bookingService from "../../services/bookingService";
+import { downloadInvoice } from "../../utils/invoiceUtils";
 import { useNavigate } from "react-router-dom";
 import ReviewModal from "./ReviewModal";
 
@@ -115,139 +116,9 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
   };
 
   const handleDownloadInvoice = async () => {
-    try {
-      const res = await bookingService.getInvoice(booking.id);
-      if (res.success && res.data) {
-        // Create a printable view of the invoice
-        const invoice = res.data;
-        const printWindow = window.open("", "_blank");
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>Invoice ${invoice.invoiceNumber}</title>
-              <style>
-                body { font-family: sans-serif; padding: 40px; color: #333; }
-                .header { display: flex; justify-content: space-between; margin-bottom: 40px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
-                .logo { font-size: 24px; font-weight: bold; color: #3b82f6; }
-                .title { font-size: 28px; font-weight: bold; margin: 0; }
-                .details { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; }
-                .section-title { font-size: 14px; text-transform: uppercase; color: #666; margin-bottom: 10px; border-bottom: 1px solid #eee; }
-                .table { w-full; border-collapse: collapse; margin-bottom: 40px; }
-                .table th { text-align: left; padding: 12px; border-bottom: 2px solid #eee; background: #f9fafb; font-size: 14px; }
-                .table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
-                .totals { float: right; width: 300px; }
-                .total-row { display: flex; justify-content: space-between; padding: 8px 0; }
-                .grand-total { border-top: 2px solid #3b82f6; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 18px; color: #3b82f6; }
-                .footer { margin-top: 100px; text-align: center; font-size: 12px; color: #999; }
-                @media print { .no-print { display: none; } }
-              </style>
-            </head>
-            <body>
-              <div class="no-print" style="margin-bottom: 20px; text-align: right;">
-                <button onclick="window.print()" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">Print Invoice</button>
-              </div>
-              <div class="header">
-                <div>
-                  <div class="logo">AutoScreen</div>
-                  <div>Quality Auto Glass Services</div>
-                </div>
-                <div style="text-align: right;">
-                  <h1 class="title">INVOICE</h1>
-                  <div>${invoice.invoiceNumber}</div>
-                  <div>Date: ${new Date(
-                    invoice.date
-                  ).toLocaleDateString()}</div>
-                </div>
-              </div>
-
-              <div class="details">
-                <div>
-                  <div class="section-title">Billed To</div>
-                  <div style="font-weight: bold;">${invoice.customer.name}</div>
-                  <div>${invoice.customer.email || ""}</div>
-                  <div>${invoice.customer.phone || ""}</div>
-                </div>
-                <div style="text-align: right;">
-                  <div class="section-title">Provider</div>
-                  <div style="font-weight: bold;">${
-                    invoice.provider?.name || "AutoScreen Provider"
-                  }</div>
-                  <div>${invoice.provider?.email || ""}</div>
-                  <div>${invoice.provider?.phone || ""}</div>
-                </div>
-              </div>
-
-              <table class="table" style="width: 100%;">
-                <thead>
-                  <tr>
-                    <th>Description</th>
-                    <th style="text-align: center;">Qty</th>
-                    <th style="text-align: right;">Unit Price</th>
-                    <th style="text-align: right;">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${invoice.items
-                    .map(
-                      (item) => `
-                    <tr>
-                      <td>${item.description}</td>
-                      <td style="text-align: center;">${item.quantity}</td>
-                      <td style="text-align: right;">R${item.unitPrice.toFixed(
-                        2
-                      )}</td>
-                      <td style="text-align: right;">R${item.amount.toFixed(
-                        2
-                      )}</td>
-                    </tr>
-                  `
-                    )
-                    .join("")}
-                </tbody>
-              </table>
-
-              <div class="totals">
-                <div class="total-row">
-                  <span>Subtotal</span>
-                  <span>R${invoice.totals.subtotal.toFixed(2)}</span>
-                </div>
-                ${
-                  invoice.totals.vat > 0
-                    ? `
-                <div class="total-row">
-                  <span>VAT</span>
-                  <span>R${invoice.totals.vat.toFixed(2)}</span>
-                </div>
-                `
-                    : ""
-                }
-                <div class="total-row grand-total">
-                  <span>Total Amount</span>
-                  <span>R${invoice.totals.total.toFixed(2)}</span>
-                </div>
-                <div style="margin-top: 20px; font-size: 14px;">
-                  <div><strong>Payment Status:</strong> ${invoice.status.toUpperCase()}</div>
-                  ${
-                    invoice.paymentReference
-                      ? `<div><strong>Reference:</strong> ${invoice.paymentReference}</div>`
-                      : ""
-                  }
-                </div>
-              </div>
-
-              <div class="footer">
-                <p>Thank you for choosing AutoScreen for your auto glass needs.</p>
-                <p>&copy; ${new Date().getFullYear()} AutoScreen South Africa. All rights reserved.</p>
-              </div>
-            </body>
-          </html>
-        `);
-        printWindow.document.close();
-      }
-    } catch (err) {
-      console.error("Failed to download invoice:", err);
-      addToast({ type: "error", message: "Failed to generate invoice" });
-    }
+    downloadInvoice(booking.id, (msg) =>
+      addToast({ type: "error", message: msg })
+    );
   };
 
   const handleContactProvider = () => {
@@ -301,6 +172,50 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
               size="md"
             />
           </div>
+
+          {/* Suggested Alternate Slot */}
+          {/* Suggested Alternate Slot(s) */}
+          {currentStatus === "searching" &&
+            (booking.suggestions?.length > 0
+              ? booking.suggestions
+              : booking.suggestedAlternateSlot
+              ? [
+                  {
+                    providerName: "Provider",
+                    slot: booking.suggestedAlternateSlot,
+                    note: booking.alternateSlotNote,
+                  },
+                ]
+              : []
+            ).map((suggestion, index) => (
+              <div
+                key={index}
+                className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-xl p-4 mb-3"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-800 flex items-center justify-center flex-shrink-0 text-blue-600 dark:text-blue-300">
+                    <Clock size={16} />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-blue-900 dark:text-blue-200">
+                      {suggestion.providerName &&
+                      suggestion.providerName !== "Provider"
+                        ? `${suggestion.providerName} Suggested Alternate Time`
+                        : "Provider Suggested Alternate Time"}
+                    </h4>
+                    <p className="text-sm text-blue-800 dark:text-blue-300 mt-1">
+                      Suggested:{" "}
+                      <span className="font-bold">{suggestion.slot}</span>
+                    </p>
+                    {suggestion.note && (
+                      <p className="text-sm text-blue-700 dark:text-blue-400 mt-1 italic">
+                        "{suggestion.note}"
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
 
           {/* Status Timeline */}
           <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
@@ -476,8 +391,45 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
             </div>
           )}
 
+          {/* Completed Work Images (After) */}
+          {booking.afterImages && booking.afterImages.length > 0 && (
+            <div>
+              <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
+                Completed Work Images
+              </h4>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {booking.afterImages.map((img, index) => (
+                  <div
+                    key={index}
+                    className="aspect-square rounded-lg overflow-hidden border border-green-200 dark:border-green-800 cursor-pointer hover:opacity-90 transition-opacity relative group"
+                    onClick={() => setPreviewImage(img)}
+                  >
+                    <img
+                      src={img}
+                      alt={`Completion ${index + 1}`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        e.target.parentElement.classList.add(
+                          "bg-slate-100",
+                          "dark:bg-slate-800",
+                          "flex",
+                          "items-center",
+                          "justify-center"
+                        );
+                        e.target.parentElement.innerHTML =
+                          '<span class="text-xs text-slate-400">Error</span>';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Provider Details */}
-          {booking.providerName && (
+          {booking.providerName && currentStatus !== "searching" && (
             <div>
               <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
                 Provider
@@ -499,14 +451,6 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
                     />
                   </div>
                 </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleContactProvider}
-                >
-                  <Phone size={14} />
-                  Call
-                </Button>
               </div>
             </div>
           )}

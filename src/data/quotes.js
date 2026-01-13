@@ -136,9 +136,13 @@ export const glassTypes = _glassTypes;
 export const serviceTypes = _serviceTypes;
 
 export const timeSlots = [
-  "Morning (08:00 - 12:00)",
-  "Afternoon (12:00 - 17:00)",
-  "Evening (17:00 - 20:00)",
+  "06:00 - 08:00",
+  "08:00 - 10:00",
+  "10:00 - 12:00",
+  "12:00 - 14:00",
+  "14:00 - 16:00",
+  "16:00 - 18:00",
+  "18:00 - 20:00",
   "Any time",
 ];
 
