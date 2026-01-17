@@ -12,14 +12,9 @@ import {
 } from "lucide-react";
 import useDashboardStore from "../../store/useDashboardStore";
 import Button from "../../components/ui/Button";
-import {
-  vehicleMakes,
-  glassTypes,
-  serviceTypes,
-  cities,
-} from "../../data/quotes";
 import vehicleService from "../../services/vehicleService";
 import profileService from "../../services/profileService";
+import publicSettingsService from "../../services/publicSettingsService";
 import PremiumSelect from "../../components/ui/PremiumSelect";
 
 const BookSearch = () => {
@@ -165,11 +160,17 @@ const BookSearch = () => {
 
   const [errors, setErrors] = useState({});
   const [availableModels, setAvailableModels] = useState([]);
-  const [availableMakes, setAvailableMakes] = useState(vehicleMakes);
+  const [availableMakes, setAvailableMakes] = useState([]);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [isFetchingMakes, setIsFetchingMakes] = useState(false);
   const [suggestedField, setSuggestedField] = useState(null);
 
+  // Dynamic data from admin settings
+  const [cities, setCities] = useState([]);
+  const [glassTypes, setGlassTypes] = useState([]);
+  const [serviceTypes, setServiceTypes] = useState([]);
+
+  // Fetch makes on mount
   useEffect(() => {
     const fetchMakes = async () => {
       setIsFetchingMakes(true);
@@ -183,6 +184,39 @@ const BookSearch = () => {
       }
     };
     fetchMakes();
+  }, []);
+
+  // Fetch dynamic settings from admin
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settings = await publicSettingsService.getPublicSettings();
+        setCities(settings.serviceAreas || []);
+        setGlassTypes(settings.glassTypes || []);
+        setServiceTypes(settings.serviceTypes || []);
+      } catch (error) {
+        console.error("Failed to fetch settings:", error);
+        // Fallback defaults
+        setCities(["Johannesburg", "Pretoria", "Cape Town", "Durban"]);
+        setGlassTypes([
+          "Windscreen",
+          "Side Window (Front Left)",
+          "Side Window (Rear Left)",
+          "Rear Window",
+        ]);
+        setServiceTypes([
+          {
+            name: "Glass Replacement",
+            description: "Full windscreen and window replacement",
+          },
+          {
+            name: "Glass Repair",
+            description: "Chip and crack repair services",
+          },
+        ]);
+      }
+    };
+    fetchSettings();
   }, []);
 
   const currentYear = new Date().getFullYear();
@@ -235,9 +269,9 @@ const BookSearch = () => {
     if (!formData.vehicleMake)
       newErrors.vehicleMake = "Vehicle make is required";
     if (!formData.vehicleModel) newErrors.vehicleModel = "Model is required";
-    if (!formData.glassType) newErrors.glassType = "Glass type is required";
     if (!formData.serviceType)
       newErrors.serviceType = "Service type is required";
+    if (!formData.glassType) newErrors.glassType = "Glass type is required";
     if (!formData.city) newErrors.city = "City is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -356,27 +390,66 @@ const BookSearch = () => {
               Service Needed
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <PremiumSelect
-                label="Glass Type"
-                required
-                value={formData.glassType}
-                options={glassTypes}
-                onChange={(val) => handleChange("glassType", val)}
-                placeholder="Select glass type"
-                error={errors.glassType}
-                searchable
-              />
-
+              {/* Service Type - FIRST */}
               <PremiumSelect
                 label="Service Type"
                 required
                 value={formData.serviceType}
-                options={serviceTypes}
-                onChange={(val) => handleChange("serviceType", val)}
+                options={serviceTypes.map((st) => st.name)}
+                onChange={(val) => {
+                  handleChange("serviceType", val);
+                  // Clear glass type when service changes
+                  handleChange("glassType", "");
+                }}
                 placeholder="Select service"
                 error={errors.serviceType}
               />
+
+              {/* Glass Type - SECOND (filtered by service) */}
+              <PremiumSelect
+                label="Glass Type"
+                required
+                value={formData.glassType}
+                options={(() => {
+                  if (!formData.serviceType) return [];
+
+                  // Find selected service
+                  const selectedService = serviceTypes.find(
+                    (st) => st.name === formData.serviceType
+                  );
+                  if (!selectedService || !selectedService.pricing)
+                    return glassTypes;
+
+                  // Filter glass types with pricing for this service
+                  return glassTypes.filter((glassType) => {
+                    const pricingEntry = selectedService.pricing.find(
+                      (p) => p.glassType === glassType
+                    );
+                    return pricingEntry && pricingEntry.price > 0;
+                  });
+                })()}
+                onChange={(val) => handleChange("glassType", val)}
+                placeholder={
+                  !formData.serviceType
+                    ? "Select service first"
+                    : "Select glass type"
+                }
+                error={errors.glassType}
+                searchable
+                disabled={!formData.serviceType}
+                emptyMessage={
+                  !formData.serviceType
+                    ? "Please select a service type first"
+                    : "No glass types available for this service"
+                }
+              />
             </div>
+            {!formData.serviceType && (
+              <p className="text-sm text-blue-600 dark:text-blue-400 mt-2 flex items-center gap-1">
+                <span>ℹ️</span> Select a service type to see available glass
+                options
+              </p>
+            )}
           </div>
 
           {/* Location */}

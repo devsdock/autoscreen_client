@@ -1,15 +1,10 @@
 import { X, Upload, Trash2, Clock } from "lucide-react";
 import useDashboardStore from "../../store/useDashboardStore";
 import Button from "../ui/Button";
-import {
-  vehicleMakes,
-  glassTypes,
-  serviceTypes,
-  timeSlots,
-  cities,
-} from "../../data/quotes";
+import { vehicleMakes, serviceTypes, timeSlots } from "../../data/quotes";
 import vehicleService from "../../services/vehicleService";
 import geocodingService from "../../services/geocodingService";
+import publicSettingsService from "../../services/publicSettingsService";
 import { useState, useRef, useEffect, useMemo } from "react";
 import PremiumSelect from "../ui/PremiumSelect";
 import PremiumDatePicker from "../ui/PremiumDatePicker";
@@ -70,6 +65,11 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
   const [modelSearchQuery, setModelSearchQuery] = useState("");
   const [suggestedField, setSuggestedField] = useState(null);
 
+  // Dynamic data from admin settings
+  const [cities, setCities] = useState([]);
+  const [glassTypes, setGlassTypes] = useState([]);
+  const [adminServiceTypes, setAdminServiceTypes] = useState([]); // Store service types with pricing
+
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 20 }, (_, i) => currentYear - i);
 
@@ -91,6 +91,22 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
     fetchMakes();
   }, []);
 
+  // Fetch public settings (cities, glass types, and service types with pricing)
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settings = await publicSettingsService.getPublicSettings();
+        setCities(settings.serviceAreas || []);
+        setGlassTypes(settings.glassTypes || []);
+        // Store full service type objects with pricing
+        setAdminServiceTypes(settings.serviceTypes || []);
+      } catch (error) {
+        console.error("Failed to fetch public settings:", error);
+      }
+    };
+    fetchSettings();
+  }, []);
+
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -106,6 +122,11 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
       }));
       setAvailableModels([]);
       setModelSearchQuery("");
+    }
+
+    // If service type changes, reset glass type
+    if (field === "serviceType") {
+      setFormData((prev) => ({ ...prev, glassType: "" }));
     }
 
     if (field === "vehicleModel") {
@@ -427,7 +448,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                     label="Service Type"
                     required
                     value={formData.serviceType}
-                    options={serviceTypes}
+                    options={adminServiceTypes.map((st) => st.name)}
                     onChange={(val) => handleChange("serviceType", val)}
                     placeholder="Select type"
                     error={errors.serviceType}
@@ -437,11 +458,43 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                     label="Glass Type"
                     required
                     value={formData.glassType}
-                    options={glassTypes}
+                    options={(() => {
+                      if (!formData.serviceType) return [];
+
+                      // Find the selected service type object
+                      const selectedService = adminServiceTypes.find(
+                        (st) => st.name === formData.serviceType
+                      );
+
+                      if (!selectedService || !selectedService.pricing)
+                        return [];
+
+                      // Filter glass types that have pricing for selected service
+                      const availableGlassTypes = glassTypes.filter(
+                        (glassType) => {
+                          const pricingEntry = selectedService.pricing.find(
+                            (p) => p.glassType === glassType
+                          );
+                          return pricingEntry && pricingEntry.price > 0;
+                        }
+                      );
+
+                      return availableGlassTypes;
+                    })()}
                     onChange={(val) => handleChange("glassType", val)}
-                    placeholder="Select glass"
+                    placeholder={
+                      !formData.serviceType
+                        ? "Select service first"
+                        : "Select glass"
+                    }
                     error={errors.glassType}
                     searchable
+                    disabled={!formData.serviceType}
+                    emptyMessage={
+                      !formData.serviceType
+                        ? "Please select a service type first"
+                        : "No glass types available for this service"
+                    }
                   />
                 </div>
               </div>

@@ -486,46 +486,16 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
           {/* Price Breakdown */}
           <div>
             <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
-              Price Breakdown
+              Price
             </h4>
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-600 dark:text-slate-400">
-                  Service Amount
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-slate-600 dark:text-slate-400">
+                  {booking.service}
                 </span>
-                <span className="text-slate-900 dark:text-white">
-                  {formatCurrency(booking.price?.service || 0)}
+                <span className="font-bold text-primary-600 dark:text-primary-400 text-2xl">
+                  {formatCurrency(booking.price?.total || 0)}
                 </span>
-              </div>
-              {booking.price?.callout > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">
-                    Callout Fee
-                  </span>
-                  <span className="text-slate-900 dark:text-white">
-                    {formatCurrency(booking.price.callout)}
-                  </span>
-                </div>
-              )}
-              {booking.price?.materials > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">
-                    Materials
-                  </span>
-                  <span className="text-slate-900 dark:text-white">
-                    {formatCurrency(booking.price.materials)}
-                  </span>
-                </div>
-              )}
-              <div className="border-t border-slate-200 dark:border-slate-700 pt-2 mt-2">
-                <div className="flex justify-between">
-                  <span className="font-semibold text-slate-900 dark:text-white">
-                    Total
-                  </span>
-                  <span className="font-bold text-primary-600 dark:text-primary-400 text-lg">
-                    {formatCurrency(booking.price?.total || 0)}
-                  </span>
-                </div>
               </div>
             </div>
           </div>

@@ -28,10 +28,10 @@ import bookingService from "../../services/bookingService";
 import profileService from "../../services/profileService";
 import vehicleService from "../../services/vehicleService";
 import geocodingService from "../../services/geocodingService";
+import publicSettingsService from "../../services/publicSettingsService";
 import Button from "../../components/ui/Button";
 import Modal, { ModalActions } from "../../components/ui/Modal";
-import { glassTypes } from "../../data/providers";
-import { vehicleMakes, cities } from "../../data/quotes";
+import { vehicleMakes } from "../../data/quotes";
 import PremiumSelect from "../../components/ui/PremiumSelect";
 import PremiumDatePicker from "../../components/ui/PremiumDatePicker";
 import { getTodayString, formatLocalDate } from "../../utils/dateUtils";
@@ -55,6 +55,8 @@ const BookingForm = () => {
     setVehicles,
   } = useDashboardStore();
 
+  const [uploadedImages, setUploadedImages] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const hasCheckedActive = useRef(false);
@@ -203,6 +205,57 @@ const BookingForm = () => {
   const [providerCount, setProviderCount] = useState(null);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
 
+  // Dynamic data from admin settings
+  const [cities, setCities] = useState([]);
+  const [glassTypes, setGlassTypes] = useState([]);
+  const [adminServiceTypes, setAdminServiceTypes] = useState([]); // Store service types with pricing
+  const [platformFeePercent, setPlatformFeePercent] = useState(10); // Platform commission percentage
+  const [platformFeeType, setPlatformFeeType] = useState("percentage"); // Commission type: percentage or fixed
+
+  // Fetch public settings (cities, glass types, service types with pricing)
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settings = await publicSettingsService.getPublicSettings();
+        setCities(settings.serviceAreas || []);
+        setGlassTypes(settings.glassTypes || []);
+        // Store full service type objects with pricing
+        setAdminServiceTypes(settings.serviceTypes || []);
+      } catch (error) {
+        console.error("Failed to fetch public settings:", error);
+        // Set fallback defaults
+        setCities(["Johannesburg", "Pretoria", "Cape Town", "Durban"]);
+        setGlassTypes([
+          "Windscreen",
+          "Side Window (Front Left)",
+          "Side Window (Front Right)",
+          "Rear Window",
+        ]);
+        setAdminServiceTypes([
+          { name: "Glass Replacement", description: "Full glass replacement" },
+          { name: "Glass Repair", description: "Chip & crack repair" },
+        ]);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  // Fetch platform commission percentage
+  useEffect(() => {
+    const fetchCommission = async () => {
+      try {
+        const commissionData = await publicSettingsService.getCommission();
+        setPlatformFeePercent(commissionData.percentage || 10);
+        setPlatformFeeType(commissionData.type || "percentage");
+      } catch (error) {
+        console.error("Failed to fetch commission:", error);
+        setPlatformFeePercent(10); // Fallback to 10%
+        setPlatformFeeType("percentage"); // Fallback to percentage
+      }
+    };
+    fetchCommission();
+  }, []);
+
   // Check availability when relevant fields change
   useEffect(() => {
     const checkTimer = setTimeout(async () => {
@@ -272,6 +325,22 @@ const BookingForm = () => {
     };
     fetchMakes();
   }, []);
+
+  // Pre-fill service from searchCriteria after admin service types are loaded
+  useEffect(() => {
+    if (
+      adminServiceTypes.length > 0 &&
+      searchCriteria?.serviceType &&
+      !formData.service
+    ) {
+      const matchingService = adminServiceTypes.find(
+        (st) => st.name === searchCriteria.serviceType
+      );
+      if (matchingService) {
+        setFormData((prev) => ({ ...prev, service: matchingService }));
+      }
+    }
+  }, [adminServiceTypes, searchCriteria, formData.service]);
 
   // Pre-fill from saved details (Uber Style)
   useEffect(() => {
@@ -412,12 +481,13 @@ const BookingForm = () => {
 
     switch (step) {
       case 1:
+        // Check service type first (new flow: service → glass type)
         if (!formData.service) newErrors.service = "Please select a service";
+        if (!formData.glassType) newErrors.glassType = "Glass type is required";
         if (!formData.vehicle.make)
           newErrors.vehicleMake = "Vehicle make is required";
         if (!formData.vehicle.model)
           newErrors.vehicleModel = "Vehicle model is required";
-        if (!formData.glassType) newErrors.glassType = "Glass type is required";
         break;
       case 2:
         if (!formData.scheduledDate)
@@ -586,6 +656,29 @@ const BookingForm = () => {
         }
       }
 
+      // Get the actual service price for the selected glass type
+      const servicePrice =
+        formData.service.pricing?.find(
+          (p) => p.glassType === formData.glassType
+        )?.price ||
+        formData.service.fromPrice ||
+        0;
+
+      // Calculate commission (lock in current rates)
+      const commissionAmount =
+        platformFeeType === "percentage"
+          ? Math.round(servicePrice * (platformFeePercent / 100) * 100) / 100
+          : platformFeePercent;
+      const providerEarnings = servicePrice - commissionAmount;
+
+      console.log("🔍 Commission Debug:", {
+        servicePrice,
+        platformFeeType,
+        platformFeePercent,
+        commissionAmount,
+        providerEarnings,
+      });
+
       const bookingData = {
         provider: provider?.id || null, // Optional for broadcast flow
         serviceType: (formData.service.name || "")
@@ -613,10 +706,15 @@ const BookingForm = () => {
           coordinates: formData.address.coordinates,
         },
         price: {
-          subtotal: formData.service.fromPrice || 0,
-          total:
-            (formData.service.fromPrice || 0) +
-            Math.round((formData.service.fromPrice || 0) * 0.05),
+          subtotal: servicePrice,
+          total: servicePrice, // Customer pays the service price (Uber model)
+        },
+        commission: {
+          type: platformFeeType, // Lock in commission type (percentage/fixed)
+          rate: platformFeePercent, // Lock in commission rate
+          amount: commissionAmount, // Calculated commission
+          platformFee: commissionAmount, // Backwards compatibility
+          providerEarnings: providerEarnings, // What provider receives
         },
         customerNotes: formData.remarks,
         damageImages: uploadedImageUrls, // Add uploaded images to booking
@@ -761,86 +859,163 @@ const BookingForm = () => {
         {/* Step 1: Service & Vehicle */}
         {currentStep === 1 && (
           <div className="space-y-6">
+            {/* Service Type Selection - FIRST */}
             <div>
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
                 Select Service Type
               </h3>
               <div className="space-y-3">
-                {(() => {
-                  // Get selected glass type or default to Windscreen
-                  const glassType = searchCriteria?.glassType || "Windscreen";
-                  // Format glass type name for display
-                  const glassName =
-                    glassType.charAt(0).toUpperCase() + glassType.slice(1);
+                {(searchCriteria?.serviceType
+                  ? adminServiceTypes.filter(
+                      (st) => st.name === searchCriteria.serviceType
+                    )
+                  : adminServiceTypes
+                ).map((serviceType) => {
+                  const isSelected =
+                    formData.service?.name === serviceType.name;
 
-                  // Dynamic services based on glass type
-                  const services = [
-                    {
-                      id: "SVC-REPLACE",
-                      name: `${glassName} Replacement`,
-                      description: `Full replacement with standard ${glassType.toLowerCase()} glass`,
-                      fromPrice: glassType.toLowerCase().includes("windscreen")
-                        ? 1500
-                        : 1200,
-                      durationMins: 90,
-                    },
-                    {
-                      id: "SVC-REPAIR",
-                      name: `${glassName} Repair`,
-                      description: `Professional chip and crack repair for ${glassType.toLowerCase()}`,
-                      fromPrice: glassType.toLowerCase().includes("windscreen")
-                        ? 450
-                        : 350,
-                      durationMins: 45,
-                    },
-                  ];
+                  // Get price for selected glass type, or first price as fallback
+                  const displayPrice =
+                    isSelected && formData.glassType
+                      ? serviceType.pricing?.find(
+                          (p) => p.glassType === formData.glassType
+                        )?.price ||
+                        serviceType.pricing?.[0]?.price ||
+                        0
+                      : serviceType.pricing?.[0]?.price || 0;
 
-                  return services;
-                })().map((service) => (
-                  <div
-                    key={service.id}
-                    onClick={() => updateFormData("service", service)}
-                    className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                      formData.service?.id === service.id ||
-                      formData.service?.name === service.name
-                        ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-600"
-                        : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-semibold text-slate-900 dark:text-white">
-                            {service.name}
-                          </h4>
-                          {(formData.service?.id === service.id ||
-                            formData.service?.name === service.name) && (
-                            <Check
-                              size={18}
-                              className="text-primary-600 dark:text-primary-400"
-                            />
-                          )}
+                  return (
+                    <div
+                      key={serviceType.id || serviceType.name}
+                      onClick={() => {
+                        updateFormData("service", serviceType);
+                        // Clear glass type when service changes
+                        updateFormData("glassType", "");
+                      }}
+                      className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                        isSelected
+                          ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-600"
+                          : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-slate-900 dark:text-white">
+                              {serviceType.name}
+                            </h4>
+                            {isSelected && (
+                              <Check
+                                size={18}
+                                className="text-primary-600 dark:text-primary-400"
+                              />
+                            )}
+                          </div>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                            {isSelected && formData.glassType
+                              ? `${
+                                  formData.glassType
+                                } ${serviceType.name.toLowerCase()}`
+                              : serviceType.description}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
+                            <Clock size={12} /> ~
+                            {serviceType.name.toLowerCase().includes("repair")
+                              ? 45
+                              : 90}{" "}
+                            mins
+                          </p>
                         </div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                          {service.description}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
-                          <Clock size={12} /> ~{service.durationMins} mins
-                        </p>
-                      </div>
-                      <div className="text-right pl-4">
-                        <p className="text-xs text-slate-500">Est.</p>
-                        <p className="text-lg font-bold text-primary-600 dark:text-primary-400">
-                          {formatCurrency(service.fromPrice)}
-                        </p>
+                        <div className="text-right pl-4">
+                          <p className="text-xs text-slate-500">From</p>
+                          <p className="text-lg font-bold text-primary-600 dark:text-primary-400">
+                            {formatCurrency(displayPrice)}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               {errors.service && (
                 <p className="text-sm text-danger-500 mt-2">{errors.service}</p>
               )}
+            </div>
+
+            {/* Glass Type Selection - SECOND (filtered by service) */}
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+                Select Glass Type
+              </h3>
+              {!formData.service && (
+                <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                  <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+                    ℹ️ Please select a service type above first
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    Available glass types will be shown based on your service
+                    selection.
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-4">
+                <PremiumSelect
+                  label="Glass Type"
+                  required
+                  value={formData.glassType}
+                  options={(() => {
+                    if (!formData.service) return [];
+
+                    // Filter glass types that have pricing for selected service
+                    const availableGlassTypes = glassTypes.filter(
+                      (glassType) => {
+                        const pricingEntry = formData.service.pricing?.find(
+                          (p) => p.glassType === glassType
+                        );
+                        return pricingEntry && pricingEntry.price > 0;
+                      }
+                    );
+
+                    return availableGlassTypes;
+                  })()}
+                  onChange={(val) => updateFormData("glassType", val)}
+                  placeholder={
+                    !formData.service
+                      ? "Select service first"
+                      : "Select glass type"
+                  }
+                  error={errors.glassType}
+                  searchable
+                  disabled={!formData.service}
+                  emptyMessage={
+                    !formData.service
+                      ? "Please select a service type first"
+                      : "No glass types available for this service"
+                  }
+                />
+                {formData.service && formData.glassType && (
+                  <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                          {formData.service.name} - {formData.glassType}
+                        </p>
+                        <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                          Estimated price for this service
+                        </p>
+                      </div>
+                      <p className="text-lg font-bold text-green-700 dark:text-green-300">
+                        {formatCurrency(
+                          formData.service.pricing?.find(
+                            (p) => p.glassType === formData.glassType
+                          )?.price || 0
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>
@@ -1251,35 +1426,40 @@ const BookingForm = () => {
               </div>
             )}
 
-            {/* Price Estimate */}
+            {/* Price Summary */}
             <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 border border-primary-200 dark:border-primary-800">
-              <p className="text-xs text-primary-600 dark:text-primary-400 mb-2 font-medium">
-                Price Estimate
+              <p className="text-xs text-primary-600 dark:text-primary-400 mb-3 font-medium">
+                Price Summary
               </p>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                  <span>Service</span>
-                  <span>
-                    {formatCurrency(formData.service?.fromPrice || 0)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                  <span>Platform fee (5%)</span>
-                  <span>
-                    {formatCurrency(
-                      Math.round((formData.service?.fromPrice || 0) * 0.05)
-                    )}
-                  </span>
-                </div>
-                <div className="flex justify-between font-semibold text-slate-900 dark:text-white pt-2 border-t border-primary-200 dark:border-primary-700">
-                  <span>Total</span>
-                  <span className="text-primary-600 dark:text-primary-400">
-                    {formatCurrency(
-                      (formData.service?.fromPrice || 0) +
-                        Math.round((formData.service?.fromPrice || 0) * 0.05)
-                    )}
-                  </span>
-                </div>
+              <div className="space-y-2 text-sm">
+                {(() => {
+                  // Calculate actual service price from selected service and glass type
+                  const servicePrice =
+                    formData.service && formData.glassType
+                      ? formData.service.pricing?.find(
+                          (p) => p.glassType === formData.glassType
+                        )?.price || 0
+                      : 0;
+
+                  return (
+                    <>
+                      <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                        <span>
+                          {formData.service?.name} - {formData.glassType}
+                        </span>
+                        <span className="font-medium">
+                          {formatCurrency(servicePrice)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between font-bold text-slate-900 dark:text-white pt-3 border-t border-primary-200 dark:border-primary-700 mt-3">
+                        <span>Total</span>
+                        <span className="text-xl text-primary-600 dark:text-primary-400">
+                          {formatCurrency(servicePrice)}
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>

@@ -1,131 +1,151 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, CreditCard, Wallet, Calendar, Receipt, Download } from 'lucide-react';
-import useDashboardStore, { formatDate, formatCurrency } from '../../store/useDashboardStore';
-import bookingService from '../../services/bookingService';
-import PageHeader from '../../components/ui/PageHeader';
-import Card, { CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import StatCard from '../../components/ui/StatCard';
-import StatusBadge from '../../components/ui/StatusBadge';
-import Button from '../../components/ui/Button';
-import Tabs from '../../components/ui/Tabs';
-import Input from '../../components/ui/Input';
-import EmptyState from '../../components/ui/EmptyState';
-import PaymentModal from '../../components/dashboard/PaymentModal';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import {
+  Search,
+  CreditCard,
+  Wallet,
+  Calendar,
+  Receipt,
+  Download,
+} from "lucide-react";
+import useDashboardStore, {
+  formatDate,
+  formatCurrency,
+} from "../../store/useDashboardStore";
+import paymentService from "../../services/paymentService"; // Updated import
+import bookingService from "../../services/bookingService"; // Still needed for some fallback or navigation links if any
+import PageHeader from "../../components/ui/PageHeader";
+import Card, {
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "../../components/ui/Card";
+import StatCard from "../../components/ui/StatCard";
+import StatusBadge from "../../components/ui/StatusBadge";
+import Button from "../../components/ui/Button";
+import Tabs from "../../components/ui/Tabs";
+import Input from "../../components/ui/Input";
+import EmptyState from "../../components/ui/EmptyState";
+import PaymentModal from "../../components/dashboard/PaymentModal";
 
 const Payments = () => {
   const { addToast } = useDashboardStore();
-  const [activeTab, setActiveTab] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch payments from bookings
+  // Fetch payments from new Payment API
   useEffect(() => {
     const fetchPayments = async () => {
       setLoading(true);
       try {
-        const res = await bookingService.getBookings({ limit: 50 });
+        const res = await paymentService.getMyPayments({
+          status:
+            activeTab === "all"
+              ? undefined
+              : activeTab === "pending"
+              ? undefined
+              : activeTab === "completed"
+              ? "Paid"
+              : "Refunded",
+          search: searchQuery,
+        });
+
         if (res.success && res.data) {
-          const mappedPayments = res.data
-            .filter(booking => !['searching', 'expired'].includes(booking.status))
-            .map(booking => {
-              const paymentStatus = booking.paymentStatus?.toLowerCase();
-              const bookingStatus = booking.status?.toLowerCase();
-              
-              // Determine status for display
-              let status = 'Unpaid';
-              if (paymentStatus === 'paid') status = 'Paid';
-              else if (paymentStatus === 'refunded' || paymentStatus === 'partially_refunded') status = 'Refunded';
-              else if (bookingStatus === 'cancelled') status = 'Refunded';
-              else if (bookingStatus === 'accepted' || bookingStatus === 'awaiting-payment') status = 'Unpaid';
-              else status = 'Pending';
-              
-              return {
-                id: booking._id,
-                bookingId: booking._id,
-                bookingRef: booking.bookingNumber,
-                service: booking.serviceType,
-                providerName: booking.provider?.businessName || booking.provider?.name || 'Pending Provider',
-                amount: booking.price?.total || 0,
-                date: booking.paidAt || booking.createdAt,
-                dueDate: booking.scheduledDate,
-                method: booking.paymentMethod || '—',
-                status: status,
-                originalStatus: booking.status, 
-                breakdown: {
-                  service: booking.priceBreakdown?.laborPrice || booking.price?.subtotal || booking.price?.total || 0,
-                  callout: booking.priceBreakdown?.calloutFee || 0,
-                  materials: booking.priceBreakdown?.glassPrice || 0
-                }
-              };
-            });
-          setPayments(mappedPayments);
+          // Data is already normalized by backend
+          setPayments(res.data);
         }
       } catch (err) {
         console.error("Failed to fetch payments", err);
-        addToast({ type: 'error', message: 'Failed to load payments' });
+        addToast({ type: "error", message: "Failed to load payments" });
       } finally {
         setLoading(false);
       }
     };
 
     fetchPayments();
-  }, [addToast]);
-  
+  }, [addToast, activeTab, searchQuery]);
+
   // Calculate summary stats
-  const totalSpent = payments.filter(p => p.status === 'Paid').reduce((sum, p) => sum + p.amount, 0);
-  const pendingTotal = payments.filter(p => p.status === 'Unpaid').reduce((sum, p) => sum + p.amount, 0);
-  const lastPaid = payments.filter(p => p.status === 'Paid').sort((a, b) => 
-    new Date(b.date) - new Date(a.date)
-  )[0];
-  
+  const totalSpent = payments
+    .filter((p) => p.status === "Paid")
+    .reduce((sum, p) => sum + p.amount, 0);
+  const pendingTotal = payments
+    .filter((p) => p.status === "Unpaid")
+    .reduce((sum, p) => sum + p.amount, 0);
+  const lastPaid = payments
+    .filter((p) => p.status === "Paid")
+    .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+
   const tabs = [
-    { value: 'all', label: 'All', count: payments.length },
-    { value: 'pending', label: 'Pending', count: payments.filter(p => p.status === 'Unpaid' || p.status === 'Pending').length },
-    { value: 'completed', label: 'Completed', count: payments.filter(p => p.status === 'Paid').length },
-    { value: 'refunded', label: 'Refunded', count: payments.filter(p => p.status === 'Refunded').length },
+    { value: "all", label: "All", count: payments.length },
+    {
+      value: "pending",
+      label: "Pending",
+      count: payments.filter(
+        (p) => p.status === "Unpaid" || p.status === "Pending"
+      ).length,
+    },
+    {
+      value: "completed",
+      label: "Completed",
+      count: payments.filter((p) => p.status === "Paid").length,
+    },
+    {
+      value: "refunded",
+      label: "Refunded",
+      count: payments.filter((p) => p.status === "Refunded").length,
+    },
+    // Note: 'pending' tab counts both Unpaid and Pending for simplicity in this frontend logic
   ];
-  
-  const filteredPayments = payments.filter(payment => {
+
+  // Client-side filtering for display (redundant if server filters, but good for snappy UI if we loaded all)
+  const filteredPayments = payments.filter((payment) => {
     // Tab filter
-    if (activeTab === 'pending' && payment.status !== 'Unpaid' && payment.status !== 'Pending') return false;
-    if (activeTab === 'completed' && payment.status !== 'Paid') return false;
-    if (activeTab === 'refunded' && payment.status !== 'Refunded') return false;
-    
+    if (
+      activeTab === "pending" &&
+      payment.status !== "Unpaid" &&
+      payment.status !== "Pending"
+    )
+      return false;
+    if (activeTab === "completed" && payment.status !== "Paid") return false;
+    if (activeTab === "refunded" && payment.status !== "Refunded") return false;
+
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
-        payment.id.toLowerCase().includes(query) ||
+        (payment.transactionId &&
+          payment.transactionId.toLowerCase().includes(query)) ||
         payment.bookingRef.toLowerCase().includes(query) ||
         payment.service.toLowerCase().includes(query) ||
         payment.providerName.toLowerCase().includes(query)
       );
     }
-    
+
     return true;
   });
-  
+
   // Sort by date, most recent first
   const sortedPayments = [...filteredPayments].sort((a, b) => {
     const dateA = a.date || a.dueDate;
     const dateB = b.date || b.dueDate;
     return new Date(dateB) - new Date(dateA);
   });
-  
+
   const handleDownloadReceipt = (payment) => {
-    addToast({ type: 'success', message: 'Receipt downloaded' });
+    addToast({ type: "success", message: "Receipt downloaded" });
   };
-  
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Payments"
         subtitle="View payment history and pending invoices"
       />
-      
+
       {/* Summary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
@@ -144,31 +164,31 @@ const Payments = () => {
         />
         <StatCard
           icon={Receipt}
-          value={lastPaid ? formatCurrency(lastPaid.amount) : '—'}
+          value={lastPaid ? formatCurrency(lastPaid.amount) : "—"}
           subValue={lastPaid ? `on ${formatDate(lastPaid.date)}` : undefined}
           label="Last Payment"
           iconBgColor="bg-blue-50 dark:bg-blue-900/20"
           iconColor="text-blue-600 dark:text-blue-400"
         />
       </div>
-      
+
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <Tabs 
-          tabs={tabs} 
-          activeTab={activeTab} 
+        <Tabs
+          tabs={tabs}
+          activeTab={activeTab}
           onChange={setActiveTab}
           variant="pills"
         />
         <Input
-          placeholder="Search payments..."
+          placeholder="Search by ID, booking, service..."
           icon={Search}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full sm:w-64"
         />
       </div>
-      
+
       {/* Payments List */}
       {sortedPayments.length === 0 ? (
         <EmptyState
@@ -184,7 +204,7 @@ const Payments = () => {
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800">
                   <th className="text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider px-6 py-3">
-                    S.No
+                    Payment ID
                   </th>
                   <th className="text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider px-6 py-3">
                     Booking
@@ -214,14 +234,20 @@ const Payments = () => {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {sortedPayments.map((payment, index) => (
-                  <tr key={payment.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <tr
+                    key={payment.id}
+                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                  >
                     <td className="px-6 py-4">
-                      <span className="font-mono text-sm text-slate-600 dark:text-slate-400">
-                        {(index + 1).toString().padStart(2, '0')}
+                      <span
+                        className="font-mono text-sm text-slate-600 dark:text-slate-400"
+                        title={payment.transactionId}
+                      >
+                        {payment.transactionId?.slice(0, 8)}...
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <Link 
+                      <Link
                         to={`/dashboard/bookings/${payment.bookingId}`}
                         className="font-mono text-sm text-primary-600 hover:text-primary-700"
                       >
@@ -229,10 +255,14 @@ const Payments = () => {
                       </Link>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-slate-900 dark:text-white">{payment.service}</span>
+                      <span className="text-sm text-slate-900 dark:text-white">
+                        {payment.service}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-slate-600 dark:text-slate-400">{payment.providerName}</span>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">
+                        {payment.providerName}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="font-semibold text-slate-900 dark:text-white">
@@ -241,26 +271,33 @@ const Payments = () => {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-slate-600 dark:text-slate-400">
-                        {payment.date ? formatDate(payment.date) : `Due ${formatDate(payment.dueDate)}`}
+                        {payment.date
+                          ? formatDate(payment.date)
+                          : `Due ${formatDate(payment.dueDate)}`}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-slate-600 dark:text-slate-400">
-                        {payment.method && payment.method !== '—' ? payment.method : '—'}
+                        {payment.method && payment.method !== "—"
+                          ? payment.method
+                          : "—"}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <StatusBadge status={payment.status} type="payment" />
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {payment.status === 'Unpaid' && (
-                        <Button size="sm" onClick={() => setSelectedPayment(payment)}>
+                      {payment.status === "Unpaid" && (
+                        <Button
+                          size="sm"
+                          onClick={() => setSelectedPayment(payment)}
+                        >
                           Pay Now
                         </Button>
                       )}
-                      {payment.status === 'Paid' && (
-                        <Button 
-                          size="sm" 
+                      {payment.status === "Paid" && (
+                        <Button
+                          size="sm"
                           variant="secondary"
                           onClick={() => handleDownloadReceipt(payment)}
                         >
@@ -268,7 +305,8 @@ const Payments = () => {
                           Receipt
                         </Button>
                       )}
-                      {(payment.status === 'Pending' || payment.status === 'Refunded') && (
+                      {(payment.status === "Pending" ||
+                        payment.status === "Refunded") && (
                         <Button size="sm" variant="ghost">
                           View
                         </Button>
@@ -279,7 +317,7 @@ const Payments = () => {
               </tbody>
             </table>
           </div>
-          
+
           {/* Mobile Cards */}
           <div className="lg:hidden divide-y divide-slate-100 dark:divide-slate-800">
             {sortedPayments.map((payment, index) => (
@@ -287,30 +325,43 @@ const Payments = () => {
                 <div className="flex items-start justify-between">
                   <div>
                     <span className="font-mono text-sm text-slate-500 dark:text-slate-400">
-                      #{(index + 1).toString().padStart(2, '0')}
+                      #
+                      {payment.transactionId?.slice(0, 8) ||
+                        (index + 1).toString().padStart(2, "0")}
                     </span>
-                    <p className="font-semibold text-slate-900 dark:text-white mt-1">{payment.service}</p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{payment.providerName}</p>
+                    <p className="font-semibold text-slate-900 dark:text-white mt-1">
+                      {payment.service}
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      {payment.providerName}
+                    </p>
                   </div>
                   <StatusBadge status={payment.status} type="payment" />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(payment.amount)}</p>
+                    <p className="text-lg font-bold text-slate-900 dark:text-white">
+                      {formatCurrency(payment.amount)}
+                    </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {payment.date ? formatDate(payment.date) : `Due ${formatDate(payment.dueDate)}`}
+                      {payment.date
+                        ? formatDate(payment.date)
+                        : `Due ${formatDate(payment.dueDate)}`}
                     </p>
                   </div>
                   <div>
-                    {payment.status === 'Unpaid' && (
-                      <Button size="sm" onClick={() => setSelectedPayment(payment)}>
+                    {payment.status === "Unpaid" && (
+                      <Button
+                        size="sm"
+                        onClick={() => setSelectedPayment(payment)}
+                      >
                         Pay Now
                       </Button>
                     )}
-                    {payment.status === 'Paid' && (
-                      <Button 
-                        size="sm" 
+                    {payment.status === "Paid" && (
+                      <Button
+                        size="sm"
                         variant="secondary"
                         onClick={() => handleDownloadReceipt(payment)}
                       >
@@ -324,16 +375,19 @@ const Payments = () => {
           </div>
         </Card>
       )}
-      
+
       {/* Payment Modal */}
       <PaymentModal
         payment={selectedPayment}
         isOpen={!!selectedPayment}
         onClose={() => setSelectedPayment(null)}
         onSuccess={() => {
-          setPayments(prev => prev.map(p => 
-            p.id === selectedPayment.id ? { ...p, status: 'Paid' } : p
-          ));
+          // Re-fetch handled by effect usually, but we can optimistically update
+          setPayments((prev) =>
+            prev.map((p) =>
+              p.id === selectedPayment.id ? { ...p, status: "Paid" } : p
+            )
+          );
         }}
       />
     </div>
@@ -341,7 +395,3 @@ const Payments = () => {
 };
 
 export default Payments;
-
-
-
-
