@@ -1,5 +1,5 @@
 import { Hammer, Mail } from "lucide-react";
-import { useSettingsStore } from "../../store/useSettingsStore";
+import { useSettingsStore } from "../store/useSettingsStore";
 
 const MaintenancePage = () => {
   const { settings } = useSettingsStore();
