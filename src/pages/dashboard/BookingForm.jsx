@@ -82,7 +82,7 @@ const BookingForm = () => {
           navigate(
             `/dashboard/booking/searching/${
               activeBooking._id || activeBooking.id
-            }`
+            }`,
           );
           return;
         }
@@ -94,7 +94,7 @@ const BookingForm = () => {
         if (acceptedRes.success && acceptedRes.data?.length > 0) {
           // Check if it's unpaid
           const unpaidBooking = acceptedRes.data.find(
-            (b) => (b.paymentStatus || "").toLowerCase() === "unpaid"
+            (b) => (b.paymentStatus || "").toLowerCase() === "unpaid",
           );
           if (unpaidBooking) {
             addToast({
@@ -266,22 +266,29 @@ const BookingForm = () => {
       if (formData.service && hasLocation) {
         setCheckingAvailability(true);
         try {
-          // Basic payload construction
+          // Normalize serviceType to match backend expectations ("replacement" or "repair")
+          const serviceName = formData.service?.name || formData.service || "";
+          const normalizedServiceType = serviceName
+            .toLowerCase()
+            .includes("repair")
+            ? "repair"
+            : "replacement";
+
+          // Normalize glassType to lowercase with dashes (e.g., "Windscreen" -> "windscreen")
+          const normalizedGlassType = (formData.glassType || "windscreen")
+            .toLowerCase()
+            .replace(/\s+/g, "-");
+
+          // Build payload with normalized values
           const payload = {
-            serviceType: formData.service?.type || formData.service, // Handle if service is object
-            glassType: formData.glassType,
+            serviceType: normalizedServiceType,
+            glassType: normalizedGlassType,
             vehicle: formData.vehicle,
             serviceAddress: formData.address || { city: formData.city },
             scheduledDate: formData.scheduledDate,
             scheduledTimeSlot: formData.timeSlot,
             serviceLocationType: "mobile",
           };
-
-          // If service is object (from selection), ensure we send string ID or type
-          if (typeof payload.serviceType === "object") {
-            payload.serviceType =
-              payload.serviceType.id || payload.serviceType.type;
-          }
 
           const res = await bookingService.checkAvailability(payload);
           if (res.success) {
@@ -334,7 +341,7 @@ const BookingForm = () => {
       !formData.service
     ) {
       const matchingService = adminServiceTypes.find(
-        (st) => st.name === searchCriteria.serviceType
+        (st) => st.name === searchCriteria.serviceType,
       );
       if (matchingService) {
         setFormData((prev) => ({ ...prev, service: matchingService }));
@@ -401,7 +408,7 @@ const BookingForm = () => {
 
     if (provider?.availability) {
       const dateEntry = provider.availability.find(
-        (a) => a.date === formData.scheduledDate
+        (a) => a.date === formData.scheduledDate,
       );
       return dateEntry?.slots || [];
     }
@@ -464,7 +471,7 @@ const BookingForm = () => {
       setIsFetchingModels(true);
       try {
         const models = await vehicleService.getModelsByMake(
-          formData.vehicle.make
+          formData.vehicle.make,
         );
         setAvailableModels(models);
       } catch (err) {
@@ -533,7 +540,7 @@ const BookingForm = () => {
   const handleRemoveImage = (imageId) => {
     updateFormData(
       "uploadedImages",
-      formData.uploadedImages.filter((img) => img.id !== imageId)
+      formData.uploadedImages.filter((img) => img.id !== imageId),
     );
   };
 
@@ -562,14 +569,14 @@ const BookingForm = () => {
       // Fallback: Try just suburb and city if full address fails
       if (!coords && newAddress.suburb && newAddress.city) {
         coords = await geocodingService.getCoordinates(
-          `${newAddress.suburb}, ${newAddress.city}, South Africa`
+          `${newAddress.suburb}, ${newAddress.city}, South Africa`,
         );
       }
 
       // Fallback: Try just city if that fails
       if (!coords && newAddress.city) {
         coords = await geocodingService.getCoordinates(
-          `${newAddress.city}, South Africa`
+          `${newAddress.city}, South Africa`,
         );
       }
     } catch (err) {
@@ -642,9 +649,8 @@ const BookingForm = () => {
             imageFormData.append("damageImages", img.file);
           });
 
-          const uploadRes = await bookingService.uploadDamageImages(
-            imageFormData
-          );
+          const uploadRes =
+            await bookingService.uploadDamageImages(imageFormData);
           if (uploadRes.success && uploadRes.data?.images) {
             uploadedImageUrls = uploadRes.data.images;
           }
@@ -659,7 +665,7 @@ const BookingForm = () => {
       // Get the actual service price for the selected glass type
       const servicePrice =
         formData.service.pricing?.find(
-          (p) => p.glassType === formData.glassType
+          (p) => p.glassType === formData.glassType,
         )?.price ||
         formData.service.fromPrice ||
         0;
@@ -823,8 +829,8 @@ const BookingForm = () => {
                       isCompleted
                         ? "bg-green-500 text-white"
                         : isActive
-                        ? "bg-primary-600 text-white"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                          ? "bg-primary-600 text-white"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-400"
                     }`}
                   >
                     {isCompleted ? <Check size={20} /> : <Icon size={20} />}
@@ -867,7 +873,7 @@ const BookingForm = () => {
               <div className="space-y-3">
                 {(searchCriteria?.serviceType
                   ? adminServiceTypes.filter(
-                      (st) => st.name === searchCriteria.serviceType
+                      (st) => st.name === searchCriteria.serviceType,
                     )
                   : adminServiceTypes
                 ).map((serviceType) => {
@@ -878,7 +884,7 @@ const BookingForm = () => {
                   const displayPrice =
                     isSelected && formData.glassType
                       ? serviceType.pricing?.find(
-                          (p) => p.glassType === formData.glassType
+                          (p) => p.glassType === formData.glassType,
                         )?.price ||
                         serviceType.pricing?.[0]?.price ||
                         0
@@ -971,10 +977,10 @@ const BookingForm = () => {
                     const availableGlassTypes = glassTypes.filter(
                       (glassType) => {
                         const pricingEntry = formData.service.pricing?.find(
-                          (p) => p.glassType === glassType
+                          (p) => p.glassType === glassType,
                         );
                         return pricingEntry && pricingEntry.price > 0;
-                      }
+                      },
                     );
 
                     return availableGlassTypes;
@@ -1008,8 +1014,8 @@ const BookingForm = () => {
                       <p className="text-lg font-bold text-green-700 dark:text-green-300">
                         {formatCurrency(
                           formData.service.pricing?.find(
-                            (p) => p.glassType === formData.glassType
-                          )?.price || 0
+                            (p) => p.glassType === formData.glassType,
+                          )?.price || 0,
                         )}
                       </p>
                     </div>
@@ -1156,7 +1162,7 @@ const BookingForm = () => {
                   Earliest available:{" "}
                   {new Date(availableDates[0].date).toLocaleDateString(
                     "en-ZA",
-                    { day: "numeric", month: "long" }
+                    { day: "numeric", month: "long" },
                   )}
                 </p>
               </div>
@@ -1437,7 +1443,7 @@ const BookingForm = () => {
                   const servicePrice =
                     formData.service && formData.glassType
                       ? formData.service.pricing?.find(
-                          (p) => p.glassType === formData.glassType
+                          (p) => p.glassType === formData.glassType,
                         )?.price || 0
                       : 0;
 
@@ -1495,8 +1501,8 @@ const BookingForm = () => {
               {checkingAvailability
                 ? "Checking..."
                 : providerCount > 0
-                ? `${providerCount} providers available nearby`
-                : "No providers found yet"}
+                  ? `${providerCount} providers available nearby`
+                  : "No providers found yet"}
             </div>
           )}
 
