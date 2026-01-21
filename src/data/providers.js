@@ -683,7 +683,7 @@ export const providersData = [
       },
       {
         id: "SVC-009",
-        name: "Window Tinting",
+        name: "Smash & Grab",
         description: "UV-protective film installation",
         fromPrice: 1500,
         durationMins: 120,
