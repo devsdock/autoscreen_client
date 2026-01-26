@@ -19,6 +19,10 @@ const profileService = {
    * Update customer profile
    */
   updateProfile: (data) => {
+    // Sanitize phone if present
+    if (data && data.phone) {
+      data.phone = data.phone.replace(/\s+/g, "");
+    }
     return request({
       method: "PUT",
       url: "/customer/profile",

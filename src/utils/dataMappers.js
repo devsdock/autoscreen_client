@@ -12,8 +12,8 @@ export const mapDashboardData = (apiData) => {
     user: apiData.user
       ? mapUser(apiData.user)
       : apiData.profile
-      ? mapUser(apiData.profile)
-      : null,
+        ? mapUser(apiData.profile)
+        : null,
     stats: apiData.stats || {
       activeQuotes: 0,
       upcomingBookings: 0,
@@ -39,10 +39,10 @@ export const mapBooking = (booking) => {
     typeof booking.vehicle === "string"
       ? booking.vehicle
       : booking.vehicle
-      ? `${booking.vehicle.year || ""} ${booking.vehicle.make || ""} ${
-          booking.vehicle.model || ""
-        }`.trim()
-      : "Unknown Vehicle";
+        ? `${booking.vehicle.year || ""} ${booking.vehicle.make || ""} ${
+            booking.vehicle.model || ""
+          }`.trim()
+        : "Unknown Vehicle";
 
   // Format service name from serviceType and glassType
   const formatServiceName = () => {
@@ -242,7 +242,7 @@ export const mapBooking = (booking) => {
   ]);
 
   const afterImages = processImages(
-    booking.completionDetails?.afterImages || []
+    booking.completionDetails?.afterImages || [],
   );
 
   return {
@@ -253,6 +253,10 @@ export const mapBooking = (booking) => {
       booking.reference ||
       (booking._id || booking.id || "").substring(0, 8).toUpperCase(),
     vehicle: vehicleStr,
+    vehicleData: {
+      hasAdasCamera: booking.vehicle?.hasAdasCamera || false,
+      hasRainSensor: booking.vehicle?.hasRainSensor || false,
+    },
     service: serviceName,
     address: addressStr,
     damageImages: damageImages, // Processed with full URLs
@@ -311,10 +315,10 @@ export const mapQuote = (quote) => {
     typeof quote.vehicle === "string"
       ? quote.vehicle
       : quote.vehicle
-      ? `${quote.vehicle.year || ""} ${quote.vehicle.make || ""} ${
-          quote.vehicle.model || ""
-        }`.trim()
-      : "Unknown Vehicle";
+        ? `${quote.vehicle.year || ""} ${quote.vehicle.make || ""} ${
+            quote.vehicle.model || ""
+          }`.trim()
+        : "Unknown Vehicle";
 
   // Format and process images with full URL
   const processImages = (images) => {
@@ -364,6 +368,10 @@ export const mapQuote = (quote) => {
       quote.quoteNumber ||
       (quote._id || quote.id || "").substring(0, 8).toUpperCase(),
     vehicleFormatted: vehicleStr,
+    vehicleData: {
+      hasAdasCamera: quote.vehicle?.hasAdasCamera || false,
+      hasRainSensor: quote.vehicle?.hasRainSensor || false,
+    },
     serviceType: quote.serviceType || "Glass Replacement",
     location: quote.serviceLocation?.address || { city: "N/A" },
     responsesCount: responsesCount,

@@ -5,7 +5,7 @@ export const vehiclesData = [
     model: "Corolla",
     year: 2019,
     bodyType: "Sedan",
-    registration: "CA 123-456"
+    registration: "CA 123-456",
   },
   {
     id: "VEH-002",
@@ -13,8 +13,8 @@ export const vehiclesData = [
     model: "Ranger",
     year: 2021,
     bodyType: "Bakkie",
-    registration: "GP 789-012"
-  }
+    registration: "GP 789-012",
+  },
 ];
 
 export const vehicleMakes = [
@@ -37,7 +37,8 @@ export const vehicleMakes = [
   "Renault",
   "Peugeot",
   "Opel",
-  "Mitsubishi"
+  "Mitsubishi",
+  "Other",
 ];
 
 export const bodyTypes = [
@@ -48,11 +49,7 @@ export const bodyTypes = [
   "Van",
   "Coupe",
   "Wagon",
-  "Other"
+  "Other",
 ];
 
 export const yearOptions = Array.from({ length: 16 }, (_, i) => 2025 - i);
-
-
-
-

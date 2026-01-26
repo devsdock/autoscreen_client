@@ -33,6 +33,9 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
     preferredTimeSlot: "",
     notes: "",
     images: [],
+    otherMake: "",
+    otherModel: "",
+    suburb: "",
   });
 
   // Pre-fill logic
@@ -48,8 +51,15 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
           vehicleModel: defaultVehicle?.model || prev.vehicleModel,
           vehicleYear: defaultVehicle?.year?.toString() || prev.vehicleYear,
           city: defaultAddress?.city || prev.city,
-          postcode: defaultAddress?.postcode || prev.postcode,
-          addressLine1: defaultAddress?.line1 || prev.addressLine1,
+          suburb: defaultAddress?.suburb || prev.suburb,
+          postcode:
+            defaultAddress?.postcode ||
+            defaultAddress?.postalCode ||
+            prev.postcode,
+          addressLine1:
+            defaultAddress?.line1 ||
+            defaultAddress?.addressLine1 ||
+            prev.addressLine1,
           coordinates: defaultAddress?.coordinates || prev.coordinates,
         }));
       }
@@ -115,13 +125,15 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
 
     // If make changes, reset model and fetch new ones
     if (field === "vehicleMake") {
+      const isOther = value === "Other";
       setFormData((prev) => ({
         ...prev,
-        vehicleModel: "",
+        vehicleMake: value,
+        vehicleModel: isOther ? "Other" : "",
         vehicleYear: new Date().getFullYear().toString(),
       }));
-      setAvailableModels([]);
-      setModelSearchQuery("");
+      setAvailableModels(isOther ? ["Other"] : []);
+      setModelSearchQuery(isOther ? "Other" : "");
     }
 
     // If service type changes, reset glass type
@@ -148,12 +160,12 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
   // Fetch models dynamic based on selected make
   useEffect(() => {
     const fetchModels = async () => {
-      if (!formData.vehicleMake) return;
+      if (!formData.vehicleMake || formData.vehicleMake === "Other") return;
 
       setIsFetchingModels(true);
       try {
         const models = await vehicleService.getModelsByMake(
-          formData.vehicleMake
+          formData.vehicleMake,
         );
         setAvailableModels(models);
       } catch (err) {
@@ -222,7 +234,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
 
   const filteredModels = availableModels
     .filter((model) =>
-      model.toLowerCase().includes(modelSearchQuery.toLowerCase())
+      model.toLowerCase().includes(modelSearchQuery.toLowerCase()),
     )
     .slice(0, 50); // Limit to 50 for performance
 
@@ -252,16 +264,29 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
       // Prepare API payload
       const quotePayload = {
         vehicle: {
-          make: formData.vehicleMake,
-          model: formData.vehicleModel,
+          make:
+            formData.vehicleMake === "Other"
+              ? formData.otherMake
+              : formData.vehicleMake,
+          model:
+            formData.vehicleModel === "Other"
+              ? formData.otherModel
+              : formData.vehicleModel,
           year: parseInt(formData.vehicleYear) || new Date().getFullYear(),
         },
-        serviceType: formData.serviceType.toLowerCase(),
+        serviceType: (() => {
+          const st = (formData.serviceType || "").toLowerCase();
+          if (st.includes("replacement")) return "replacement";
+          if (st.includes("repair")) return "repair";
+          if (st.includes("smash") || st.includes("tint")) return "tinting";
+          return "other";
+        })(),
         glassType: formData.glassType,
         serviceLocation: {
           type: "mobile",
           address: {
             addressLine1: formData.addressLine1,
+            suburb: formData.suburb,
             city: formData.city,
             postalCode: formData.postcode,
             coordinates: finalCoordinates,
@@ -436,6 +461,49 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                     placeholder="Select year"
                   />
                 </div>
+
+                {(formData.vehicleMake === "Other" ||
+                  formData.vehicleModel === "Other") && (
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    {formData.vehicleMake === "Other" ? (
+                      <div>
+                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                          Specify Make <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.otherMake}
+                          onChange={(e) =>
+                            handleChange("otherMake", e.target.value)
+                          }
+                          placeholder="Enter vehicle make"
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                    ) : (
+                      <div />
+                    )}
+
+                    {formData.vehicleModel === "Other" ? (
+                      <div>
+                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                          Specify Model <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.otherModel}
+                          onChange={(e) =>
+                            handleChange("otherModel", e.target.value)
+                          }
+                          placeholder="Enter vehicle model"
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                    ) : (
+                      <div />
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Service Section */}
@@ -463,7 +531,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
 
                       // Find the selected service type object
                       const selectedService = adminServiceTypes.find(
-                        (st) => st.name === formData.serviceType
+                        (st) => st.name === formData.serviceType,
                       );
 
                       if (!selectedService || !selectedService.pricing)
@@ -473,10 +541,10 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                       const availableGlassTypes = glassTypes.filter(
                         (glassType) => {
                           const pricingEntry = selectedService.pricing.find(
-                            (p) => p.glassType === glassType
+                            (p) => p.glassType === glassType,
                           );
                           return pricingEntry && pricingEntry.price > 0;
-                        }
+                        },
                       );
 
                       return availableGlassTypes;
@@ -504,7 +572,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                 <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
                   Service Location
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <PremiumSelect
                     label="City"
                     required
@@ -515,6 +583,19 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                     error={errors.city}
                     searchable
                   />
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                      Suburb (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.suburb}
+                      onChange={(e) => handleChange("suburb", e.target.value)}
+                      placeholder="e.g. Sandton"
+                      className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-700 dark:text-slate-200 shadow-sm"
+                    />
+                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">

@@ -180,6 +180,10 @@ const BookingForm = () => {
       make: searchCriteria?.vehicleMake || "",
       model: searchCriteria?.vehicleModel || "",
       year: searchCriteria?.vehicleYear || new Date().getFullYear().toString(),
+      hasAdasCamera: false,
+      hasRainSensor: false,
+      otherMake: "",
+      otherModel: "",
     },
     glassType: searchCriteria?.glassType || "",
 
@@ -234,6 +238,10 @@ const BookingForm = () => {
         setAdminServiceTypes([
           { name: "Glass Replacement", description: "Full glass replacement" },
           { name: "Glass Repair", description: "Chip & crack repair" },
+          {
+            name: "Smash & Grab",
+            description: "Smash & Grab film application",
+          },
         ]);
       }
     };
@@ -450,12 +458,17 @@ const BookingForm = () => {
     }));
 
     if (field === "make") {
+      const isOther = value === "Other";
       setFormData((prev) => ({
         ...prev,
-        vehicle: { ...prev.vehicle, make: value, model: "" },
+        vehicle: {
+          ...prev.vehicle,
+          make: value,
+          model: isOther ? "Other" : "",
+        },
       }));
-      setAvailableModels([]);
-      setSuggestedField("model");
+      setAvailableModels(isOther ? ["Other"] : []);
+      setSuggestedField(isOther ? null : "model");
     }
 
     if (field === "model") {
@@ -466,15 +479,19 @@ const BookingForm = () => {
   // Fetch models dynamically
   useEffect(() => {
     const fetchModels = async () => {
-      if (!formData.vehicle.make) return;
+      if (formData.vehicle.make === "Other") {
+        setAvailableModels(["Other"]);
+        setIsFetchingModels(false);
+        return;
+      }
 
-      setIsFetchingModels(true);
       try {
         const models = await vehicleService.getModelsByMake(
           formData.vehicle.make,
         );
         setAvailableModels(models);
       } catch (err) {
+        setAvailableModels(["Other"]);
       } finally {
         setIsFetchingModels(false);
       }
@@ -495,6 +512,16 @@ const BookingForm = () => {
           newErrors.vehicleMake = "Vehicle make is required";
         if (!formData.vehicle.model)
           newErrors.vehicleModel = "Vehicle model is required";
+        if (
+          formData.vehicle.make === "Other" &&
+          !formData.vehicle.otherMake?.trim()
+        )
+          newErrors.vehicleOtherMake = "Please specify vehicle make";
+        if (
+          formData.vehicle.model === "Other" &&
+          !formData.vehicle.otherModel?.trim()
+        )
+          newErrors.vehicleOtherModel = "Please specify vehicle model";
         break;
       case 2:
         if (!formData.scheduledDate)
@@ -696,9 +723,17 @@ const BookingForm = () => {
           .toLowerCase()
           .replace(" ", "_"),
         vehicle: {
-          make: formData.vehicle.make,
-          model: formData.vehicle.model,
+          make:
+            formData.vehicle.make === "Other"
+              ? formData.vehicle.otherMake
+              : formData.vehicle.make,
+          model:
+            formData.vehicle.model === "Other"
+              ? formData.vehicle.otherModel
+              : formData.vehicle.model,
           year: parseInt(formData.vehicle.year) || new Date().getFullYear(),
+          hasAdasCamera: formData.vehicle.hasAdasCamera,
+          hasRainSensor: formData.vehicle.hasRainSensor,
         },
         scheduledDate: formData.scheduledDate,
         scheduledTimeSlot: formData.timeSlot,
@@ -1046,6 +1081,8 @@ const BookingForm = () => {
                                 make: v.make,
                                 model: v.model,
                                 year: v.year.toString(),
+                                hasAdasCamera: v.hasAdasCamera || false,
+                                hasRainSensor: v.hasRainSensor || false,
                               },
                             }));
                           }}
@@ -1106,6 +1143,50 @@ const BookingForm = () => {
                   onChange={(val) => updateVehicle("year", val)}
                   placeholder="Select year"
                 />
+
+                {formData.vehicle.make === "Other" && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      Specify Make <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.vehicle.otherMake}
+                      onChange={(e) =>
+                        updateVehicle("otherMake", e.target.value)
+                      }
+                      placeholder="Enter vehicle make"
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    />
+                    {errors.vehicleOtherMake && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.vehicleOtherMake}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {formData.vehicle.model === "Other" && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      Specify Model <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.vehicle.otherModel}
+                      onChange={(e) =>
+                        updateVehicle("otherModel", e.target.value)
+                      }
+                      placeholder="Enter vehicle model"
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    />
+                    {errors.vehicleOtherModel && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.vehicleOtherModel}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="mt-4">
@@ -1120,6 +1201,83 @@ const BookingForm = () => {
                   searchable
                 />
               </div>
+
+              {/* ADAS & Rain Sensor Options - ONLY for Windscreen */}
+              {(formData.glassType === "Windscreen" ||
+                (formData.glassType || "").toLowerCase() === "windscreen") && (
+                <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+                    Vehicle Features
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateVehicle(
+                          "hasAdasCamera",
+                          !formData.vehicle.hasAdasCamera,
+                        )
+                      }
+                      className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
+                        formData.vehicle.hasAdasCamera
+                          ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-600"
+                          : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700"
+                      }`}
+                    >
+                      <div
+                        className={`w-6 h-6 rounded flex items-center justify-center border-2 transition-all ${
+                          formData.vehicle.hasAdasCamera
+                            ? "bg-primary-600 border-primary-600 text-white"
+                            : "border-slate-300 dark:border-slate-600"
+                        }`}
+                      >
+                        {formData.vehicle.hasAdasCamera && <Check size={14} />}
+                      </div>
+                      <div className="text-left">
+                        <div className="font-semibold text-slate-900 dark:text-white text-sm">
+                          ADAS Camera
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                          Advanced Driver Assistance System
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateVehicle(
+                          "hasRainSensor",
+                          !formData.vehicle.hasRainSensor,
+                        )
+                      }
+                      className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
+                        formData.vehicle.hasRainSensor
+                          ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-600"
+                          : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700"
+                      }`}
+                    >
+                      <div
+                        className={`w-6 h-6 rounded flex items-center justify-center border-2 transition-all ${
+                          formData.vehicle.hasRainSensor
+                            ? "bg-primary-600 border-primary-600 text-white"
+                            : "border-slate-300 dark:border-slate-600"
+                        }`}
+                      >
+                        {formData.vehicle.hasRainSensor && <Check size={14} />}
+                      </div>
+                      <div className="text-left">
+                        <div className="font-semibold text-slate-900 dark:text-white text-sm">
+                          Rain / Light Sensor
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                          Automatic wipers and lights
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1560,7 +1718,7 @@ const BookingForm = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-              Suburb
+              Suburb (optional)
             </label>
             <input
               type="text"

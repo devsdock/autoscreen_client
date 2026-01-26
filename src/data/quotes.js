@@ -154,6 +154,7 @@ export const vehicleMakes = [
   "Honda",
   "Hyundai",
   "Isuzu",
+  "Jeep",
   "Kia",
   "Mazda",
   "Mercedes-Benz",

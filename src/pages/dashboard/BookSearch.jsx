@@ -97,14 +97,14 @@ const BookSearch = () => {
           const searching = res.data.find((b) => b.status === "searching");
           if (searching) {
             navigate(
-              `/dashboard/booking/searching/${searching._id || searching.id}`
+              `/dashboard/booking/searching/${searching._id || searching.id}`,
             );
             return;
           }
 
           // Check for accepted/awaiting-payment status
           const pending = res.data.find(
-            (b) => b.status === "accepted" || b.status === "awaiting-payment"
+            (b) => b.status === "accepted" || b.status === "awaiting-payment",
           );
           if (pending) {
             navigate(`/dashboard/booking/pending/${pending._id || pending.id}`);
@@ -213,6 +213,10 @@ const BookSearch = () => {
             name: "Glass Repair",
             description: "Chip and crack repair services",
           },
+          {
+            name: "Smash & Grab",
+            description: "Smash & Grab film application",
+          },
         ]);
       }
     };
@@ -252,7 +256,7 @@ const BookSearch = () => {
       setIsFetchingModels(true);
       try {
         const models = await vehicleService.getModelsByMake(
-          formData.vehicleMake
+          formData.vehicleMake,
         );
         setAvailableModels(models);
       } catch (err) {
@@ -415,7 +419,7 @@ const BookSearch = () => {
 
                   // Find selected service
                   const selectedService = serviceTypes.find(
-                    (st) => st.name === formData.serviceType
+                    (st) => st.name === formData.serviceType,
                   );
                   if (!selectedService || !selectedService.pricing)
                     return glassTypes;
@@ -423,7 +427,7 @@ const BookSearch = () => {
                   // Filter glass types with pricing for this service
                   return glassTypes.filter((glassType) => {
                     const pricingEntry = selectedService.pricing.find(
-                      (p) => p.glassType === glassType
+                      (p) => p.glassType === glassType,
                     );
                     return pricingEntry && pricingEntry.price > 0;
                   });

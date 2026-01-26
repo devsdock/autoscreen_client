@@ -11,7 +11,11 @@ export const SERVICE_TYPES = [
     description: "Full glass replacement",
   },
   { id: "repair", label: "Repair", description: "Chip & crack repair" },
-  { id: "tinting", label: "Tinting", description: "Window tinting service" },
+  {
+    id: "tinting",
+    label: "Smash & Grab",
+    description: "Smash & Grab film application",
+  },
 ];
 
 // Glass Types - Which glass is affected (matches backend schema enum)

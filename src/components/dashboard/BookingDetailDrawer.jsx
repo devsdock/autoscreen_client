@@ -117,7 +117,7 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
 
   const handleDownloadInvoice = async () => {
     downloadInvoice(booking.id, (msg) =>
-      addToast({ type: "error", message: msg })
+      addToast({ type: "error", message: msg }),
     );
   };
 
@@ -151,7 +151,7 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
     (!booking.rating || !booking.rating.score);
   const canDownloadInvoice =
     ["paid", "partially_refunded", "partially refunded"].includes(
-      currentPaymentStatus
+      currentPaymentStatus,
     ) || currentStatus === "completed";
 
   return (
@@ -179,14 +179,14 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
             (booking.suggestions?.length > 0
               ? booking.suggestions
               : booking.suggestedAlternateSlot
-              ? [
-                  {
-                    providerName: "Provider",
-                    slot: booking.suggestedAlternateSlot,
-                    note: booking.alternateSlotNote,
-                  },
-                ]
-              : []
+                ? [
+                    {
+                      providerName: "Provider",
+                      slot: booking.suggestedAlternateSlot,
+                      note: booking.alternateSlotNote,
+                    },
+                  ]
+                : []
             ).map((suggestion, index) => (
               <div
                 key={index}
@@ -312,6 +312,21 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {booking.vehicle}
                   </p>
+                  {(booking.vehicleData?.hasAdasCamera ||
+                    booking.vehicleData?.hasRainSensor) && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {booking.vehicleData?.hasAdasCamera && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                          ADAS
+                        </span>
+                      )}
+                      {booking.vehicleData?.hasRainSensor && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                          Rain Sensor
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -378,7 +393,7 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
                           "dark:bg-slate-800",
                           "flex",
                           "items-center",
-                          "justify-center"
+                          "justify-center",
                         );
                         e.target.parentElement.innerHTML =
                           '<span class="text-xs text-slate-400">Error</span>';
@@ -415,7 +430,7 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
                           "dark:bg-slate-800",
                           "flex",
                           "items-center",
-                          "justify-center"
+                          "justify-center",
                         );
                         e.target.parentElement.innerHTML =
                           '<span class="text-xs text-slate-400">Error</span>';

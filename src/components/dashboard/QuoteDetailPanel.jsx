@@ -171,15 +171,15 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
             ["Open", "Pending", "pending"].includes(quote.status)
               ? "bg-primary-50 dark:bg-primary-900/20"
               : [
-                  "Responses",
-                  "quoted",
-                  "Quoted",
-                  "Received Responses",
-                ].includes(quote.status)
-              ? "bg-warning-50 dark:bg-warning-900/20"
-              : quote.status === "Accepted"
-              ? "bg-success-50 dark:bg-success-900/20"
-              : "bg-slate-50 dark:bg-slate-800"
+                    "Responses",
+                    "quoted",
+                    "Quoted",
+                    "Received Responses",
+                  ].includes(quote.status)
+                ? "bg-warning-50 dark:bg-warning-900/20"
+                : quote.status === "Accepted"
+                  ? "bg-success-50 dark:bg-success-900/20"
+                  : "bg-slate-50 dark:bg-slate-800"
           }`}
         >
           {["Open", "Pending", "pending"].includes(quote.status) && (
@@ -189,7 +189,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
             />
           )}
           {["Responses", "quoted", "Quoted", "Received Responses"].includes(
-            quote.status
+            quote.status,
           ) && (
             <AlertCircle
               size={20}
@@ -213,15 +213,15 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
               ["Open", "Pending", "pending"].includes(quote.status)
                 ? "text-primary-700 dark:text-primary-300"
                 : [
-                    "Responses",
-                    "quoted",
-                    "Quoted",
-                    "Received Responses",
-                  ].includes(quote.status)
-                ? "text-warning-700 dark:text-warning-300"
-                : quote.status === "Accepted"
-                ? "text-success-700 dark:text-success-300"
-                : "text-slate-600 dark:text-slate-400"
+                      "Responses",
+                      "quoted",
+                      "Quoted",
+                      "Received Responses",
+                    ].includes(quote.status)
+                  ? "text-warning-700 dark:text-warning-300"
+                  : quote.status === "Accepted"
+                    ? "text-success-700 dark:text-success-300"
+                    : "text-slate-600 dark:text-slate-400"
             }`}
           >
             {getStatusExplanation()}
@@ -272,6 +272,21 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                     }`.trim() || "Unknown Vehicle"
                   : quote.vehicle || "Unknown Vehicle"}
               </p>
+              {(quote.vehicleData?.hasAdasCamera ||
+                quote.vehicleData?.hasRainSensor) && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {quote.vehicleData?.hasAdasCamera && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                      ADAS
+                    </span>
+                  )}
+                  {quote.vehicleData?.hasRainSensor && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                      Rain Sensor
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -368,8 +383,8 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                       typeof img === "object"
                         ? img.data || img.url
                         : img.startsWith("http") || img.startsWith("data:")
-                        ? img
-                        : `${NodeURL}${img}`
+                          ? img
+                          : `${NodeURL}${img}`
                     }
                     alt={`Damage ${index + 1}`}
                     className="w-full h-full object-cover"
@@ -549,9 +564,9 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
               typeof selectedImage === "object"
                 ? selectedImage.data || selectedImage.url
                 : selectedImage.startsWith("http") ||
-                  selectedImage.startsWith("data:")
-                ? selectedImage
-                : `${NodeURL}${selectedImage}`
+                    selectedImage.startsWith("data:")
+                  ? selectedImage
+                  : `${NodeURL}${selectedImage}`
             }
             alt="Damage"
             className="max-w-full max-h-full rounded-lg"

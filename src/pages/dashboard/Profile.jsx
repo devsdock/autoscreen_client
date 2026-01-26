@@ -77,6 +77,10 @@ const Profile = () => {
     year: "",
     bodyType: "Sedan",
     registration: "",
+    hasAdasCamera: false,
+    hasRainSensor: false,
+    otherMake: "",
+    otherModel: "",
   });
   const [availableModels, setAvailableModels] = useState([]);
   const [availableMakes, setAvailableMakes] = useState(vehicleMakes);
@@ -156,7 +160,7 @@ const Profile = () => {
             email: true,
             sms: false,
             whatsapp: true,
-          }
+          },
         );
       }
 
@@ -169,6 +173,8 @@ const Profile = () => {
           year: v.year,
           bodyType: v.bodyType || "Sedan",
           registration: v.registrationNumber || "",
+          hasAdasCamera: v.hasAdasCamera || false,
+          hasRainSensor: v.hasRainSensor || false,
           isDefault: v.isDefault,
         }));
         setVehicles(mappedVehicles);
@@ -206,8 +212,9 @@ const Profile = () => {
   // Fetch models dynamically for vehicle form
   useEffect(() => {
     const fetchModels = async () => {
-      if (!vehicleForm.make) {
-        setAvailableModels([]);
+      if (vehicleForm.make === "Other") {
+        setAvailableModels(["Other"]);
+        setIsFetchingModels(false);
         return;
       }
 
@@ -216,7 +223,7 @@ const Profile = () => {
         const models = await vehicleService.getModelsByMake(vehicleForm.make);
         setAvailableModels(models);
       } catch (err) {
-        setAvailableModels([]);
+        setAvailableModels(["Other"]);
       } finally {
         setIsFetchingModels(false);
       }
@@ -245,7 +252,7 @@ const Profile = () => {
     try {
       const updateData = {
         name: `${editForm.firstName} ${editForm.lastName}`.trim(),
-        phone: editForm.phone,
+        phone: editForm.phone.replace(/\s+/g, ""),
         preferredContact: editForm.preferredContact,
       };
 
@@ -351,6 +358,8 @@ const Profile = () => {
         year: vehicle.year,
         bodyType: vehicle.bodyType,
         registration: vehicle.registration || "",
+        hasAdasCamera: vehicle.hasAdasCamera || false,
+        hasRainSensor: vehicle.hasRainSensor || false,
       });
     } else {
       setVehicleForm({
@@ -359,6 +368,10 @@ const Profile = () => {
         year: "",
         bodyType: "Sedan",
         registration: "",
+        hasAdasCamera: false,
+        hasRainSensor: false,
+        otherMake: "",
+        otherModel: "",
       });
     }
     setVehicleModal({ open: true, vehicle });
@@ -368,18 +381,26 @@ const Profile = () => {
     setIsSaving(true);
     try {
       const vehicleData = {
-        make: vehicleForm.make,
-        model: vehicleForm.model,
+        make:
+          vehicleForm.make === "Other"
+            ? vehicleForm.otherMake
+            : vehicleForm.make,
+        model:
+          vehicleForm.model === "Other"
+            ? vehicleForm.otherModel
+            : vehicleForm.model,
         year: parseInt(vehicleForm.year),
         bodyType: vehicleForm.bodyType,
         registrationNumber: vehicleForm.registration,
+        hasAdasCamera: vehicleForm.hasAdasCamera,
+        hasRainSensor: vehicleForm.hasRainSensor,
       };
 
       let res;
       if (vehicleModal.vehicle) {
         res = await profileService.updateVehicle(
           vehicleModal.vehicle.id,
-          vehicleData
+          vehicleData,
         );
       } else {
         res = await profileService.addVehicle(vehicleData);
@@ -422,6 +443,8 @@ const Profile = () => {
           year: v.year,
           bodyType: v.bodyType || "Sedan",
           registration: v.registrationNumber || "",
+          hasAdasCamera: v.hasAdasCamera || false,
+          hasRainSensor: v.hasRainSensor || false,
           isDefault: v.isDefault,
         }));
         setVehicles(mappedVehicles);
@@ -475,7 +498,7 @@ const Profile = () => {
       if (addressModal.address) {
         res = await profileService.updateAddress(
           addressModal.address.id,
-          addressData
+          addressData,
         );
       } else {
         res = await profileService.addAddress(addressData);
@@ -872,6 +895,20 @@ const Profile = () => {
                             {vehicle.registrationNumber &&
                               ` · ${vehicle.registrationNumber}`}
                           </p>
+                          {(vehicle.hasAdasCamera || vehicle.hasRainSensor) && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {vehicle.hasAdasCamera && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                                  ADAS
+                                </span>
+                              )}
+                              {vehicle.hasRainSensor && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                                  Rain Sensor
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1116,9 +1153,15 @@ const Profile = () => {
             label="Make"
             options={availableMakes}
             value={vehicleForm.make}
-            onChange={(val) =>
-              setVehicleForm((prev) => ({ ...prev, make: val, model: "" }))
-            }
+            onChange={(val) => {
+              const isOther = val === "Other";
+              setVehicleForm((prev) => ({
+                ...prev,
+                make: val,
+                model: isOther ? "Other" : "",
+              }));
+              if (isOther) setAvailableModels(["Other"]);
+            }}
             required
             searchable
             loading={isFetchingMakes}
@@ -1144,6 +1187,44 @@ const Profile = () => {
                 : "No models found"
             }
           />
+
+          {(vehicleForm.make === "Other" || vehicleForm.model === "Other") && (
+            <div className="grid grid-cols-2 gap-4">
+              {vehicleForm.make === "Other" ? (
+                <Input
+                  label="Specify Make"
+                  placeholder="Enter vehicle make"
+                  value={vehicleForm.otherMake}
+                  onChange={(e) =>
+                    setVehicleForm((prev) => ({
+                      ...prev,
+                      otherMake: e.target.value,
+                    }))
+                  }
+                  required
+                />
+              ) : (
+                <div />
+              )}
+
+              {vehicleForm.model === "Other" ? (
+                <Input
+                  label="Specify Model"
+                  placeholder="Enter vehicle model"
+                  value={vehicleForm.otherModel}
+                  onChange={(e) =>
+                    setVehicleForm((prev) => ({
+                      ...prev,
+                      otherModel: e.target.value,
+                    }))
+                  }
+                  required
+                />
+              ) : (
+                <div />
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <PremiumSelect
               label="Year"
@@ -1177,6 +1258,41 @@ const Profile = () => {
               }))
             }
           />
+
+          <div className="grid grid-cols-2 gap-4 pt-2">
+            <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+              <input
+                type="checkbox"
+                checked={vehicleForm.hasAdasCamera}
+                onChange={(e) =>
+                  setVehicleForm((prev) => ({
+                    ...prev,
+                    hasAdasCamera: e.target.checked,
+                  }))
+                }
+                className="w-4 h-4 text-primary-600 rounded border-slate-300 focus:ring-primary-500"
+              />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                ADAS Camera
+              </span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+              <input
+                type="checkbox"
+                checked={vehicleForm.hasRainSensor}
+                onChange={(e) =>
+                  setVehicleForm((prev) => ({
+                    ...prev,
+                    hasRainSensor: e.target.checked,
+                  }))
+                }
+                className="w-4 h-4 text-primary-600 rounded border-slate-300 focus:ring-primary-500"
+              />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Rain Sensor
+              </span>
+            </label>
+          </div>
         </div>
         <ModalActions>
           <Button
@@ -1221,13 +1337,12 @@ const Profile = () => {
           />
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Suburb/Area"
+              label="Suburb/Area (optional)"
               placeholder="e.g., Sandton"
               value={addressForm.suburb}
               onChange={(e) =>
                 setAddressForm((prev) => ({ ...prev, suburb: e.target.value }))
               }
-              required
             />
             <PremiumSelect
               label="City"
