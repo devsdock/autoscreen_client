@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   CreditCard,
   Building2,
@@ -7,120 +7,130 @@ import {
   Banknote,
   AlertCircle,
 } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
+import {
+  Elements,
+  CardElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
 import Modal, { ModalActions } from "../ui/Modal";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
 import useDashboardStore, {
   formatCurrency,
 } from "../../store/useDashboardStore";
-import {
-  formatCardNumber,
-  formatExpiry,
-  formatCVV,
-  validateCardForm,
-} from "../../utils/paymentValidation";
+import paymentService from "../../services/paymentService";
 
-const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
-  const { processPayment } = useDashboardStore();
-  const [paymentMethod, setPaymentMethod] = useState(null); // Start with null - force selection
-  const [instantProvider, setInstantProvider] = useState("PayFast");
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+const PaymentModalContent = ({ payment, isOpen, onClose, onSuccess }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { processPayment, addToast, user } = useDashboardStore();
+  const [paymentMethod, setPaymentMethod] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [cardDetails, setCardDetails] = useState({
-    number: "",
-    expiry: "",
-    cvv: "",
-    name: "",
-  });
 
   if (!payment) return null;
 
-  const handleCardChange = (field, value) => {
-    let formattedValue = value;
-
-    if (field === "number") {
-      formattedValue = formatCardNumber(value);
-    } else if (field === "expiry") {
-      formattedValue = formatExpiry(value);
-    } else if (field === "cvv") {
-      formattedValue = formatCVV(value);
-    }
-
-    setCardDetails((prev) => ({ ...prev, [field]: formattedValue }));
-
-    // Clear error for this field when user types
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: null }));
-    }
-  };
-
   const handleSubmit = async () => {
-    // Validate payment method is selected
     if (!paymentMethod) {
       setErrors({ general: "Please select a payment method" });
       return;
     }
 
-    // Validate card details if card payment is selected
-    if (paymentMethod === "card") {
-      const validation = validateCardForm(cardDetails);
-      if (!validation.isValid) {
-        setErrors(validation.errors);
-        return;
-      }
-    }
-
     setLoading(true);
     setErrors({});
 
-    // Simulate payment processing delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    let methodLabel = paymentMethod;
-    if (paymentMethod === "card") {
-      methodLabel = `Card •••• ${cardDetails.number
-        .replace(/\s/g, "")
-        .slice(-4)}`;
-    } else if (paymentMethod === "instant") {
-      methodLabel = `Instant EFT (${instantProvider})`;
-    }
-
-    // DIRECT API CALL to ensure server persistence
     try {
-      const bookingService = (await import("../../services/bookingService"))
-        .default;
       const targetBookingId = payment.bookingId || payment.id;
+      let methodLabel = paymentMethod === "cash" ? "Cash" : paymentMethod;
 
-      if (targetBookingId) {
-        await bookingService.processBookingPayment(targetBookingId, {
-          paymentMethod: methodLabel,
-          amount: payment.amount,
-          paymentId: payment.bookingId ? payment.id : undefined,
+      if (paymentMethod === "card") {
+        if (!stripe || !elements) {
+          setLoading(false);
+          return;
+        }
+
+        // 1. Create Payment Intent on backend
+        const intentRes =
+          await paymentService.createPaymentIntent(targetBookingId);
+        if (!intentRes.success) {
+          throw new Error(intentRes.message || "Failed to initialize payment");
+        }
+
+        const clientSecret = intentRes.clientSecret;
+
+        // 2. Confirm Payment with Stripe
+        const cardElement = elements.getElement(CardElement);
+        const result = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: {
+            card: cardElement,
+            billing_details: {
+              name: user?.name || payment.customerName || "Customer",
+            },
+          },
         });
+
+        if (result.error) {
+          throw new Error(result.error.message);
+        }
+
+        if (result.paymentIntent.status === "succeeded") {
+          methodLabel = `Card •••• ${result.paymentIntent.payment_method?.card?.last4 || "Card"}`;
+        } else {
+          throw new Error("Payment was not successful. Please try again.");
+        }
       }
 
-      // Update Local Store (Optimistic)
+      // 3. Finalize Booking Status on Backend
+      const bookingService = (await import("../../services/bookingService"))
+        .default;
+      await bookingService.processBookingPayment(targetBookingId, {
+        paymentMethod: methodLabel,
+        amount: payment.amount,
+        paymentId: payment.id,
+        transactionId:
+          paymentMethod === "card" ? result?.paymentIntent?.id : null,
+      });
+
+      // Update Local Store
       processPayment(payment.id, methodLabel);
 
       setLoading(false);
+      addToast({ type: "success", message: "Payment processed successfully!" });
       if (onSuccess) onSuccess();
       onClose();
     } catch (error) {
-      console.error("Payment API Error:", error);
+      console.error("Payment Error:", error);
       setLoading(false);
       setErrors({
         general:
-          error.response?.data?.message ||
-          "Payment processing failed. Please try again.",
+          error.message || "Payment processing failed. Please try again.",
       });
     }
   };
 
   const handleClose = () => {
     setPaymentMethod(null);
-    setCardDetails({ number: "", expiry: "", cvv: "", name: "" });
     setErrors({});
     onClose();
+  };
+
+  const cardElementOptions = {
+    style: {
+      base: {
+        fontSize: "16px",
+        color: "#1e293b",
+        "::placeholder": {
+          color: "#94a3b8",
+        },
+      },
+      invalid: {
+        color: "#ef4444",
+      },
+    },
   };
 
   return (
@@ -192,8 +202,6 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
           <div className="space-y-2">
             {[
               { id: "card", label: "Credit/Debit Card", icon: CreditCard },
-              { id: "eft", label: "EFT Bank Transfer", icon: Building2 },
-              { id: "instant", label: "Instant EFT", icon: Zap },
               { id: "cash", label: "Cash Payment", icon: Banknote },
             ].map((method) => {
               const isActive = paymentMethod === method.id;
@@ -256,165 +264,13 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
         {/* Selected Method Actions / Details */}
         <div className="animate-in fade-in duration-200">
           {paymentMethod === "card" && (
-            <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700/50">
-              <Input
-                label={
-                  <>
-                    Card Number <span className="text-red-500">*</span>
-                  </>
-                }
-                placeholder="1234 5678 9012 3456"
-                value={cardDetails.number}
-                onChange={(e) => handleCardChange("number", e.target.value)}
-                icon={CreditCard}
-                error={errors.number}
-                className={`bg-white dark:bg-slate-900 ${
-                  errors.number ? "border-red-500" : ""
-                }`}
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label={
-                    <>
-                      Expiry Date <span className="text-red-500">*</span>
-                    </>
-                  }
-                  placeholder="MM/YY"
-                  value={cardDetails.expiry}
-                  onChange={(e) => handleCardChange("expiry", e.target.value)}
-                  error={errors.expiry}
-                  className={`bg-white dark:bg-slate-900 ${
-                    errors.expiry ? "border-red-500" : ""
-                  }`}
-                />
-                <Input
-                  label={
-                    <>
-                      CVV <span className="text-red-500">*</span>
-                    </>
-                  }
-                  placeholder="123"
-                  type="password"
-                  value={cardDetails.cvv}
-                  onChange={(e) => handleCardChange("cvv", e.target.value)}
-                  error={errors.cvv}
-                  className={`bg-white dark:bg-slate-900 ${
-                    errors.cvv ? "border-red-500" : ""
-                  }`}
-                />
+            <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg border border-slate-100 dark:border-slate-700/50">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Card Details
+              </label>
+              <div className="p-3 bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700">
+                <CardElement options={cardElementOptions} />
               </div>
-              <Input
-                label={
-                  <>
-                    Cardholder Name <span className="text-red-500">*</span>
-                  </>
-                }
-                placeholder="Name on card"
-                value={cardDetails.name}
-                onChange={(e) => handleCardChange("name", e.target.value)}
-                error={errors.name}
-                className={`bg-white dark:bg-slate-900 ${
-                  errors.name ? "border-red-500" : ""
-                }`}
-              />
-            </div>
-          )}
-
-          {paymentMethod === "eft" && (
-            <div className="space-y-2 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700/50">
-              <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
-                Bank Details
-              </p>
-              <div className="space-y-2 text-sm bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-                <div className="flex justify-between">
-                  <span className="text-slate-500 dark:text-slate-500">
-                    Bank
-                  </span>
-                  <span className="text-slate-900 dark:text-white font-medium">
-                    First National Bank
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500 dark:text-slate-500">
-                    Account Name
-                  </span>
-                  <span className="text-slate-900 dark:text-white font-medium">
-                    AutoScreen (Pty) Ltd
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500 dark:text-slate-500">
-                    Account Number
-                  </span>
-                  <span className="text-slate-900 dark:text-white font-medium font-mono">
-                    62845912345
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500 dark:text-slate-500">
-                    Branch Code
-                  </span>
-                  <span className="text-slate-900 dark:text-white font-medium font-mono">
-                    250655
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500 dark:text-slate-500">
-                    Reference
-                  </span>
-                  <span className="text-slate-900 dark:text-white font-medium font-mono">
-                    {payment.bookingRef || payment.id?.slice(-8).toUpperCase()}
-                  </span>
-                </div>
-              </div>
-              <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg">
-                Please use your Booking Ref or Payment ID. EFT payments may take
-                1-3 days.
-              </p>
-            </div>
-          )}
-
-          {paymentMethod === "instant" && (
-            <div className="grid grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700/50">
-              {["PayFast", "Ozow"].map((provider) => (
-                <button
-                  key={provider}
-                  type="button"
-                  onClick={() => setInstantProvider(provider)}
-                  className={`p-3 border-2 rounded-lg transition-all text-center ${
-                    instantProvider === provider
-                      ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-sm"
-                      : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-primary-300 dark:hover:border-primary-700"
-                  }`}
-                >
-                  <div
-                    className={`w-12 h-12 mx-auto mb-2 rounded-lg flex items-center justify-center ${
-                      instantProvider === provider
-                        ? "bg-white dark:bg-slate-800"
-                        : "bg-slate-100 dark:bg-slate-800"
-                    }`}
-                  >
-                    <span
-                      className={`font-bold ${
-                        instantProvider === provider
-                          ? "text-primary-600"
-                          : "text-slate-600 dark:text-slate-400"
-                      }`}
-                    >
-                      {provider === "PayFast" ? "PF" : "OZ"}
-                    </span>
-                  </div>
-                  <span
-                    className={`text-sm font-medium ${
-                      instantProvider === provider
-                        ? "text-primary-700 dark:text-primary-400"
-                        : "text-slate-700 dark:text-slate-300"
-                    }`}
-                  >
-                    {provider}
-                  </span>
-                </button>
-              ))}
             </div>
           )}
 
@@ -444,12 +300,20 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
           loading={loading}
           disabled={!paymentMethod || loading}
         >
-          {paymentMethod === "eft"
-            ? "Mark as Paid (Simulation)"
+          {paymentMethod === "cash"
+            ? "Confirm Booking"
             : `Pay ${formatCurrency(payment.amount)}`}
         </Button>
       </ModalActions>
     </Modal>
+  );
+};
+
+const PaymentModal = (props) => {
+  return (
+    <Elements stripe={stripePromise}>
+      <PaymentModalContent {...props} />
+    </Elements>
   );
 };
 
