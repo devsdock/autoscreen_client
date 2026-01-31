@@ -1,4 +1,5 @@
 import axios from "axios";
+import { vehicleMakes, commonSAModels } from "../data/vehicles";
 
 /**
  * Vehicle Service using NHTSA Public API
@@ -13,12 +14,21 @@ const vehicleService = {
     if (!make) return [];
     if (make === "Other") return ["Other"];
 
+    // Check local common models first (for SA brands not in US API)
+    if (commonSAModels[make]) {
+      return [...commonSAModels[make].sort(), "Other"];
+    }
+
     try {
       const response = await axios.get(
         `https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMake/${make}?format=json`,
       );
 
-      if (response.data && response.data.Results) {
+      if (
+        response.data &&
+        response.data.Results &&
+        response.data.Results.length > 0
+      ) {
         // Map and sort models
         const models = response.data.Results.map((item) => item.Model_Name)
           .filter(
@@ -37,23 +47,42 @@ const vehicleService = {
    * Get all vehicle makes (optional, if we want to dynamic makes too)
    */
   getAllMakes: async () => {
+    // Start with our comprehensive local list
+    let makes = [...vehicleMakes];
+
     try {
       const response = await axios.get(
         "https://vpic.nhtsa.dot.gov/api/vehicles/GetMakesForVehicleType/car?format=json",
       );
 
       if (response.data && response.data.Results) {
-        const makes = response.data.Results.map((item) => item.MakeName).sort();
-        // Ensure "Other" is at the end and common makes are present if needed
-        // Jeep might be missing from 'car' type if it's classified as 'truck' or 'multipurpose passenger vehicle'
-        // So we might want to fetch those too or just ensure common ones are there.
-        if (!makes.includes("Jeep")) makes.push("Jeep");
-        return [...makes.sort(), "Other"];
+        const apiMakes = response.data.Results.map((item) => {
+          // Convert generic UPPERCASE to Title Case
+          return item.MakeName.toLowerCase().replace(/\b\w/g, (s) =>
+            s.toUpperCase(),
+          );
+        });
+
+        // Merge and deduplicate
+        const uniqueMakes = new Set([...makes, ...apiMakes]);
+        makes = Array.from(uniqueMakes).sort();
       }
-      return ["Other"];
     } catch (error) {
-      return ["Other"];
+      console.error(
+        "Failed to fetch makes, falling back to local list:",
+        error,
+      );
+      // Fallback is already set to local list
     }
+
+    // Ensure 'Other' is always at the end
+    const otherIndex = makes.indexOf("Other");
+    if (otherIndex > -1) {
+      makes.splice(otherIndex, 1);
+    }
+    makes.push("Other");
+
+    return makes;
   },
 };
 
