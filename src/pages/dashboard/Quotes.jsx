@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Search, 
-  Plus, 
-  FileText, 
-  Car, 
-  MapPin, 
+import {
+  Search,
+  Plus,
+  FileText,
+  Car,
+  MapPin,
   Clock,
   ChevronRight,
   Filter,
-  Loader2
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
+import { CardSkeleton } from '../../components/skeletons/CardSkeleton';
 import useDashboardStore, { formatDate, getRelativeTime } from '../../store/useDashboardStore';
 import Button from '../../components/ui/Button';
 import StatusBadge from '../../components/ui/StatusBadge';
@@ -30,7 +32,7 @@ const Quotes = () => {
   const navigate = useNavigate();
   const { quotes, fetchQuotes } = useDashboardStore();
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [selectedQuoteId, setSelectedQuoteId] = useState(null);
@@ -45,7 +47,7 @@ const Quotes = () => {
     };
     loadQuotes();
   }, [fetchQuotes]);
-  
+
   // Handle URL params for quote selection
   useEffect(() => {
     if (routeId) {
@@ -64,39 +66,39 @@ const Quotes = () => {
       }
     }
   }, [routeId, quotes, navigate, selectedQuoteId]);
-  
+
   // Filter quotes
   const filteredQuotes = quotes.filter(quote => {
     // Status filter
     if (activeFilter !== 'all' && quote.status !== activeFilter) {
       return false;
     }
-    
+
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const vehicle = quote.vehicle || {};
       const vehicleStr = `${vehicle.year || ''} ${vehicle.make || ''} ${vehicle.model || ''}`.toLowerCase();
       const city = quote.location?.city || '';
-      
+
       return (
         quote.reference?.toLowerCase().includes(query) ||
         vehicleStr.includes(query) ||
         city.toLowerCase().includes(query)
       );
     }
-    
+
     return true;
   });
-  
+
   const selectedQuote = quotes.find(q => q.id === selectedQuoteId);
-  
+
   const handleQuoteSelect = (quoteId) => {
     setSelectedQuoteId(quoteId);
     navigate(`/dashboard/quotes/${quoteId}`);
     setShowMobileDetail(true);
   };
-  
+
   const handleCloseMobileDetail = () => {
     setShowMobileDetail(false);
     // On mobile, clearing the selection should reset the URL
@@ -104,7 +106,7 @@ const Quotes = () => {
       navigate('/dashboard/quotes');
     }
   };
-  
+
   const handleRequestModalClose = async (newQuoteId) => {
     setShowRequestModal(false);
     if (newQuoteId) {
@@ -112,17 +114,17 @@ const Quotes = () => {
       setIsLoading(true);
       await fetchQuotes();
       setIsLoading(false);
-      
+
       setSelectedQuoteId(newQuoteId);
       navigate(`/dashboard/quotes/${newQuoteId}`);
     }
   };
-  
+
   const getStatusCount = (status) => {
     if (status === 'all') return quotes.length;
     return quotes.filter(q => q.status === status).length;
   };
-  
+
   return (
     <div className="h-[calc(100vh-7rem)] flex flex-col">
       {/* Page Header */}
@@ -138,7 +140,7 @@ const Quotes = () => {
           Request a Quote
         </Button>
       </div>
-      
+
       {/* Main Content */}
       <div className="flex-1 flex gap-6 min-h-0">
         {/* Left Column - Quote List */}
@@ -157,7 +159,7 @@ const Quotes = () => {
               className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400"
             />
           </div>
-          
+
           {/* Status Filter Chips */}
           <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 -mx-1 px-1">
             {statusFilters.map(filter => (
@@ -179,18 +181,19 @@ const Quotes = () => {
               </button>
             ))}
           </div>
-          
+
           {/* Quote List */}
           <div className="flex-1 overflow-y-auto space-y-3 pr-1">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary-600 mb-4" />
-                <p className="text-sm text-slate-500">Loading quotes...</p>
-              </div>
+              <CardSkeleton count={3} />
             ) : filteredQuotes.length === 0 ? (
               <div className="text-center py-12 px-4">
                 <div className="w-16 h-16 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                  <FileText size={24} className="text-slate-400" />
+                  {quotes.length === 0 ? (
+                    <FileText size={24} className="text-slate-400" />
+                  ) : (
+                    <AlertCircle size={24} className="text-slate-400" />
+                  )}
                 </div>
                 {quotes.length === 0 ? (
                   <>
@@ -234,12 +237,12 @@ const Quotes = () => {
                         </span>
                         <StatusBadge status={quote.status} type="quote" size="sm" />
                       </div>
-                      
+
                       {/* Service Type */}
                       <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                         {quote.glassType} {quote.serviceType}
                       </p>
-                      
+
                       {/* Vehicle */}
                       <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 mb-1">
                         <Car size={14} className="flex-shrink-0" />
@@ -247,24 +250,24 @@ const Quotes = () => {
                           {quote.vehicle.year} {quote.vehicle.make} {quote.vehicle.model}
                         </span>
                       </div>
-                      
+
                       {/* Location */}
                       <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
                         <MapPin size={14} className="flex-shrink-0" />
                         <span>{quote.location.city}</span>
                       </div>
                     </div>
-                    
+
                     <div className="flex flex-col items-end">
                       <ChevronRight size={18} className="text-slate-300 dark:text-slate-600 mb-2" />
-                      
+
                       {/* Responses Count */}
                       {quote.responsesCount > 0 && quote.status !== 'Accepted' && (
                         <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-xs font-medium rounded-full">
                           {quote.responsesCount} offer{quote.responsesCount > 1 ? 's' : ''}
                         </span>
                       )}
-                      
+
                       {/* Date */}
                       <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
                         {getRelativeTime(quote.createdAt)}
@@ -276,19 +279,19 @@ const Quotes = () => {
             )}
           </div>
         </div>
-        
+
         {/* Right Column - Quote Detail */}
         <div className={`
           flex-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col
           ${showMobileDetail ? 'fixed inset-0 z-40 lg:relative lg:inset-auto' : 'hidden lg:flex'}
         `}>
-          <QuoteDetailPanel 
-            quote={selectedQuote} 
+          <QuoteDetailPanel
+            quote={selectedQuote}
             onClose={handleCloseMobileDetail}
           />
         </div>
       </div>
-      
+
       {/* Request Quote Modal */}
       <RequestQuoteModal
         isOpen={showRequestModal}

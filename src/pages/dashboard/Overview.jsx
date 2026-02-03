@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
+import {
   Plus,
   ChevronDown,
   Calendar,
@@ -16,8 +16,9 @@ import {
   Loader2,
   Eye,
   XCircle,
-  MessageSquare
+  MessageSquare,
 } from 'lucide-react';
+import { DashboardSkeleton } from '../../components/skeletons/DashboardSkeleton';
 import useDashboardStore, { formatCurrency, formatDate } from '../../store/useDashboardStore';
 import dashboardService from '../../services/dashboardService';
 import bookingService from '../../services/bookingService';
@@ -33,7 +34,7 @@ const Overview = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [apiData, setApiData] = useState(null);
   const [error, setError] = useState(null);
-  
+
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -41,20 +42,20 @@ const Overview = () => {
   const [showTimeRangeDropdown, setShowTimeRangeDropdown] = useState(false);
   const menuRef = useRef(null);
   const timeRangeRef = useRef(null);
-  
+
   // Toggle to show/hide timeline - set to true to show booking progress
   const SHOW_TIMELINE = true;
-  
-  const { 
-    user: storeUser, 
-    bookings: storeBookings, 
+
+  const {
+    user: storeUser,
+    bookings: storeBookings,
     quotes: storeQuotes,
     getNextUpcomingBooking,
     updateUser,
     setVehicles,
     setAddresses
   } = useDashboardStore();
-  
+
   const fetchData = async () => {
     try {
       setIsLoading(true);
@@ -89,7 +90,7 @@ const Overview = () => {
   useEffect(() => {
     fetchData();
   }, [updateUser]);
-  
+
   // Use API data if available, otherwise fall back to store
   const user = apiData?.user || storeUser;
   const bookings = apiData?.recentBookings || (isLoading ? [] : (apiData ? [] : storeBookings));
@@ -101,10 +102,10 @@ const Overview = () => {
     pendingPaymentsCount: 0,
     pendingPaymentsTotal: 0
   };
-  
+
   const nextBooking = apiData?.nextBooking;
   const latestBooking = bookings[0];
-  
+
   // Get filtered date range text and logic
   const getFilterData = () => {
     const today = new Date();
@@ -128,7 +129,7 @@ const Overview = () => {
     }
 
     const dateText = `${today.getDate().toString().padStart(2, '0')} - ${endDate.getDate().toString().padStart(2, '0')} ${endDate.toLocaleDateString('en-ZA', { month: 'short', year: 'numeric' })}`;
-    
+
     return { dateText, label, startDate, endDate };
   };
 
@@ -147,7 +148,7 @@ const Overview = () => {
     if (activeTab === 'complete') statusMatch = booking.status === 'Completed' || booking.status === 'completed';
     else if (activeTab === 'in-transit') statusMatch = booking.status === 'Confirmed' || booking.status === 'In Progress' || booking.status === 'in-progress' || booking.status === 'searching';
     else if (activeTab === 'processing') statusMatch = booking.status === 'Pending' || booking.status === 'pending';
-    
+
     if (!statusMatch) return false;
 
     // 2. Date/TimeRange filter
@@ -155,16 +156,16 @@ const Overview = () => {
 
     const bookingDate = new Date(booking.scheduledDate);
     const { startDate, endDate } = getFilterData();
-    
+
     // Set hours to 0 for date comparison
-    const start = new Date(startDate); start.setHours(0,0,0,0);
-    const end = new Date(endDate); end.setHours(23,59,59,999);
-    
+    const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate); end.setHours(23, 59, 59, 999);
+
     if (bookingDate < start || bookingDate > end) return false;
 
     return true;
   });
-  
+
   const handleRequestModalClose = (newQuoteId) => {
     setShowRequestModal(false);
     if (newQuoteId) {
@@ -197,7 +198,7 @@ const Overview = () => {
     }
     setActiveMenuId(null);
   };
-  
+
   // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -212,25 +213,18 @@ const Overview = () => {
         setShowTimeRangeDropdown(false);
       }
     };
-    
+
     if (activeMenuId || showTimeRangeDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [activeMenuId, showTimeRangeDropdown]);
-  
+
   // Show loading state
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-600 mx-auto mb-4" />
-          <p className="text-slate-500 dark:text-slate-400">Loading your dashboard...</p>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
-  
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -242,7 +236,7 @@ const Overview = () => {
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Here is what's happening today</p>
           <div className="flex items-center gap-3 mt-2">
             <div className="relative" ref={timeRangeRef}>
-              <button 
+              <button
                 onClick={() => setShowTimeRangeDropdown(!showTimeRangeDropdown)}
                 className="timerange-toggle flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
               >
@@ -272,13 +266,13 @@ const Overview = () => {
             </button>
           </div>
         </div>
-        
+
         <Button onClick={() => setShowRequestModal(true)}>
           <Plus size={18} />
           Request a Quote
         </Button>
       </div>
-      
+
       {/* Main Booking Card */}
       {latestBooking && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
@@ -293,7 +287,7 @@ const Overview = () => {
                   </p>
                 </div>
               </div>
-              
+
               {/* Info Pills */}
               <div className="flex flex-wrap gap-3 mb-6">
                 <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg">
@@ -309,7 +303,7 @@ const Overview = () => {
                   </span>
                 </div>
               </div>
-              
+
               {/* Vehicle & Price Info */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="flex items-center gap-2">
@@ -352,7 +346,7 @@ const Overview = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Right - Image */}
             <div className="lg:w-72 h-44 bg-gradient-to-br from-blue-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 rounded-xl flex items-center justify-center">
               <div className="text-center">
@@ -372,27 +366,26 @@ const Overview = () => {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-slate-800 dark:text-white">Recent Booking</h2>
             <div className="relative">
-              <button 
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   const menuId = `card-${latestBooking.id}`;
                   setActiveMenuId(activeMenuId === menuId ? null : menuId);
                 }}
-                className={`kebab-toggle p-1.5 rounded-lg transition-colors ${
-                  activeMenuId === `card-${latestBooking.id}` 
-                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:white' 
-                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
+                className={`kebab-toggle p-1.5 rounded-lg transition-colors ${activeMenuId === `card-${latestBooking.id}`
+                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:white'
+                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
               >
                 <MoreVertical size={18} />
               </button>
 
               {activeMenuId === `card-${latestBooking.id}` && (
-                <div 
+                <div
                   ref={menuRef}
                   className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 py-1.5 z-50 animate-in fade-in zoom-in duration-200"
                 >
-                  <button 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleViewBooking(latestBooking.id);
@@ -402,8 +395,8 @@ const Overview = () => {
                     <Eye size={16} className="text-slate-400" />
                     View Details
                   </button>
-                  
-                  <button 
+
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate('/dashboard/support');
@@ -414,11 +407,11 @@ const Overview = () => {
                     <MessageSquare size={16} className="text-slate-400" />
                     Contact Support
                   </button>
-                  
+
                   {(latestBooking.status !== 'Completed' && latestBooking.status !== 'completed' && latestBooking.status !== 'Cancelled' && latestBooking.status !== 'cancelled') && (
                     <>
                       <div className="h-px bg-slate-100 dark:bg-slate-700 my-1" />
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCancelBooking(latestBooking.id);
@@ -434,8 +427,8 @@ const Overview = () => {
               )}
             </div>
           </div>
-          
-          
+
+
           {/* Route Info Bar */}
           <div className="pb-6 border-b border-slate-100 dark:border-slate-800">
             <div className="flex flex-wrap items-center gap-6 mb-4">
@@ -448,7 +441,7 @@ const Overview = () => {
                   <p className="text-sm font-semibold text-slate-800 dark:text-white">#{latestBooking.reference}</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
                   <User size={18} className="text-slate-600 dark:text-slate-400" />
@@ -458,7 +451,7 @@ const Overview = () => {
                   <p className="text-sm font-semibold text-slate-800 dark:text-white">{latestBooking.providerName}</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
                   <Calendar size={18} className="text-slate-600 dark:text-slate-400" />
@@ -469,13 +462,13 @@ const Overview = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Status Badge on new line */}
             <div>
               <StatusBadge status={latestBooking.status} type="booking" />
             </div>
           </div>
-          
+
           {/* Timeline - Only show if enabled (hidden in updated design) */}
           {SHOW_TIMELINE && latestBooking.timeline && (
             <div className="pt-6 space-y-4">
@@ -515,25 +508,24 @@ const Overview = () => {
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h2 className="text-lg font-semibold text-slate-800 dark:text-white">History</h2>
-          
+
           {/* Tabs */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-                }`}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${activeTab === tab.id
+                  ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
               >
                 {tab.label}
               </button>
             ))}
           </div>
         </div>
-        
+
         {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -581,7 +573,7 @@ const Overview = () => {
                   </td>
                   <td className="py-4 px-4 text-right">
                     <div className="relative inline-block text-left">
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveMenuId(activeMenuId === booking.id ? null : booking.id);
@@ -592,61 +584,61 @@ const Overview = () => {
                       </button>
 
                       {activeMenuId === booking.id && (
-                        <div 
+                        <div
                           ref={menuRef}
                           className={`absolute right-0 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 py-1.5 z-50 animate-in fade-in zoom-in duration-200 ${
                             // If there's only a few items, open upwards for the last one or two
                             (index >= 2 && index === filteredBookings.slice(0, 5).length - 1) ? 'bottom-full mb-2' : 'top-full mt-1'
-                          }`}
+                            }`}
                         >
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewBooking(booking.id);
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-                        >
-                          <Eye size={16} className="text-slate-400" />
-                          View Details
-                        </button>
-                        
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate('/dashboard/support');
-                            setActiveMenuId(null);
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-                        >
-                          <MessageSquare size={16} className="text-slate-400" />
-                          Contact Support
-                        </button>
-                        
-                        {(booking.status !== 'Completed' && booking.status !== 'completed' && booking.status !== 'Cancelled' && booking.status !== 'cancelled') && (
-                          <>
-                            <div className="h-px bg-slate-100 dark:bg-slate-700 my-1" />
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCancelBooking(booking.id);
-                              }}
-                              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-900/10 transition-colors"
-                            >
-                              <XCircle size={16} />
-                              Cancel Booking
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </td>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewBooking(booking.id);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                          >
+                            <Eye size={16} className="text-slate-400" />
+                            View Details
+                          </button>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate('/dashboard/support');
+                              setActiveMenuId(null);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                          >
+                            <MessageSquare size={16} className="text-slate-400" />
+                            Contact Support
+                          </button>
+
+                          {(booking.status !== 'Completed' && booking.status !== 'completed' && booking.status !== 'Cancelled' && booking.status !== 'cancelled') && (
+                            <>
+                              <div className="h-px bg-slate-100 dark:bg-slate-700 my-1" />
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCancelBooking(booking.id);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-900/10 transition-colors"
+                              >
+                                <XCircle size={16} />
+                                Cancel Booking
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        
+
         {filteredBookings.length === 0 && (
           <div className="text-center py-12">
             <p className="text-slate-500 dark:text-slate-400">No bookings found</p>

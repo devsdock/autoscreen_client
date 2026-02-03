@@ -13,9 +13,18 @@ import {
   Bell,
   Shield,
   ExternalLink,
+  Search,
+  CheckCircle,
+  XCircle,
+  Clock,
   Loader2,
+  AlertCircle,
+  ArrowRight,
+  CreditCard,
   Lock,
 } from "lucide-react";
+import { Skeleton } from "../../components/ui/Skeleton";
+import { ProfileSkeleton } from "../../components/skeletons/ProfileSkeleton";
 import useDashboardStore, { formatDate } from "../../store/useDashboardStore";
 import useAuthStore from "../../store/useAuthStore";
 import profileService from "../../services/profileService";
@@ -276,7 +285,7 @@ const Profile = () => {
             const authData = JSON.parse(storedAuth);
             authData.state.user = res.data;
             localStorage.setItem("autoscreen-auth", JSON.stringify(authData));
-          } catch (e) {}
+          } catch (e) { }
         }
 
         setIsEditing(false);
@@ -643,11 +652,10 @@ const Profile = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-600 mx-auto mb-4" />
-          <p className="text-slate-500 dark:text-slate-400">
-            Loading your profile...
-          </p>
+        <div className="w-full max-w-md space-y-4 text-center">
+          <Skeleton className="w-24 h-24 rounded-full mx-auto" />
+          <Skeleton className="h-8 w-64 mx-auto" />
+          <Skeleton className="h-4 w-48 mx-auto" />
         </div>
       </div>
     );
@@ -791,9 +799,8 @@ const Profile = () => {
                   <div>
                     <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
                       {user?.name ||
-                        `${user?.firstName || ""} ${
-                          user?.lastName || ""
-                        }`.trim() ||
+                        `${user?.firstName || ""} ${user?.lastName || ""
+                          }`.trim() ||
                         "User"}
                     </h2>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -1060,10 +1067,9 @@ const Profile = () => {
                     onClick={() => toggleNotification(key)}
                     className={`
                       relative w-11 h-6 rounded-full transition-colors
-                      ${
-                        notifications[key]
-                          ? "bg-primary-600"
-                          : "bg-slate-200 dark:bg-slate-700"
+                      ${notifications[key]
+                        ? "bg-primary-600"
+                        : "bg-slate-200 dark:bg-slate-700"
                       }
                     `}
                   >

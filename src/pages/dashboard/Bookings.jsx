@@ -16,6 +16,7 @@ import Input from "../../components/ui/Input";
 import EmptyState from "../../components/ui/EmptyState";
 import BookingDetailDrawer from "../../components/dashboard/BookingDetailDrawer";
 import { downloadInvoice } from "../../utils/invoiceUtils";
+import { CardSkeleton } from "../../components/skeletons/CardSkeleton";
 
 const Bookings = () => {
   const navigate = useNavigate();
@@ -208,9 +209,27 @@ const Bookings = () => {
 
   if (isLoading && bookings.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px]">
-        <Loader2 className="animate-spin text-primary-600 mb-4" size={48} />
-        <p className="text-slate-500">Loading your bookings...</p>
+      <div className="space-y-6">
+        <PageHeader
+          title="My Bookings"
+          subtitle="Track your auto glass appointments"
+        />
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <Tabs
+            tabs={tabs}
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            variant="pills"
+            className="overflow-x-auto"
+          />
+          <Input
+            placeholder="Search bookings..."
+            icon={Search}
+            className="w-full sm:w-64"
+            disabled
+          />
+        </div>
+        <CardSkeleton count={3} />
       </div>
     );
   }
@@ -310,20 +329,20 @@ const Bookings = () => {
                       ["Paid", "Partially Refunded"].includes(
                         booking.paymentStatus
                       ))) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        downloadInvoice(booking.id, (msg) =>
-                          addToast({ type: "error", message: msg })
-                        );
-                      }}
-                      className="text-primary-600 hover:text-primary-700 font-medium"
-                    >
-                      Invoice
-                    </Button>
-                  )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          downloadInvoice(booking.id, (msg) =>
+                            addToast({ type: "error", message: msg })
+                          );
+                        }}
+                        className="text-primary-600 hover:text-primary-700 font-medium"
+                      >
+                        Invoice
+                      </Button>
+                    )}
                   <Button
                     variant="secondary"
                     onClick={(e) => {
