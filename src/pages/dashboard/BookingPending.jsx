@@ -13,6 +13,7 @@ import {
   Shield,
   Loader2,
 } from "lucide-react";
+import { Skeleton } from "../../components/ui/Skeleton";
 import useDashboardStore, {
   formatCurrency,
   formatDate,
@@ -62,8 +63,10 @@ const BookingPending = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="animate-spin text-primary-600" size={48} />
+      <div className="max-w-2xl mx-auto pb-12 space-y-6">
+        <Skeleton className="h-48 w-full rounded-2xl" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+        <Skeleton className="h-80 w-full rounded-xl" />
       </div>
     );
   }
@@ -172,11 +175,10 @@ const BookingPending = () => {
           {booking.statusHistory?.map((step, index) => (
             <div key={index} className="flex items-start gap-4">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  index <= 1
-                    ? "bg-green-500 text-white"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-400"
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${index <= 1
+                  ? "bg-green-500 text-white"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                  }`}
               >
                 {index <= 1 ? (
                   <CheckCircle size={18} />
@@ -186,11 +188,10 @@ const BookingPending = () => {
               </div>
               <div className="flex-1">
                 <p
-                  className={`font-medium ${
-                    index <= 1
-                      ? "text-slate-900 dark:text-white"
-                      : "text-slate-500 dark:text-slate-400"
-                  }`}
+                  className={`font-medium ${index <= 1
+                    ? "text-slate-900 dark:text-white"
+                    : "text-slate-500 dark:text-slate-400"
+                    }`}
                 >
                   {step.status}
                 </p>
@@ -412,17 +413,17 @@ const BookingPending = () => {
         payment={
           booking
             ? {
-                id: booking._id || bookingId,
-                bookingId: booking._id || bookingId,
-                bookingRef: booking.bookingNumber,
-                amount: booking.price?.total || 0,
-                service: `${booking.serviceType} - ${booking.glassType}`,
-                breakdown: {
-                  service: booking.price?.subtotal || 0,
-                  callout: 0,
-                  materials: 0,
-                },
-              }
+              id: booking._id || bookingId,
+              bookingId: booking._id || bookingId,
+              bookingRef: booking.bookingNumber,
+              amount: booking.price?.total || 0,
+              service: `${booking.serviceType} - ${booking.glassType}`,
+              breakdown: {
+                service: booking.price?.subtotal || 0,
+                callout: 0,
+                materials: 0,
+              },
+            }
             : null
         }
         isOpen={isPaymentModalOpen}

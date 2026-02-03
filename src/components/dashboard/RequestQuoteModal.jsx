@@ -1,4 +1,4 @@
-import { X, Upload, Trash2, Clock } from "lucide-react";
+import { X, Upload, Trash2, Clock, Check } from "lucide-react";
 import useDashboardStore from "../../store/useDashboardStore";
 import Button from "../ui/Button";
 import { vehicleMakes, serviceTypes, timeSlots } from "../../data/quotes";
@@ -36,6 +36,8 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
     otherMake: "",
     otherModel: "",
     suburb: "",
+    hasAdasCamera: false,
+    hasRainSensor: false,
   });
 
   // Pre-fill logic
@@ -273,6 +275,8 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
               ? formData.otherModel
               : formData.vehicleModel,
           year: parseInt(formData.vehicleYear) || new Date().getFullYear(),
+          hasAdasCamera: formData.hasAdasCamera,
+          hasRainSensor: formData.hasRainSensor,
         },
         serviceType: (() => {
           const st = (formData.serviceType || "").toLowerCase();
@@ -565,6 +569,76 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                     }
                   />
                 </div>
+
+                {/* Vehicle Features - Only for Windscreen */}
+                {formData.glassType === "Windscreen" && (
+                  <div className="mt-4">
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+                      Vehicle Features
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleChange("hasAdasCamera", !formData.hasAdasCamera)
+                        }
+                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                          formData.hasAdasCamera
+                            ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-1 ring-primary-500"
+                            : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
+                            formData.hasAdasCamera
+                              ? "bg-primary-500 border-primary-500 text-white"
+                              : "border-slate-300 dark:border-slate-600"
+                          }`}
+                        >
+                          {formData.hasAdasCamera && <Check size={12} />}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-slate-900 dark:text-white text-sm">
+                            ADAS Camera
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                            Advanced Driver Assistance System
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleChange("hasRainSensor", !formData.hasRainSensor)
+                        }
+                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                          formData.hasRainSensor
+                            ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-1 ring-primary-500"
+                            : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
+                            formData.hasRainSensor
+                              ? "bg-primary-500 border-primary-500 text-white"
+                              : "border-slate-300 dark:border-slate-600"
+                          }`}
+                        >
+                          {formData.hasRainSensor && <Check size={12} />}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-slate-900 dark:text-white text-sm">
+                            Rain / Light Sensor
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                            Automatic wipers and lights
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Location Section */}

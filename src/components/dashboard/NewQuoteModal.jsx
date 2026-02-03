@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Modal, { ModalActions } from "../ui/Modal";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
-import Select from "../ui/Select";
+import PremiumSelect from "../ui/PremiumSelect";
 import Textarea from "../ui/Textarea";
 import useDashboardStore from "../../store/useDashboardStore";
 import { vehicleMakes, yearOptions } from "../../data/vehicles";
@@ -31,14 +31,15 @@ const NewQuoteModal = ({ isOpen, onClose }) => {
   });
 
   const [useExistingVehicle, setUseExistingVehicle] = useState(
-    vehicles.length > 0
+    vehicles.length > 0,
   );
   const [useExistingAddress, setUseExistingAddress] = useState(
-    addresses.length > 0
+    addresses.length > 0,
   );
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [availableMakes, setAvailableMakes] = useState(vehicleMakes);
+  const [availableModels, setAvailableModels] = useState([]);
 
   // Fetch makes on mount
   useEffect(() => {
@@ -51,6 +52,24 @@ const NewQuoteModal = ({ isOpen, onClose }) => {
       }
     })();
   }, []);
+
+  // Fetch models when make changes
+  useEffect(() => {
+    (async () => {
+      if (!formData.vehicleMake || formData.vehicleMake === "Other") {
+        setAvailableModels([]);
+        return;
+      }
+      try {
+        const models = await vehicleService.getModelsByMake(
+          formData.vehicleMake,
+        );
+        setAvailableModels(models);
+      } catch (e) {
+        setAvailableModels(["Other"]);
+      }
+    })();
+  }, [formData.vehicleMake]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -175,8 +194,9 @@ const NewQuoteModal = ({ isOpen, onClose }) => {
           )}
 
           {useExistingVehicle && vehicles.length > 0 ? (
-            <Select
+            <PremiumSelect
               label="Select Vehicle"
+              searchable
               options={vehicles.map((v) => ({
                 value: v.id,
                 label: `${v.year} ${v.make} ${v.model}${
@@ -184,33 +204,39 @@ const NewQuoteModal = ({ isOpen, onClose }) => {
                 }`,
               }))}
               value={formData.vehicleId}
-              onChange={(e) => handleChange("vehicleId", e.target.value)}
+              onChange={(val) => handleChange("vehicleId", val)}
               error={errors.vehicleId}
               required
             />
           ) : (
             <div className="grid grid-cols-3 gap-4">
-              <Select
+              <PremiumSelect
                 label="Make"
-                options={availableMakes}
+                searchable
+                options={availableMakes.map((m) => ({ value: m, label: m }))}
                 value={formData.vehicleMake}
-                onChange={(e) => handleChange("vehicleMake", e.target.value)}
+                onChange={(val) => handleChange("vehicleMake", val)}
                 error={errors.vehicleMake}
                 required
               />
-              <Input
+              <PremiumSelect
                 label="Model"
-                placeholder="e.g., Corolla"
+                searchable
+                options={availableModels.map((m) => ({ value: m, label: m }))}
                 value={formData.vehicleModel}
-                onChange={(e) => handleChange("vehicleModel", e.target.value)}
+                onChange={(val) => handleChange("vehicleModel", val)}
                 error={errors.vehicleModel}
+                disabled={!formData.vehicleMake}
+                placeholder={
+                  !formData.vehicleMake ? "Select make first" : "Select model"
+                }
                 required
               />
-              <Select
+              <PremiumSelect
                 label="Year"
                 options={yearOptions.map((y) => ({ value: y, label: y }))}
                 value={formData.vehicleYear}
-                onChange={(e) => handleChange("vehicleYear", e.target.value)}
+                onChange={(val) => handleChange("vehicleYear", val)}
                 error={errors.vehicleYear}
                 required
               />
@@ -222,11 +248,12 @@ const NewQuoteModal = ({ isOpen, onClose }) => {
         <div>
           <h3 className="font-medium text-slate-900 mb-3">Service Details</h3>
           <div className="grid grid-cols-2 gap-4">
-            <Select
+            <PremiumSelect
               label="Glass Type"
+              searchable
               options={glassTypes}
               value={formData.glassType}
-              onChange={(e) => handleChange("glassType", e.target.value)}
+              onChange={(val) => handleChange("glassType", val)}
               error={errors.glassType}
               required
             />
@@ -314,14 +341,15 @@ const NewQuoteModal = ({ isOpen, onClose }) => {
           )}
 
           {useExistingAddress && addresses.length > 0 ? (
-            <Select
+            <PremiumSelect
               label="Select Address"
+              searchable
               options={addresses.map((a) => ({
                 value: a.id,
                 label: `${a.label}: ${a.street}, ${a.suburb}, ${a.city}`,
               }))}
               value={formData.addressId}
-              onChange={(e) => handleChange("addressId", e.target.value)}
+              onChange={(val) => handleChange("addressId", val)}
               error={errors.addressId}
               required
             />
@@ -344,11 +372,12 @@ const NewQuoteModal = ({ isOpen, onClose }) => {
                 error={errors.suburb}
                 required
               />
-              <Select
+              <PremiumSelect
                 label="City"
+                searchable
                 options={cities}
                 value={formData.city}
-                onChange={(e) => handleChange("city", e.target.value)}
+                onChange={(val) => handleChange("city", val)}
               />
             </div>
           )}
