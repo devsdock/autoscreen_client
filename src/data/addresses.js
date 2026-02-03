@@ -23,15 +23,18 @@ export const addressesData = [
 
 // South African cities
 export const cities = [
-  "Eastern Cape",
-  "Free State",
-  "Gauteng",
-  "KwaZulu-Natal",
-  "Limpopo",
-  "Mpumalanga",
-  "North West",
-  "Northern Cape",
-  "Western Cape",
+  "Johannesburg",
+  "Pretoria",
+  "Cape Town",
+  "Durban",
+  "Port Elizabeth",
+  "Bloemfontein",
+  "East London",
+  "Polokwane",
+  "Nelspruit",
+  "Rustenburg",
+  "Kimberley",
+  "Pietermaritzburg",
 ];
 
 // Address labels
