@@ -44,7 +44,8 @@ import PremiumSelect from "../../components/ui/PremiumSelect";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 import Modal, { ModalActions } from "../../components/ui/Modal";
 import { vehicleMakes, bodyTypes, yearOptions } from "../../data/vehicles";
-import { cities, addressLabels } from "../../data/addresses";
+import { addressLabels } from "../../data/addresses";
+import { CITIES as cities } from "../../data/cities";
 
 const Profile = () => {
   const {
@@ -285,7 +286,7 @@ const Profile = () => {
             const authData = JSON.parse(storedAuth);
             authData.state.user = res.data;
             localStorage.setItem("autoscreen-auth", JSON.stringify(authData));
-          } catch (e) { }
+          } catch (e) {}
         }
 
         setIsEditing(false);
@@ -799,8 +800,9 @@ const Profile = () => {
                   <div>
                     <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
                       {user?.name ||
-                        `${user?.firstName || ""} ${user?.lastName || ""
-                          }`.trim() ||
+                        `${user?.firstName || ""} ${
+                          user?.lastName || ""
+                        }`.trim() ||
                         "User"}
                     </h2>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -1067,9 +1069,10 @@ const Profile = () => {
                     onClick={() => toggleNotification(key)}
                     className={`
                       relative w-11 h-6 rounded-full transition-colors
-                      ${notifications[key]
-                        ? "bg-primary-600"
-                        : "bg-slate-200 dark:bg-slate-700"
+                      ${
+                        notifications[key]
+                          ? "bg-primary-600"
+                          : "bg-slate-200 dark:bg-slate-700"
                       }
                     `}
                   >

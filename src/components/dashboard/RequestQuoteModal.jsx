@@ -9,6 +9,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import PremiumSelect from "../ui/PremiumSelect";
 import PremiumDatePicker from "../ui/PremiumDatePicker";
 import { getTodayString } from "../../utils/dateUtils";
+import { CITIES } from "../../data/cities";
 
 const RequestQuoteModal = ({ isOpen, onClose }) => {
   const { createQuote, user, vehicles, addresses, quotes } =
@@ -78,7 +79,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
   const [suggestedField, setSuggestedField] = useState(null);
 
   // Dynamic data from admin settings
-  const [cities, setCities] = useState([]);
+  const [cities, setCities] = useState(CITIES);
   const [glassTypes, setGlassTypes] = useState([]);
   const [adminServiceTypes, setAdminServiceTypes] = useState([]); // Store service types with pricing
 
@@ -108,7 +109,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
     const fetchSettings = async () => {
       try {
         const settings = await publicSettingsService.getPublicSettings();
-        setCities(settings.serviceAreas || []);
+        setCities(CITIES);
         setGlassTypes(settings.glassTypes || []);
         // Store full service type objects with pricing
         setAdminServiceTypes(settings.serviceTypes || []);

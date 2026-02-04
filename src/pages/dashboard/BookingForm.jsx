@@ -32,6 +32,7 @@ import publicSettingsService from "../../services/publicSettingsService";
 import Button from "../../components/ui/Button";
 import Modal, { ModalActions } from "../../components/ui/Modal";
 import { vehicleMakes } from "../../data/quotes";
+import { CITIES } from "../../data/cities";
 import PremiumSelect from "../../components/ui/PremiumSelect";
 import PremiumDatePicker from "../../components/ui/PremiumDatePicker";
 import { getTodayString, formatLocalDate } from "../../utils/dateUtils";
@@ -210,7 +211,7 @@ const BookingForm = () => {
   const [checkingAvailability, setCheckingAvailability] = useState(false);
 
   // Dynamic data from admin settings
-  const [cities, setCities] = useState([]);
+  const [cities, setCities] = useState(CITIES);
   const [glassTypes, setGlassTypes] = useState([]);
   const [adminServiceTypes, setAdminServiceTypes] = useState([]); // Store service types with pricing
   const [platformFeePercent, setPlatformFeePercent] = useState(10); // Platform commission percentage
@@ -221,14 +222,14 @@ const BookingForm = () => {
     const fetchSettings = async () => {
       try {
         const settings = await publicSettingsService.getPublicSettings();
-        setCities(settings.serviceAreas || []);
+        setCities(CITIES);
         setGlassTypes(settings.glassTypes || []);
         // Store full service type objects with pricing
         setAdminServiceTypes(settings.serviceTypes || []);
       } catch (error) {
         console.error("Failed to fetch public settings:", error);
         // Set fallback defaults
-        setCities(["Johannesburg", "Pretoria", "Cape Town", "Durban"]);
+        setCities(CITIES);
         setGlassTypes([
           "Windscreen",
           "Side Window (Front Left)",

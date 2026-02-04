@@ -8,7 +8,7 @@ import Textarea from "../ui/Textarea";
 import useDashboardStore from "../../store/useDashboardStore";
 import { vehicleMakes, yearOptions } from "../../data/vehicles";
 import { glassTypes, serviceTypes, locationTypes } from "../../data/quotes";
-import { cities } from "../../data/addresses";
+import { CITIES as cities } from "../../data/cities";
 import vehicleService from "../../services/vehicleService";
 
 const NewQuoteModal = ({ isOpen, onClose }) => {

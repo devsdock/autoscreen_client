@@ -15,6 +15,7 @@ import Button from "../../components/ui/Button";
 import vehicleService from "../../services/vehicleService";
 import profileService from "../../services/profileService";
 import publicSettingsService from "../../services/publicSettingsService";
+import { CITIES } from "../../data/cities";
 import PremiumSelect from "../../components/ui/PremiumSelect";
 
 const BookSearch = () => {
@@ -166,7 +167,7 @@ const BookSearch = () => {
   const [suggestedField, setSuggestedField] = useState(null);
 
   // Dynamic data from admin settings
-  const [cities, setCities] = useState([]);
+  const [cities, setCities] = useState(CITIES);
   const [glassTypes, setGlassTypes] = useState([]);
   const [serviceTypes, setServiceTypes] = useState([]);
 
@@ -191,13 +192,14 @@ const BookSearch = () => {
     const fetchSettings = async () => {
       try {
         const settings = await publicSettingsService.getPublicSettings();
-        setCities(settings.serviceAreas || []);
+        // Use CITIES constant instead of serviceAreas for full SA list
+        setCities(CITIES);
         setGlassTypes(settings.glassTypes || []);
         setServiceTypes(settings.serviceTypes || []);
       } catch (error) {
         console.error("Failed to fetch settings:", error);
         // Fallback defaults
-        setCities(["Johannesburg", "Pretoria", "Cape Town", "Durban"]);
+        setCities(CITIES);
         setGlassTypes([
           "Windscreen",
           "Side Window (Front Left)",
