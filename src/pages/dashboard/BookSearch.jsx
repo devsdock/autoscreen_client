@@ -216,8 +216,8 @@ const BookSearch = () => {
             description: "Chip and crack repair services",
           },
           {
-            name: "Smash & Grab",
-            description: "Smash & Grab film application",
+            name: "Anti-Smash and Grab Film",
+            description: "Anti-Smash and Grab Film application",
           },
         ]);
       }

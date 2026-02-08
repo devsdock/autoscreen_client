@@ -240,8 +240,8 @@ const BookingForm = () => {
           { name: "Glass Replacement", description: "Full glass replacement" },
           { name: "Glass Repair", description: "Chip & crack repair" },
           {
-            name: "Smash & Grab",
-            description: "Smash & Grab film application",
+            name: "Anti-Smash and Grab Film",
+            description: "Anti-Smash and Grab Film application",
           },
         ]);
       }

@@ -13,8 +13,8 @@ export const SERVICE_TYPES = [
   { id: "repair", label: "Repair", description: "Chip & crack repair" },
   {
     id: "tinting",
-    label: "Smash & Grab",
-    description: "Smash & Grab film application",
+    label: "Anti-Smash and Grab Film",
+    description: "Anti-Smash and Grab Film application",
   },
 ];
 

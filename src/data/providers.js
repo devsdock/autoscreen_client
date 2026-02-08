@@ -656,7 +656,7 @@ export const providersData = [
       "Atlantic Seaboard",
     ],
     about:
-      "Cape Auto Glass brings expert auto glass services to the Mother City. Our ocean-side workshop offers stunning views while you wait. We specialize in coastal vehicle glass care and offer UV-protective Smash & Grab options.",
+      "Cape Auto Glass brings expert auto glass services to the Mother City. Our ocean-side workshop offers stunning views while you wait. We specialize in coastal vehicle glass care and offer UV-protective Anti-Smash and Grab Film options.",
     phone: "+27 21 555 1234",
     email: "info@capeautoglass.co.za",
     services: [
@@ -683,7 +683,7 @@ export const providersData = [
       },
       {
         id: "SVC-009",
-        name: "Smash & Grab",
+        name: "Anti-Smash and Grab Film",
         description: "UV-protective film installation",
         fromPrice: 1500,
         durationMins: 120,
