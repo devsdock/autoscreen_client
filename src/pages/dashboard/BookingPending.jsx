@@ -50,6 +50,7 @@ const BookingPending = () => {
       const activeStatuses = [
         "searching",
         "awaiting-provider-acceptance",
+        "awaiting-customer-approval",
         "accepted",
         "awaiting-payment",
       ];
@@ -95,12 +96,15 @@ const BookingPending = () => {
   let statusCategory = "searching";
   if (["accepted", "awaiting-payment"].includes(rawStatus))
     statusCategory = "accepted";
+  else if (rawStatus === "awaiting-customer-approval")
+    statusCategory = "quote_received";
   else if (
     ["confirmed", "paid", "completed", "in-progress"].includes(rawStatus)
   )
     statusCategory = "confirmed";
 
   const isPending = statusCategory === "searching";
+  const isQuoteReceived = statusCategory === "quote_received";
   const isAccepted = statusCategory === "accepted";
   const isConfirmed = statusCategory === "confirmed";
 
@@ -114,11 +118,20 @@ const BookingPending = () => {
       bgColor: "bg-amber-50 dark:bg-amber-900/20",
       borderColor: "border-amber-200 dark:border-amber-800",
     },
+    quote_received: {
+      icon: FileText,
+      title: "Quote Received!",
+      description:
+        "A provider has sent a quote. Please review and accept to proceed.",
+      color: "text-blue-500",
+      bgColor: "bg-blue-50 dark:bg-blue-900/20",
+      borderColor: "border-blue-200 dark:border-blue-800",
+    },
     accepted: {
       icon: CheckCircle,
-      title: "Provider Accepted!",
+      title: "Quote Accepted",
       description:
-        "Great news! A provider has accepted your booking. Complete payment to confirm.",
+        "You accepted the quote! Please complete payment to confirm.",
       color: "text-green-500",
       bgColor: "bg-green-50 dark:bg-green-900/20",
       borderColor: "border-green-200 dark:border-green-800",
@@ -136,6 +149,46 @@ const BookingPending = () => {
 
   const currentStatus = statusConfig[statusCategory] || statusConfig.searching;
   const StatusIcon = currentStatus.icon;
+
+  const handleAcceptQuote = async (providerId) => {
+    try {
+      // Call endpoint to accept quote
+      const res = await bookingService.respondToQuote(
+        bookingId,
+        providerId,
+        "accept",
+      );
+      if (res.success) {
+        addToast({ type: "success", message: "Quote accepted!" });
+        // Refresh booking will happen automatically via poll or we can trigger it
+        setBooking({ ...booking, status: "accepted" });
+      }
+    } catch (error) {
+      addToast({ type: "error", message: "Failed to accept quote" });
+    }
+  };
+
+  const handleDeclineQuote = async (providerId) => {
+    try {
+      const res = await bookingService.respondToQuote(
+        bookingId,
+        providerId,
+        "reject",
+      );
+      if (res.success) {
+        addToast({
+          type: "info",
+          message: "Quote declined.",
+        });
+        const newQuotes = booking.quotes.filter(
+          (q) => q.provider.id !== providerId,
+        );
+        setBooking({ ...booking, quotes: newQuotes });
+      }
+    } catch (error) {
+      addToast({ type: "error", message: "Failed to decline quote" });
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto pb-12">
@@ -175,25 +228,19 @@ const BookingPending = () => {
           {booking.statusHistory?.map((step, index) => (
             <div key={index} className="flex items-start gap-4">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${index <= 1
-                  ? "bg-green-500 text-white"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-400"
-                  }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  index <= 1 || step.status === "awaiting-customer-approval"
+                    ? "bg-green-500 text-white"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                }`}
               >
-                {index <= 1 ? (
-                  <CheckCircle size={18} />
-                ) : (
-                  <div className="w-2 h-2 bg-current rounded-full" />
-                )}
+                <CheckCircle size={18} />
               </div>
               <div className="flex-1">
                 <p
-                  className={`font-medium ${index <= 1
-                    ? "text-slate-900 dark:text-white"
-                    : "text-slate-500 dark:text-slate-400"
-                    }`}
+                  className={`font-medium ${"text-slate-900 dark:text-white"}`}
                 >
-                  {step.status}
+                  {step.status.replace(/_/g, " ").replace(/-/g, " ")}
                 </p>
                 {step.timestamp && (
                   <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -217,8 +264,8 @@ const BookingPending = () => {
           Service Details
         </h3>
 
-        {/* Provider Info (if accepted) */}
-        {(isAccepted || isConfirmed) && booking.provider && (
+        {/* Provider Info (if accepted or quote received) */}
+        {(isAccepted || isConfirmed || isQuoteReceived) && booking.provider && (
           <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl mb-6">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-lg">
               {booking.provider.businessName?.charAt(0) ||
@@ -283,7 +330,9 @@ const BookingPending = () => {
                 {formatDate(booking.scheduledDate, "long")}
               </p>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                {booking.scheduledTimeSlot}
+                {typeof booking.scheduledTimeSlot === "string"
+                  ? booking.scheduledTimeSlot
+                  : `${booking.scheduledTimeSlot?.start} - ${booking.scheduledTimeSlot?.end}`}
               </p>
             </div>
           </div>
@@ -305,25 +354,27 @@ const BookingPending = () => {
           </div>
         </div>
 
-        {/* Price Summary */}
-        <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Total Price
-              </p>
-              <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-                {formatCurrency(booking.price?.total || 0)}
-              </p>
+        {/* Price Summary - Only show if accepted or confirmed or quote received */}
+        {!isPending && !isQuoteReceived && (
+          <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Total Price
+                </p>
+                <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                  {formatCurrency(booking.price?.total || 0)}
+                </p>
+              </div>
+              {isAccepted && (
+                <Button size="lg" onClick={() => setIsPaymentModalOpen(true)}>
+                  <CreditCard size={18} />
+                  Confirm & Pay
+                </Button>
+              )}
             </div>
-            {isAccepted && (
-              <Button size="lg" onClick={() => setIsPaymentModalOpen(true)}>
-                <CreditCard size={18} />
-                Confirm & Pay
-              </Button>
-            )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Actions / Status Specific Controls */}
@@ -346,6 +397,95 @@ const BookingPending = () => {
             >
               Cancel Request
             </Button>
+          </div>
+        )}
+
+        {isQuoteReceived && (
+          <div className="space-y-6">
+            <h4 className="font-semibold text-slate-900 dark:text-white">
+              Received Quotes
+            </h4>
+
+            {(!booking.quotes || booking.quotes.length === 0) && (
+              <div className="text-center py-6 text-slate-500">
+                <Loader2 className="animate-spin inline-block mr-2" size={18} />
+                Waiting for provider quotes...
+              </div>
+            )}
+
+            {booking.quotes?.map((quote, idx) => (
+              <div
+                key={quote.provider.id || idx}
+                className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-primary-600 font-bold">
+                      {quote.provider.businessName?.charAt(0) || "P"}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-900 dark:text-white">
+                        {quote.provider.businessName}
+                      </p>
+                      <div className="flex items-center gap-1 text-xs text-slate-500">
+                        <Star
+                          size={12}
+                          className="text-amber-400"
+                          fill="currentColor"
+                        />
+                        <span>
+                          {quote.provider.rating || 5.0} (
+                          {quote.provider.reviewCount || 0} reviews)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-primary-600">
+                      {formatCurrency(quote.price)}
+                    </p>
+                    <p className="text-xs text-slate-500">Total Price</p>
+                  </div>
+                </div>
+
+                {quote.slot && (
+                  <div className="mb-3 px-3 py-2 bg-blue-50 dark:bg-blue-900/10 rounded-lg text-sm text-blue-900 dark:text-blue-200 border border-blue-100 dark:border-blue-900/30 flex items-center gap-2">
+                    <Clock size={16} className="text-blue-500" />
+                    <div>
+                      <span className="font-semibold block sm:inline mr-1">
+                        Proposed Time:
+                      </span>
+                      <span>{quote.slot}</span>
+                    </div>
+                  </div>
+                )}
+
+                {quote.notes && (
+                  <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg text-sm text-slate-600 dark:text-slate-400">
+                    <span className="font-semibold block mb-1">Note:</span>{" "}
+                    {quote.notes}
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => handleDeclineQuote(quote.provider.id)}
+                  >
+                    Decline
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => handleAcceptQuote(quote.provider.id)}
+                  >
+                    Accept Offer
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -413,17 +553,17 @@ const BookingPending = () => {
         payment={
           booking
             ? {
-              id: booking._id || bookingId,
-              bookingId: booking._id || bookingId,
-              bookingRef: booking.bookingNumber,
-              amount: booking.price?.total || 0,
-              service: `${booking.serviceType} - ${booking.glassType}`,
-              breakdown: {
-                service: booking.price?.subtotal || 0,
-                callout: 0,
-                materials: 0,
-              },
-            }
+                id: booking._id || bookingId,
+                bookingId: booking._id || bookingId,
+                bookingRef: booking.bookingNumber,
+                amount: booking.price?.total || 0,
+                service: `${booking.serviceType} - ${booking.glassType}`,
+                breakdown: {
+                  service: booking.price?.subtotal || 0,
+                  callout: 0,
+                  materials: 0,
+                },
+              }
             : null
         }
         isOpen={isPaymentModalOpen}

@@ -40,6 +40,7 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
   const [loading, setLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [pendingPaymentAmount, setPendingPaymentAmount] = useState(null);
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
 
   if (!booking) return null;
@@ -103,6 +104,45 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
     }
   };
 
+  const handleAcceptQuote = async (providerId) => {
+    setLoading(true);
+    try {
+      // Find quote to get price
+      const quote = booking.quotes?.find((q) => q.provider.id === providerId);
+      if (quote) setPendingPaymentAmount(quote.price);
+
+      await bookingService.respondToQuote(booking.id, providerId, "accept");
+      addToast({
+        type: "success",
+        message: "Quote accepted! Proceeding to payment.",
+      });
+
+      if (onUpdate) onUpdate();
+
+      // Open payment modal immediately
+      setIsPaymentModalOpen(true);
+    } catch (error) {
+      console.error("Error accepting quote:", error);
+      addToast({ type: "error", message: "Failed to accept quote" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeclineQuote = async (providerId) => {
+    setLoading(true);
+    try {
+      await bookingService.respondToQuote(booking.id, providerId, "reject");
+      addToast({ type: "success", message: "Quote declined." });
+      if (onUpdate) onUpdate();
+    } catch (error) {
+      console.error("Error declining quote:", error);
+      addToast({ type: "error", message: "Failed to decline quote" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePayNow = () => {
     setIsPaymentModalOpen(true);
   };
@@ -136,11 +176,12 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
   const currentPaymentStatus = booking.paymentStatus?.toLowerCase() || "";
 
   const canCancel = [
-    "pending",
+    "confirmation",
     "accepted",
     "confirmed",
     "pending payment",
     "searching",
+    "awaiting-customer-approval",
   ].includes(currentStatus);
   const canPay =
     currentPaymentStatus === "unpaid" &&
@@ -162,7 +203,7 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
         title={`Booking #${booking.reference}`}
         size="lg"
       >
-        <div className="space-y-6">
+        <div className="space-y-6 mb-6">
           {/* Status Badges */}
           <div className="flex items-center gap-2">
             <StatusBadge status={booking.status} type="booking" size="md" />
@@ -172,6 +213,90 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
               size="md"
             />
           </div>
+
+          {/* Received Quotes Section */}
+          {(currentStatus === "awaiting-customer-approval" ||
+            currentStatus === "searching") &&
+            booking.quotes &&
+            booking.quotes.length > 0 && (
+              <div className="space-y-4">
+                <h4 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Star size={16} className="text-amber-500 fill-amber-500" />
+                  Received Quotes ({booking.quotes.length})
+                </h4>
+                <div className="grid gap-3">
+                  {booking.quotes.map((quote) => (
+                    <div
+                      key={quote.provider.id}
+                      className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-primary-600 font-bold text-sm">
+                            {quote.provider.businessName?.charAt(0) || "P"}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-900 dark:text-white text-sm">
+                              {quote.provider.businessName}
+                            </p>
+                            <div className="flex items-center gap-1 text-xs text-slate-500">
+                              <Star
+                                size={10}
+                                className="text-amber-400 fill-amber-400"
+                              />
+                              <span>{quote.provider.rating || 5.0}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-primary-600 dark:text-primary-400">
+                            {formatCurrency(quote.price)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {quote.slot && (
+                        <div className="mb-3 px-3 py-2 bg-blue-50 dark:bg-blue-900/10 rounded-lg text-xs text-blue-900 dark:text-blue-200 border border-blue-100 dark:border-blue-900/30 flex items-center gap-2">
+                          <Clock size={14} className="text-blue-500" />
+                          <div>
+                            <span className="font-semibold mr-1">
+                              Proposed Time:
+                            </span>
+                            {quote.slot}
+                          </div>
+                        </div>
+                      )}
+
+                      {quote.notes && (
+                        <div className="mb-3 p-2 bg-slate-50 dark:bg-slate-900/50 rounded text-xs text-slate-600 dark:text-slate-400 italic">
+                          "{quote.notes}"
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 mt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 h-8 text-xs"
+                          onClick={() => handleDeclineQuote(quote.provider.id)}
+                          disabled={loading}
+                        >
+                          Decline
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1 h-8 text-xs"
+                          onClick={() => handleAcceptQuote(quote.provider.id)}
+                          disabled={loading}
+                        >
+                          Accept
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
           {/* Suggested Alternate Slot */}
           {/* Suggested Alternate Slot(s) */}
@@ -444,31 +569,33 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
           )}
 
           {/* Provider Details */}
-          {booking.providerName && currentStatus !== "searching" && (
-            <div>
-              <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
-                Provider
-              </h4>
-              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                    {booking.providerName.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-slate-900 dark:text-white">
-                      {booking.providerName}
-                    </p>
-                    <Rating
-                      value={booking.providerRating || 0}
-                      reviewCount={booking.providerReviews || 0}
-                      size="sm"
-                      className="mt-1"
-                    />
+          {booking.providerName &&
+            currentStatus !== "searching" &&
+            currentStatus !== "awaiting-customer-approval" && (
+              <div>
+                <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
+                  Provider
+                </h4>
+                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                      {booking.providerName.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-900 dark:text-white">
+                        {booking.providerName}
+                      </p>
+                      <Rating
+                        value={booking.providerRating || 0}
+                        reviewCount={booking.providerReviews || 0}
+                        size="sm"
+                        className="mt-1"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Your Review */}
           {booking.rating?.score && (
@@ -499,70 +626,84 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
           )}
 
           {/* Price Breakdown */}
-          <div>
-            <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
-              Price
-            </h4>
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-600 dark:text-slate-400">
-                  {booking.service}
-                </span>
-                <span className="font-bold text-primary-600 dark:text-primary-400 text-2xl">
-                  {formatCurrency(booking.price?.total || 0)}
-                </span>
+          {currentStatus !== "searching" &&
+            currentStatus !== "awaiting-customer-approval" && (
+              <div>
+                <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
+                  Price
+                </h4>
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                      {booking.service}
+                    </span>
+                    <span className="font-bold text-primary-600 dark:text-primary-400 text-2xl">
+                      {formatCurrency(booking.price?.total || 0)}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            )}
         </div>
 
         {/* Actions */}
-        <DrawerFooter className="flex-col sm:flex-row gap-2">
-          {canPay && (
-            <Button onClick={handlePayNow} className="flex-1">
-              <CreditCard size={16} />
-              Confirm & Pay
-            </Button>
-          )}
-          {canComplete && (
-            <Button
-              onClick={() => setIsCompleteModalOpen(true)}
-              className="flex-1"
-            >
-              <CheckCircle size={16} />
-              Complete Booking
-            </Button>
-          )}
-          {canReview && (
-            <Button
-              variant="secondary"
-              className="flex-1"
-              onClick={() => setShowReviewModal(true)}
-            >
-              <Star size={16} />
-              Leave Review
-            </Button>
-          )}
-          {canDownloadInvoice && (
-            <Button
-              variant="secondary"
-              className="flex-1"
-              onClick={handleDownloadInvoice}
-            >
-              <Download size={16} />
-              Invoice
-            </Button>
-          )}
-          {canCancel && (
-            <Button
-              variant="danger"
-              className="flex-1"
-              onClick={() => setShowCancelModal(true)}
-            >
-              Cancel Booking
-            </Button>
-          )}
-        </DrawerFooter>
+        {(canPay ||
+          canComplete ||
+          canReview ||
+          canDownloadInvoice ||
+          canCancel) && (
+          <DrawerFooter className="flex-col gap-3">
+            {canPay && (
+              <Button onClick={handlePayNow} className="w-full">
+                <CreditCard size={16} />
+                Confirm & Pay
+              </Button>
+            )}
+            {canComplete && (
+              <Button
+                onClick={() => setIsCompleteModalOpen(true)}
+                className="w-full"
+              >
+                <CheckCircle size={16} />
+                Complete Booking
+              </Button>
+            )}
+
+            {(canReview || canDownloadInvoice || canCancel) && (
+              <div className="flex gap-2 w-full">
+                {canReview && (
+                  <Button
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => setShowReviewModal(true)}
+                  >
+                    <Star size={16} />
+                    Leave Review
+                  </Button>
+                )}
+                {canDownloadInvoice && (
+                  <Button
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={handleDownloadInvoice}
+                  >
+                    <Download size={16} />
+                    Invoice
+                  </Button>
+                )}
+                {canCancel && (
+                  <Button
+                    variant="outline"
+                    className="flex-1 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20 justify-center"
+                    onClick={() => setShowCancelModal(true)}
+                  >
+                    Cancel Booking
+                  </Button>
+                )}
+              </div>
+            )}
+          </DrawerFooter>
+        )}
       </Drawer>
 
       {/* Review Modal */}
@@ -592,7 +733,7 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
           id: booking.id,
           bookingId: booking.id,
           bookingRef: booking.reference,
-          amount: booking.price?.total || 0,
+          amount: pendingPaymentAmount || booking.price?.total || 0,
           service: booking.service,
           breakdown: {
             service: booking.price?.service || 0,

@@ -12,14 +12,19 @@ const useNotificationStore = create(
       fetchNotifications: async () => {
         set({ isLoading: true });
         try {
-          const response = await api.get("/notifications");
-          if (response.data.success) {
+          const data = await api({
+            method: "GET",
+            url: "/customer/notifications",
+          });
+
+          if (data.success) {
             set({
-              notifications: response.data.data,
-              unreadCount: response.data.unreadCount,
+              notifications: data.data,
+              unreadCount: data.unreadCount,
             });
           }
         } catch (error) {
+          console.error("Failed to fetch notifications:", error);
         } finally {
           set({ isLoading: false });
         }
@@ -28,15 +33,27 @@ const useNotificationStore = create(
       markAsRead: async (id) => {
         try {
           // Optimistic update
-          set((state) => ({
-            notifications: state.notifications.map((n) =>
-              n._id === id ? { ...n, isRead: true } : n
-            ),
-            unreadCount: Math.max(0, state.unreadCount - 1),
-          }));
+          set((state) => {
+            // Check if notification is already read to avoid decrementing unreadCount incorrectly
+            const notification = state.notifications.find((n) => n._id === id);
+            if (notification && notification.isRead) return state;
 
-          await api.patch(`/notifications/${id}/read`);
-        } catch (error) {}
+            return {
+              notifications: state.notifications.map((n) =>
+                n._id === id ? { ...n, isRead: true } : n,
+              ),
+              unreadCount: Math.max(0, state.unreadCount - 1),
+            };
+          });
+
+          await api({
+            method: "PATCH",
+            url: `/customer/notifications/${id}/read`,
+          });
+        } catch (error) {
+          console.error("Failed to mark notification as read:", error);
+          // Revert optimistic update could be added here if needed
+        }
       },
 
       markAllAsRead: async () => {
@@ -49,8 +66,13 @@ const useNotificationStore = create(
             unreadCount: 0,
           }));
 
-          await api.patch("/notifications/read-all");
-        } catch (error) {}
+          await api({
+            method: "PATCH",
+            url: "/customer/notifications/read-all",
+          });
+        } catch (error) {
+          console.error("Failed to mark all notifications as read:", error);
+        }
       },
 
       addNotification: (notification) => {
@@ -59,12 +81,45 @@ const useNotificationStore = create(
           unreadCount: state.unreadCount + 1,
         }));
       },
+
+      deleteNotification: async (id) => {
+        try {
+          const notification = get().notifications.find((n) => n._id === id);
+          const wasUnread = notification && !notification.isRead;
+
+          set((state) => ({
+            notifications: state.notifications.filter((n) => n._id !== id),
+            unreadCount: wasUnread
+              ? Math.max(0, state.unreadCount - 1)
+              : state.unreadCount,
+          }));
+
+          await api({
+            method: "DELETE",
+            url: `/customer/notifications/${id}`,
+          });
+        } catch (error) {
+          console.error("Failed to delete notification:", error);
+        }
+      },
+
+      clearAll: async () => {
+        try {
+          set({ notifications: [], unreadCount: 0 });
+          await api({
+            method: "DELETE",
+            url: "/customer/notifications",
+          });
+        } catch (error) {
+          console.error("Failed to clear notifications:", error);
+        }
+      },
     }),
     {
       name: "autoscreen-customer-notifications",
       partialize: (state) => ({ unreadCount: state.unreadCount }),
-    }
-  )
+    },
+  ),
 );
 
 export default useNotificationStore;

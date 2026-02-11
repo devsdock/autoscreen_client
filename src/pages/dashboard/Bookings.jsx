@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Search, Calendar, Filter, Loader2 } from "lucide-react";
+import { Search, Calendar, Filter, Loader2, Star } from "lucide-react";
 import useDashboardStore, {
   formatDate,
   formatCurrency,
@@ -28,6 +28,9 @@ const Bookings = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const fetchBookingDetails = useDashboardStore(
+    (state) => state.fetchBookingDetails,
+  );
   const [error, setError] = useState(null);
 
   const fetchBookings = async () => {
@@ -42,7 +45,7 @@ const Bookings = () => {
         // If there's an ID in URL, select that booking
         if (id) {
           const booking = mappedBookings.find(
-            (b) => b.id === id || b.reference === id
+            (b) => b.id === id || b.reference === id,
           );
           if (booking) setSelectedBooking(booking);
         }
@@ -60,15 +63,35 @@ const Bookings = () => {
 
   // Sync selected booking when ID changes or bookings list updates
   useEffect(() => {
-    if (id && bookings.length > 0) {
-      const b = bookings.find(
-        (item) => item.id === id || item.reference === id
-      );
-      if (b) setSelectedBooking(b);
-    } else if (!id) {
-      setSelectedBooking(null);
-    }
-  }, [id, bookings]);
+    const checkAndFetchBooking = async () => {
+      if (id) {
+        let b = bookings.find(
+          (item) => item.id === id || item.reference === id,
+        );
+
+        if (b) {
+          setSelectedBooking(b);
+        } else {
+          // If not found in current list, fetch specifically
+          setIsLoading(true);
+          const fetchedBooking = await fetchBookingDetails(id);
+          if (fetchedBooking) {
+            setSelectedBooking(fetchedBooking);
+            // Also add to local bookings if not already there to show in list if needed
+            setBookings((prev) => {
+              if (prev.find((p) => p.id === fetchedBooking.id)) return prev;
+              return [fetchedBooking, ...prev];
+            });
+          }
+          setIsLoading(false);
+        }
+      } else {
+        setSelectedBooking(null);
+      }
+    };
+
+    checkAndFetchBooking();
+  }, [id, bookings, fetchBookingDetails]);
 
   // Filter logic
   const now = new Date();
@@ -85,6 +108,8 @@ const Bookings = () => {
             "accepted",
             "pending payment",
             "awaiting-payment",
+            "awaiting-customer-approval",
+            "searching",
           ].includes(s) && new Date(b.scheduledDate) > now
         );
       }).length,
@@ -99,7 +124,7 @@ const Bookings = () => {
       value: "cancelled",
       label: "Cancelled",
       count: bookings.filter((b) =>
-        ["cancelled", "rejected", "expired"].includes(b.status?.toLowerCase())
+        ["cancelled", "rejected", "expired"].includes(b.status?.toLowerCase()),
       ).length,
     },
   ];
@@ -115,6 +140,8 @@ const Bookings = () => {
           "accepted",
           "pending payment",
           "awaiting-payment",
+          "awaiting-customer-approval",
+          "searching",
         ].includes(status) && new Date(booking.scheduledDate) > now
       )
     )
@@ -284,6 +311,19 @@ const Bookings = () => {
                         #{booking.reference}
                       </span>
                       <StatusBadge status={booking.status} type="booking" />
+
+                      {/* Quotes Badge */}
+                      {booking.quotes &&
+                        booking.quotes.length > 0 &&
+                        (booking.status === "awaiting-customer-approval" ||
+                          booking.status === "searching") && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                            <Star size={10} className="fill-current" />
+                            {booking.quotes.length} Quote
+                            {booking.quotes.length !== 1 ? "s" : ""}
+                          </span>
+                        )}
+
                       <StatusBadge
                         status={booking.paymentStatus}
                         type="payment"
@@ -327,22 +367,22 @@ const Bookings = () => {
                   {(["Confirmed", "Completed"].includes(booking.status) ||
                     (booking.paymentStatus &&
                       ["Paid", "Partially Refunded"].includes(
-                        booking.paymentStatus
+                        booking.paymentStatus,
                       ))) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          downloadInvoice(booking.id, (msg) =>
-                            addToast({ type: "error", message: msg })
-                          );
-                        }}
-                        className="text-primary-600 hover:text-primary-700 font-medium"
-                      >
-                        Invoice
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        downloadInvoice(booking.id, (msg) =>
+                          addToast({ type: "error", message: msg }),
+                        );
+                      }}
+                      className="text-primary-600 hover:text-primary-700 font-medium"
+                    >
+                      Invoice
+                    </Button>
+                  )}
                   <Button
                     variant="secondary"
                     onClick={(e) => {

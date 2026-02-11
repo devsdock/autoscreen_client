@@ -238,7 +238,7 @@ const BookingForm = () => {
         ]);
         setAdminServiceTypes([
           { name: "Glass Replacement", description: "Full glass replacement" },
-          { name: "Glass Repair", description: "Chip & crack repair" },
+          { name: "Glass Repair", description: "Chip and crack repair" },
           {
             name: "Anti-Smash and Grab Film",
             description: "Anti-Smash and Grab Film application",
@@ -968,12 +968,6 @@ const BookingForm = () => {
                             mins
                           </p>
                         </div>
-                        <div className="text-right pl-4">
-                          <p className="text-xs text-slate-500">From</p>
-                          <p className="text-lg font-bold text-primary-600 dark:text-primary-400">
-                            {formatCurrency(displayPrice)}
-                          </p>
-                        </div>
                       </div>
                     </div>
                   );
@@ -1036,27 +1030,6 @@ const BookingForm = () => {
                       : "No glass types available for this service"
                   }
                 />
-                {formData.service && formData.glassType && (
-                  <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-green-700 dark:text-green-300">
-                          {formData.service.name} - {formData.glassType}
-                        </p>
-                        <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
-                          Estimated price for this service
-                        </p>
-                      </div>
-                      <p className="text-lg font-bold text-green-700 dark:text-green-300">
-                        {formatCurrency(
-                          formData.service.pricing?.find(
-                            (p) => p.glassType === formData.glassType,
-                          )?.price || 0,
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -1590,43 +1563,6 @@ const BookingForm = () => {
                 )}
               </div>
             )}
-
-            {/* Price Summary */}
-            <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 border border-primary-200 dark:border-primary-800">
-              <p className="text-xs text-primary-600 dark:text-primary-400 mb-3 font-medium">
-                Price Summary
-              </p>
-              <div className="space-y-2 text-sm">
-                {(() => {
-                  // Calculate actual service price from selected service and glass type
-                  const servicePrice =
-                    formData.service && formData.glassType
-                      ? formData.service.pricing?.find(
-                          (p) => p.glassType === formData.glassType,
-                        )?.price || 0
-                      : 0;
-
-                  return (
-                    <>
-                      <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                        <span>
-                          {formData.service?.name} - {formData.glassType}
-                        </span>
-                        <span className="font-medium">
-                          {formatCurrency(servicePrice)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between font-bold text-slate-900 dark:text-white pt-3 border-t border-primary-200 dark:border-primary-700 mt-3">
-                        <span>Total</span>
-                        <span className="text-xl text-primary-600 dark:text-primary-400">
-                          {formatCurrency(servicePrice)}
-                        </span>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
           </div>
         )}
 

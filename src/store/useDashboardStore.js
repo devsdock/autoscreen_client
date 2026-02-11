@@ -63,7 +63,7 @@ export const formatDate = (dateString, format = "short") => {
   if (format === "datetime") {
     return `${formatDate(dateString, "short")} at ${formatDate(
       dateString,
-      "time"
+      "time",
     )}`;
   }
   return date.toLocaleDateString("en-ZA");
@@ -152,7 +152,7 @@ const useDashboardStore = create(
         } else {
           // System preference
           const prefersDark = window.matchMedia(
-            "(prefers-color-scheme: dark)"
+            "(prefers-color-scheme: dark)",
           ).matches;
           if (prefersDark) {
             document.documentElement.classList.add("dark");
@@ -167,7 +167,7 @@ const useDashboardStore = create(
           document.documentElement.classList.add("dark");
         } else if (theme === "system") {
           const prefersDark = window.matchMedia(
-            "(prefers-color-scheme: dark)"
+            "(prefers-color-scheme: dark)",
           ).matches;
           if (prefersDark) {
             document.documentElement.classList.add("dark");
@@ -230,7 +230,7 @@ const useDashboardStore = create(
       updateVehicle: (id, updates) => {
         set((state) => ({
           vehicles: state.vehicles.map((v) =>
-            v.id === id ? { ...v, ...updates } : v
+            v.id === id ? { ...v, ...updates } : v,
           ),
         }));
         get().addToast({
@@ -273,7 +273,7 @@ const useDashboardStore = create(
           }
           return {
             addresses: addresses.map((a) =>
-              a.id === id ? { ...a, ...updates } : a
+              a.id === id ? { ...a, ...updates } : a,
             ),
           };
         });
@@ -348,7 +348,7 @@ const useDashboardStore = create(
             set((state) => {
               // Update quote in quotes list
               const updatedQuotes = state.quotes.map((q) =>
-                q.id === mappedQuote.id ? mappedQuote : q
+                q.id === mappedQuote.id ? mappedQuote : q,
               );
 
               // If quote not in list (e.g. direct link), add it
@@ -358,7 +358,7 @@ const useDashboardStore = create(
 
               // Update responses: Remove old responses for this quote and add new ones
               const otherResponses = state.quoteResponses.filter(
-                (r) => r.quoteRequestId !== mappedQuote.id
+                (r) => r.quoteRequestId !== mappedQuote.id,
               );
 
               return {
@@ -430,7 +430,7 @@ const useDashboardStore = create(
           if (response.success) {
             set((state) => ({
               quotes: state.quotes.map((q) =>
-                q.id === quoteId ? { ...q, status: "Cancelled" } : q
+                q.id === quoteId ? { ...q, status: "Cancelled" } : q,
               ),
             }));
             get().addToast({
@@ -462,7 +462,7 @@ const useDashboardStore = create(
 
           const result = await quoteService.acceptQuoteResponse(
             quoteId,
-            responseId
+            responseId,
           );
 
           if (result.success) {
@@ -529,7 +529,7 @@ const useDashboardStore = create(
                       completed: true,
                       date: t.date || new Date().toISOString(),
                     }
-                  : t
+                  : t,
               ),
             };
           }),
@@ -573,7 +573,7 @@ const useDashboardStore = create(
                     status: "Refunded",
                     refundDate: new Date().toISOString().split("T")[0],
                   }
-                : p
+                : p,
             ),
           }));
         }
@@ -584,6 +584,36 @@ const useDashboardStore = create(
           relatedId: bookingId,
         });
         get().addToast({ type: "info", message: "Booking cancelled" });
+      },
+
+      fetchBookingDetails: async (bookingId) => {
+        try {
+          const bookingService = (await import("../services/bookingService"))
+            .default;
+          const response = await bookingService.getBooking(bookingId);
+          if (response.success) {
+            const { mapBooking } = await import("../utils/dataMappers");
+            const mappedBooking = mapBooking(response.data);
+
+            set((state) => {
+              // Update booking in bookings list
+              const updatedBookings = state.bookings.map((b) =>
+                b.id === mappedBooking.id ? mappedBooking : b,
+              );
+
+              // If booking not in list (e.g. direct link), add it
+              if (!state.bookings.find((b) => b.id === mappedBooking.id)) {
+                updatedBookings.push(mappedBooking);
+              }
+
+              return { bookings: updatedBookings };
+            });
+
+            return mappedBooking;
+          }
+        } catch (error) {
+          console.error("Failed to fetch booking details:", error);
+        }
       },
 
       completeBooking: (bookingId) => {
@@ -600,7 +630,7 @@ const useDashboardStore = create(
                       completed: true,
                       date: t.date || new Date().toISOString(),
                     }
-                  : t
+                  : t,
               ),
             };
           }),
@@ -628,7 +658,7 @@ const useDashboardStore = create(
                   method,
                   date: new Date().toISOString().split("T")[0],
                 }
-              : p
+              : p,
           ),
         }));
 
@@ -642,7 +672,7 @@ const useDashboardStore = create(
               timeline: b.timeline.map((t) =>
                 t.status === "Payment Received"
                   ? { ...t, completed: true, date: new Date().toISOString() }
-                  : t
+                  : t,
               ),
             };
           }),
@@ -651,7 +681,7 @@ const useDashboardStore = create(
         get().addActivity({
           type: "payment_completed",
           message: `Payment of ${formatCurrency(
-            payment.amount
+            payment.amount,
           )} completed for booking ${payment.bookingRef}`,
           relatedId: paymentId,
         });
@@ -693,8 +723,8 @@ const useDashboardStore = create(
           filtered = filtered.filter(
             (p) =>
               p.serviceAreas.some((area) =>
-                area.toLowerCase().includes(cityLower)
-              ) || p.address.city.toLowerCase().includes(cityLower)
+                area.toLowerCase().includes(cityLower),
+              ) || p.address.city.toLowerCase().includes(cityLower),
           );
         }
 
@@ -708,8 +738,8 @@ const useDashboardStore = create(
                   .includes(criteria.serviceType.toLowerCase()) ||
                 s.name
                   .toLowerCase()
-                  .includes(criteria.glassType?.toLowerCase() || "")
-            )
+                  .includes(criteria.glassType?.toLowerCase() || ""),
+            ),
           );
         }
 
@@ -732,7 +762,7 @@ const useDashboardStore = create(
         const reference = `B-${year}-${count.toString().padStart(5, "0")}`;
 
         const provider = get().providers.find(
-          (p) => p.id === bookingData.providerId
+          (p) => p.id === bookingData.providerId,
         );
 
         // Calculate prices
@@ -820,7 +850,7 @@ const useDashboardStore = create(
                       completed: true,
                       date: t.date || new Date().toISOString(),
                     }
-                  : t
+                  : t,
               ),
             };
           }),
@@ -858,7 +888,7 @@ const useDashboardStore = create(
                       completed: true,
                       date: t.date || new Date().toISOString(),
                     }
-                  : t
+                  : t,
               ),
             };
           }),
@@ -891,7 +921,7 @@ const useDashboardStore = create(
         get().addActivity({
           type: "payment_completed",
           message: `Payment of ${formatCurrency(
-            booking.price.total
+            booking.price.total,
           )} for booking ${booking.reference}`,
           relatedId: bookingId,
         });
@@ -923,24 +953,24 @@ const useDashboardStore = create(
         const state = get();
 
         const activeQuotes = state.quotes.filter(
-          (q) => q.status === "Open" || q.status === "Received Responses"
+          (q) => q.status === "Open" || q.status === "Received Responses",
         ).length;
 
         const upcomingBookings = state.bookings.filter(
           (b) =>
-            b.status === "Confirmed" && new Date(b.scheduledDate) > new Date()
+            b.status === "Confirmed" && new Date(b.scheduledDate) > new Date(),
         ).length;
 
         const completedJobs = state.bookings.filter(
-          (b) => b.status === "Completed"
+          (b) => b.status === "Completed",
         ).length;
 
         const pendingPayments = state.payments.filter(
-          (p) => p.status === "Unpaid"
+          (p) => p.status === "Unpaid",
         );
         const pendingPaymentsTotal = pendingPayments.reduce(
           (sum, p) => sum + p.amount,
-          0
+          0,
         );
 
         return {
@@ -995,10 +1025,11 @@ const useDashboardStore = create(
         const upcoming = bookings
           .filter(
             (b) =>
-              b.status === "Confirmed" && new Date(b.scheduledDate) > new Date()
+              b.status === "Confirmed" &&
+              new Date(b.scheduledDate) > new Date(),
           )
           .sort(
-            (a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate)
+            (a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate),
           );
         return upcoming[0] || null;
       },
@@ -1080,8 +1111,8 @@ const useDashboardStore = create(
         // Exclude heavy data arrays (quotes, bookings, etc)
         // They should be fetched from API on load
       }),
-    }
-  )
+    },
+  ),
 );
 
 export default useDashboardStore;

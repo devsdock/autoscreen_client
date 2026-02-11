@@ -209,11 +209,11 @@ const BookSearch = () => {
         setServiceTypes([
           {
             name: "Glass Replacement",
-            description: "Full windscreen and window replacement",
+            description: "Full glass replacement",
           },
           {
             name: "Glass Repair",
-            description: "Chip and crack repair services",
+            description: "Chip and crack repair",
           },
           {
             name: "Anti-Smash and Grab Film",
@@ -224,6 +224,42 @@ const BookSearch = () => {
     };
     fetchSettings();
   }, []);
+
+  // Normalize form data against loaded options (fix for lowercase/legacy persisted data)
+  useEffect(() => {
+    if (serviceTypes.length > 0 && formData.serviceType) {
+      const exactMatch = serviceTypes.find(
+        (st) => st.name === formData.serviceType,
+      );
+      if (!exactMatch) {
+        // Try finding a match (e.g. "replacement" -> "Glass Replacement")
+        const match = serviceTypes.find(
+          (st) =>
+            st.name
+              .toLowerCase()
+              .includes(formData.serviceType.toLowerCase()) ||
+            (formData.serviceType.toLowerCase() === "replacement" &&
+              st.name === "Glass Replacement") ||
+            (formData.serviceType.toLowerCase() === "repair" &&
+              st.name === "Glass Repair"),
+        );
+
+        if (match) {
+          setFormData((prev) => ({ ...prev, serviceType: match.name }));
+        }
+      }
+    }
+
+    if (glassTypes.length > 0 && formData.glassType) {
+      // Simple case-insensitive match for glass types
+      const glassMatch = glassTypes.find(
+        (gt) => gt.toLowerCase() === formData.glassType.toLowerCase(),
+      );
+      if (glassMatch && glassMatch !== formData.glassType) {
+        setFormData((prev) => ({ ...prev, glassType: glassMatch }));
+      }
+    }
+  }, [serviceTypes, glassTypes, formData.serviceType, formData.glassType]);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 20 }, (_, i) => currentYear - i);

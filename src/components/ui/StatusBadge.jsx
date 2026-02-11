@@ -1,246 +1,317 @@
-import { Check, Clock, AlertCircle, X, CreditCard, FileText, Calendar } from 'lucide-react';
+import {
+  Check,
+  Clock,
+  AlertCircle,
+  X,
+  CreditCard,
+  FileText,
+  Calendar,
+} from "lucide-react";
 
 // Status configurations
 const bookingStatusConfig = {
-  Searching: { 
-    color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+  Searching: {
+    color:
+      "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800",
     icon: Clock,
-    label: 'Searching'
+    label: "Searching",
   },
-  searching: { 
-    color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+  searching: {
+    color:
+      "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800",
     icon: Clock,
-    label: 'Searching'
+    label: "Searching",
   },
-  Pending: { 
-    color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+  "awaiting-customer-approval": {
+    color:
+      "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800",
+    icon: AlertCircle,
+    label: "Action Required",
+  },
+  Pending: {
+    color:
+      "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800",
     icon: Clock,
-    label: 'Pending'
+    label: "Pending",
   },
-  pending: { 
-    color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+  pending: {
+    color:
+      "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800",
     icon: Clock,
-    label: 'Pending'
+    label: "Pending",
   },
-  Accepted: { 
-    color: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+  Accepted: {
+    color:
+      "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
     icon: Check,
-    label: 'Accepted'
+    label: "Accepted",
   },
-  accepted: { 
-    color: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+  accepted: {
+    color:
+      "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
     icon: Check,
-    label: 'Accepted'
+    label: "Accepted",
   },
-  'Awaiting Payment': { 
-    color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+  "Awaiting Payment": {
+    color:
+      "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800",
     icon: CreditCard,
-    label: 'Awaiting Payment'
+    label: "Awaiting Payment",
   },
-  'awaiting-payment': { 
-    color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+  "awaiting-payment": {
+    color:
+      "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800",
     icon: CreditCard,
-    label: 'Awaiting Payment'
+    label: "Awaiting Payment",
   },
-  Confirmed: { 
-    color: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
+  Confirmed: {
+    color:
+      "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800",
     icon: Check,
-    label: 'Confirmed'
+    label: "Confirmed",
   },
-  confirmed: { 
-    color: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
+  confirmed: {
+    color:
+      "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800",
     icon: Check,
-    label: 'Confirmed'
+    label: "Confirmed",
   },
-  'In Progress': { 
-    color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+  "In Progress": {
+    color:
+      "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800",
     icon: Clock,
-    label: 'In Progress'
+    label: "In Progress",
   },
-  'in-progress': { 
-    color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+  "in-progress": {
+    color:
+      "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800",
     icon: Clock,
-    label: 'In Progress'
+    label: "In Progress",
   },
-  Completed: { 
-    color: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
+  Completed: {
+    color:
+      "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800",
     icon: Check,
-    label: 'Completed'
+    label: "Completed",
   },
-  completed: { 
-    color: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
+  completed: {
+    color:
+      "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800",
     icon: Check,
-    label: 'Completed'
+    label: "Completed",
   },
-  Cancelled: { 
-    color: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
+  Cancelled: {
+    color:
+      "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800",
     icon: X,
-    label: 'Cancelled'
+    label: "Cancelled",
   },
-  cancelled: { 
-    color: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800',
+  cancelled: {
+    color:
+      "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800",
     icon: X,
-    label: 'Cancelled'
-  }
+    label: "Cancelled",
+  },
+  Expired: {
+    color:
+      "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700",
+    icon: Clock,
+    label: "Expired",
+  },
+  expired: {
+    color:
+      "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700",
+    icon: Clock,
+    label: "Expired",
+  },
 };
 
 const paymentStatusConfig = {
-  Unpaid: { 
-    color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+  Unpaid: {
+    color:
+      "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800",
     icon: AlertCircle,
-    label: 'Unpaid'
+    label: "Unpaid",
   },
-  unpaid: { 
-    color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+  unpaid: {
+    color:
+      "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800",
     icon: AlertCircle,
-    label: 'Unpaid'
+    label: "Unpaid",
   },
-  Pending: { 
-    color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+  Pending: {
+    color:
+      "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800",
     icon: Clock,
-    label: 'Processing'
+    label: "Processing",
   },
-  pending: { 
-    color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+  pending: {
+    color:
+      "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800",
     icon: Clock,
-    label: 'Processing'
+    label: "Processing",
   },
-  Paid: { 
-    color: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
+  Paid: {
+    color:
+      "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800",
     icon: Check,
-    label: 'Paid'
+    label: "Paid",
   },
-  paid: { 
-    color: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
+  paid: {
+    color:
+      "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800",
     icon: Check,
-    label: 'Paid'
+    label: "Paid",
   },
-  Refunded: { 
-    color: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+  Refunded: {
+    color:
+      "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700",
     icon: CreditCard,
-    label: 'Refunded'
+    label: "Refunded",
   },
-  refunded: { 
-    color: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+  refunded: {
+    color:
+      "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700",
     icon: CreditCard,
-    label: 'Refunded'
+    label: "Refunded",
   },
-  'Partially Refunded': { 
-    color: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+  "Partially Refunded": {
+    color:
+      "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700",
     icon: CreditCard,
-    label: 'Partially Refunded'
+    label: "Partially Refunded",
   },
-  'partially_refunded': { 
-    color: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+  partially_refunded: {
+    color:
+      "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700",
     icon: CreditCard,
-    label: 'Partially Refunded'
-  }
+    label: "Partially Refunded",
+  },
 };
 
 const quoteStatusConfig = {
-  Open: { 
-    color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+  Open: {
+    color:
+      "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800",
     icon: FileText,
-    label: 'Open'
+    label: "Open",
   },
-  Responses: { 
-    color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+  Responses: {
+    color:
+      "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800",
     icon: AlertCircle,
-    label: 'Responses'
+    label: "Responses",
   },
-  'Received Responses': { 
-    color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+  "Received Responses": {
+    color:
+      "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800",
     icon: AlertCircle,
-    label: 'Responses'
+    label: "Responses",
   },
-  Accepted: { 
-    color: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
+  Accepted: {
+    color:
+      "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800",
     icon: Check,
-    label: 'Accepted'
+    label: "Accepted",
   },
-  Expired: { 
-    color: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+  Expired: {
+    color:
+      "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700",
     icon: Clock,
-    label: 'Expired'
+    label: "Expired",
   },
-  Closed: { 
-    color: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+  Closed: {
+    color:
+      "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700",
     icon: X,
-    label: 'Closed'
+    label: "Closed",
   },
-  Pending: { 
-    color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+  Pending: {
+    color:
+      "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800",
     icon: Clock,
-    label: 'Pending'
+    label: "Pending",
   },
   // Backend lowercase values
-  pending: { 
-    color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+  pending: {
+    color:
+      "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800",
     icon: Clock,
-    label: 'Open'
+    label: "Open",
   },
-  quoted: { 
-    color: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+  quoted: {
+    color:
+      "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800",
     icon: AlertCircle,
-    label: 'quoted'
+    label: "quoted",
   },
-  accepted: { 
-    color: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
+  accepted: {
+    color:
+      "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800",
     icon: Check,
-    label: 'Accepted'
+    label: "Accepted",
   },
-  expired: { 
-    color: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+  expired: {
+    color:
+      "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700",
     icon: Clock,
-    label: 'Expired'
+    label: "Expired",
   },
-  cancelled: { 
-    color: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+  cancelled: {
+    color:
+      "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700",
     icon: X,
-    label: 'Closed'
-  }
+    label: "Closed",
+  },
 };
 
-const StatusBadge = ({ 
-  status, 
-  type = 'booking', 
+const StatusBadge = ({
+  status,
+  type = "booking",
   showIcon = true,
-  size = 'sm',
-  className = '' 
+  size = "sm",
+  className = "",
 }) => {
   const configs = {
     booking: bookingStatusConfig,
     payment: paymentStatusConfig,
-    quote: quoteStatusConfig
+    quote: quoteStatusConfig,
   };
-  
-  const config = configs[type]?.[status] || 
-                 configs[type]?.[status?.toLowerCase()] || 
-                 configs[type]?.[Object.keys(configs[type]).find(k => k.toLowerCase() === status?.toLowerCase())];
-  
+
+  const config =
+    configs[type]?.[status] ||
+    configs[type]?.[status?.toLowerCase()] ||
+    configs[type]?.[
+      Object.keys(configs[type]).find(
+        (k) => k.toLowerCase() === status?.toLowerCase(),
+      )
+    ];
+
   if (!config) {
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 text-slate-600 ${className}`}>
+      <span
+        className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 text-slate-600 ${className}`}
+      >
         {status}
       </span>
     );
   }
-  
+
   const Icon = config.icon;
   const sizeClasses = {
-    xs: 'px-1.5 py-0.5 text-[10px]',
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-2.5 py-1 text-sm'
+    xs: "px-1.5 py-0.5 text-[10px]",
+    sm: "px-2 py-0.5 text-xs",
+    md: "px-2.5 py-1 text-sm",
   };
-  
+
   const iconSizes = {
     xs: 10,
     sm: 12,
-    md: 14
+    md: 14,
   };
-  
+
   return (
-    <span 
+    <span
       className={`
         inline-flex items-center gap-1 font-medium rounded-full border
         ${config.color}

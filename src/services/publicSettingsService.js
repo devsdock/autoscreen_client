@@ -31,7 +31,20 @@ export const getPublicSettings = async () => {
         "Quarter Glass",
         "Sunroof",
       ],
-      serviceTypes: [],
+      serviceTypes: [
+        {
+          name: "Glass Replacement",
+          description: "Full glass replacement",
+        },
+        {
+          name: "Glass Repair",
+          description: "Chip and crack repair",
+        },
+        {
+          name: "Anti-Smash and Grab Film",
+          description: "Anti-Smash and Grab Film application",
+        },
+      ],
       supportEmail: "support@autoscreen.co.za",
       supportPhone: "+27 11 123 4567",
       supportWhatsApp: "+27 12 345 6789",

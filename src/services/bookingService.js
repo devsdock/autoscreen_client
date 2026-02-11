@@ -173,6 +173,20 @@ const bookingService = {
       data,
     });
   },
+
+  /**
+   * Respond to a provider quote (Accept/Decline)
+   * @param {string} bookingId
+   * @param {string} providerId
+   * @param {string} action - 'accept' or 'reject'
+   */
+  respondToQuote: (bookingId, providerId, action) => {
+    return request({
+      method: "POST",
+      url: `/customer/bookings/${bookingId}/quote`,
+      data: { providerId, action },
+    });
+  },
 };
 
 export default bookingService;
