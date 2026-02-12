@@ -6,9 +6,18 @@ import { request } from "./api";
  * Supports both simple Stripe payments and Stripe Connect destination charges
  */
 const paymentService = {
+  getConfig: () => {
+    return request({
+      method: "GET",
+      url: "/customer/payments/config",
+    });
+  },
+
   /**
    * Get all payments (history + pending)
    * Includes Stripe Connect transactions and legacy payments
+   *
+   * @param params Query parameters (status, search)
    */
   getMyPayments: (params = {}) => {
     const { status, search } = params;

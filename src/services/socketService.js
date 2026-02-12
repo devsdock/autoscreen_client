@@ -47,12 +47,21 @@ class SocketService {
       }
 
       // Handle Booking Updates
+      // Handle Booking Updates
       if (
         type === "booking_accepted" ||
         type === "booking_confirmed" ||
-        type === "booking_status_updated"
+        type === "booking_status_updated" ||
+        type === "booking_quote_received" || // Added
+        type === "quote_received" || // Added
+        type === "booking_declined" || // Added
+        type === "booking_suggestion" || // Added
+        type === "booking_cancelled" || // Added
+        type === "booking_request_updated" // Added
       ) {
-        await fetchBookings();
+        if (typeof useDashboardStore.getState().fetchBookings === "function") {
+          await useDashboardStore.getState().fetchBookings();
+        }
       }
     } catch (error) {}
   }

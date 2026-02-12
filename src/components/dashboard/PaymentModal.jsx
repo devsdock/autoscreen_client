@@ -22,7 +22,7 @@ import useDashboardStore, {
 } from "../../store/useDashboardStore";
 import paymentService from "../../services/paymentService";
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+// const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const PaymentModalContent = ({ payment, isOpen, onClose, onSuccess }) => {
   const stripe = useStripe();
@@ -310,6 +310,37 @@ const PaymentModalContent = ({ payment, isOpen, onClose, onSuccess }) => {
 };
 
 const PaymentModal = (props) => {
+  const [stripePromise, setStripePromise] = useState(null);
+
+  useEffect(() => {
+    const initStripe = async () => {
+      try {
+        // Fetch config from backend to support Test/Live mode switching
+        const res = await paymentService.getConfig();
+        if (res.success && res.publishableKey) {
+          setStripePromise(loadStripe(res.publishableKey));
+        } else {
+          // Fallback to static env
+          setStripePromise(
+            loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY),
+          );
+        }
+      } catch (e) {
+        console.error("Failed to load Stripe config, using fallback", e);
+        setStripePromise(
+          loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY),
+        );
+      }
+    };
+
+    if (props.isOpen) {
+      initStripe();
+    }
+  }, [props.isOpen]);
+
+  // If closed, don't render elements (performance)
+  if (!props.isOpen) return null;
+
   return (
     <Elements stripe={stripePromise}>
       <PaymentModalContent {...props} />
