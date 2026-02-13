@@ -46,8 +46,8 @@ export const getPublicSettings = async () => {
         },
       ],
       supportEmail: "support@autoscreen.co.za",
-      supportPhone: "+27 11 123 4567",
-      supportWhatsApp: "+27 12 345 6789",
+      supportPhone: "+27 71 046 1517",
+      supportWhatsApp: "+27 71 046 1517",
     };
   }
 };

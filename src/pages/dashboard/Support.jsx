@@ -30,8 +30,8 @@ const Support = () => {
   const { bookings, addToast } = useDashboardStore();
   const [publicSettings, setPublicSettings] = useState({
     supportEmail: "support@autoscreen.co.za",
-    supportPhone: "+27 11 123 4567",
-    supportWhatsApp: "+27 12 345 6789",
+    supportPhone: "+27 71 046 1517",
+    supportWhatsApp: "+27 71 046 1517",
   });
   const [issueForm, setIssueForm] = useState({
     type: "",
@@ -46,8 +46,8 @@ const Support = () => {
       if (settings) {
         setPublicSettings({
           supportEmail: settings.supportEmail || "support@autoscreen.co.za",
-          supportPhone: settings.supportPhone || "+27 11 123 4567",
-          supportWhatsApp: settings.supportWhatsApp || "+27 12 345 6789",
+          supportPhone: settings.supportPhone || "+27 71 046 1517",
+          supportWhatsApp: settings.supportWhatsApp || "+27 71 046 1517",
         });
       }
     };

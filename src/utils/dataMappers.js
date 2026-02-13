@@ -193,7 +193,9 @@ export const mapBooking = (booking) => {
       status: "Completed",
       date:
         currentStatusLevel >= 6
-          ? booking.completedAt || booking.finishedAt
+          ? booking.actualTimes?.completedAt ||
+            booking.completedAt ||
+            booking.finishedAt
           : null,
       completed: currentStatusLevel >= 6,
     });
