@@ -29,12 +29,12 @@ const mainMenuItems = [
   { path: "/dashboard/quotes", icon: FileText, label: "My Quotes" },
   { path: "/dashboard/bookings", icon: Calendar, label: "My Bookings" },
   { path: "/dashboard/payments", icon: CreditCard, label: "Payments" },
-  {
-    path: "/dashboard/messages",
-    icon: MessageSquare,
-    label: "Messages",
-    badge: 2,
-  },
+  // {
+  //   path: "/dashboard/messages",
+  //   icon: MessageSquare,
+  //   label: "Messages",
+  //   badge: 2,
+  // },
   { path: "/dashboard/support", icon: HelpCircle, label: "Support" },
 ];
 
