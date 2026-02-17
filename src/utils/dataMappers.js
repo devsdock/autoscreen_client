@@ -54,21 +54,22 @@ export const mapBooking = (booking) => {
       return booking.service;
     }
 
-    // Build from serviceType and glassType
-    const serviceType = booking.serviceType || "";
-    const glassType = booking.glassType || "windscreen";
+    // Build from serviceType
+    const serviceType = (booking.serviceType || "").toLowerCase();
 
-    // Capitalize and format
-    const glassName =
-      glassType.charAt(0).toUpperCase() + glassType.slice(1).replace(/-/g, " ");
+    if (serviceType === "replacement") return "Glass Replacement";
+    if (serviceType === "repair") return "Glass Repair";
+    if (serviceType === "tinting") return "Anti-Smash and Grab Film";
+
+    // Fallback
     const typeName = serviceType.charAt(0).toUpperCase() + serviceType.slice(1);
-
-    if (serviceType && glassType) {
+    if (booking.glassType) {
+      const glassName =
+        booking.glassType.charAt(0).toUpperCase() +
+        booking.glassType.slice(1).replace(/-/g, " ");
       return `${glassName} ${typeName}`;
     }
-    if (serviceType) {
-      return `Windscreen ${typeName}`;
-    }
+    return typeName || "Auto Glass Service";
 
     return "Auto Glass Service";
   };

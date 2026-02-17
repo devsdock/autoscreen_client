@@ -374,8 +374,11 @@ const Bookings = () => {
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        downloadInvoice(booking.id, (msg) =>
-                          addToast({ type: "error", message: msg }),
+                        downloadInvoice(
+                          booking.id,
+                          booking.reference,
+                          (msg, type) =>
+                            addToast({ type: type || "error", message: msg }),
                         );
                       }}
                       className="text-primary-600 hover:text-primary-700 font-medium"

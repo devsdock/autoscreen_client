@@ -13,6 +13,8 @@ import {
   Shield,
   Loader2,
   FileText,
+  MessageSquare,
+  Layers,
 } from "lucide-react";
 import Drawer, { DrawerFooter } from "../ui/Drawer";
 import StatusBadge from "../ui/StatusBadge";
@@ -156,8 +158,8 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
   };
 
   const handleDownloadInvoice = async () => {
-    downloadInvoice(booking.id, (msg) =>
-      addToast({ type: "error", message: msg }),
+    downloadInvoice(booking.id, booking.reference, (msg, type) =>
+      addToast({ type: type || "error", message: msg }),
     );
   };
 
@@ -474,6 +476,23 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
 
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
+                  <Layers
+                    size={16}
+                    className="text-primary-600 dark:text-primary-400"
+                  />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Glass Type
+                  </p>
+                  <p className="font-medium text-slate-900 dark:text-white capitalize">
+                    {booking.glassType || "-"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
                   <MapPin
                     size={16}
                     className="text-primary-600 dark:text-primary-400"
@@ -493,6 +512,19 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
               </div>
             </div>
           </div>
+
+          {/* Special Instructions */}
+          {booking.customerNotes && (
+            <div className="bg-amber-50 dark:bg-amber-900/10 rounded-xl p-4 border border-amber-100 dark:border-amber-900/30 mb-6">
+              <h4 className="font-semibold text-amber-900 dark:text-amber-200 mb-2 flex items-center gap-2">
+                <MessageSquare size={16} />
+                Special Instructions
+              </h4>
+              <p className="text-sm text-amber-800 dark:text-amber-300">
+                {booking.customerNotes}
+              </p>
+            </div>
+          )}
 
           {/* Uploaded Images */}
           {damageImages.length > 0 && (

@@ -195,7 +195,51 @@ const BookSearch = () => {
         // Use CITIES constant instead of serviceAreas for full SA list
         setCities(CITIES);
         setGlassTypes(settings.glassTypes || []);
-        setServiceTypes(settings.serviceTypes || []);
+
+        let fetchedServices = settings.serviceTypes || [];
+
+        // HACK: Ensure "Glass Repair" has all glass types even if DB is stale
+        const replacementService = fetchedServices.find(
+          (s) =>
+            s.id === "replacement" ||
+            s.name === "Glass Replacement" ||
+            (s.name || "").toLowerCase().includes("replacement"),
+        );
+
+        const repairServiceIndex = fetchedServices.findIndex(
+          (s) =>
+            s.id === "repair" ||
+            s.name === "Glass Repair" ||
+            (s.name || "").toLowerCase().includes("repair"),
+        );
+
+        if (replacementService && repairServiceIndex !== -1) {
+          const repairService = fetchedServices[repairServiceIndex];
+          // Get all glass types from replacement
+          const targetGlassTypes =
+            replacementService.pricing?.map((p) => p.glassType) || [];
+
+          // Create new pricing array for repair, maintaining existing or defaulting
+          const currentRepairPricing = repairService.pricing || [];
+          const newRepairPricing = [...currentRepairPricing];
+
+          targetGlassTypes.forEach((glass) => {
+            if (!newRepairPricing.find((p) => p.glassType === glass)) {
+              newRepairPricing.push({
+                glassType: glass,
+                price: 450, // Default repair price
+              });
+            }
+          });
+
+          // Update the repair service object
+          fetchedServices[repairServiceIndex] = {
+            ...repairService,
+            pricing: newRepairPricing,
+          };
+        }
+
+        setServiceTypes(fetchedServices);
       } catch (error) {
         console.error("Failed to fetch settings:", error);
         // Fallback defaults
@@ -203,21 +247,54 @@ const BookSearch = () => {
         setGlassTypes([
           "Windscreen",
           "Side Window (Front Left)",
+          "Side Window (Front Right)",
           "Side Window (Rear Left)",
+          "Side Window (Rear Right)",
           "Rear Window",
+          "Quarter Glass",
+          "Sunroof",
         ]);
         setServiceTypes([
           {
             name: "Glass Replacement",
             description: "Full glass replacement",
+            pricing: [
+              { glassType: "Windscreen", price: 1850 },
+              { glassType: "Side Window (Front Left)", price: 950 },
+              { glassType: "Side Window (Front Right)", price: 950 },
+              { glassType: "Side Window (Rear Left)", price: 850 },
+              { glassType: "Side Window (Rear Right)", price: 850 },
+              { glassType: "Rear Window", price: 1450 },
+              { glassType: "Quarter Glass", price: 650 },
+              { glassType: "Sunroof", price: 2200 },
+            ],
           },
           {
             name: "Glass Repair",
             description: "Chip and crack repair",
+            pricing: [
+              { glassType: "Windscreen", price: 450 },
+              { glassType: "Side Window (Front Left)", price: 450 },
+              { glassType: "Side Window (Front Right)", price: 450 },
+              { glassType: "Side Window (Rear Left)", price: 450 },
+              { glassType: "Side Window (Rear Right)", price: 450 },
+              { glassType: "Rear Window", price: 450 },
+              { glassType: "Quarter Glass", price: 450 },
+              { glassType: "Sunroof", price: 450 },
+            ],
           },
           {
             name: "Anti-Smash and Grab Film",
             description: "Anti-Smash and Grab Film application",
+            pricing: [
+              { glassType: "Windscreen", price: 800 },
+              { glassType: "Side Window (Front Left)", price: 400 },
+              { glassType: "Side Window (Front Right)", price: 400 },
+              { glassType: "Side Window (Rear Left)", price: 400 },
+              { glassType: "Side Window (Rear Right)", price: 400 },
+              { glassType: "Rear Window", price: 600 },
+              { glassType: "Full Car Package", price: 2500 },
+            ],
           },
         ]);
       }

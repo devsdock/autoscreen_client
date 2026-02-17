@@ -160,6 +160,7 @@ const bookingService = {
     return request({
       method: "GET",
       url: `/customer/bookings/${bookingId}/invoice`,
+      responseType: "blob",
     });
   },
 
