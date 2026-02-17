@@ -26,9 +26,9 @@ class SocketService {
       this.refreshData(notification);
     });
 
-    this.socket.on("disconnect", () => {});
+    this.socket.on("disconnect", () => { });
 
-    this.socket.on("connect_error", (error) => {});
+    this.socket.on("connect_error", (error) => { });
   }
 
   async refreshData(notification) {
@@ -63,7 +63,7 @@ class SocketService {
           await useDashboardStore.getState().fetchBookings();
         }
       }
-    } catch (error) {}
+    } catch (error) { }
   }
 
   disconnect() {

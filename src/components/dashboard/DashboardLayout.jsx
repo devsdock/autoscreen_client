@@ -8,6 +8,7 @@ import useDashboardStore from '../../store/useDashboardStore';
 import useAuthStore from '../../store/useAuthStore';
 import useNotificationStore from '../../store/useNotificationStore';
 import socketService from '../../services/socketService';
+import SupportChatPopup from '../chat/SupportChatPopup';
 
 // Toggle this to show/hide the right sidebar
 // Set to true to enable the right sidebar in the future
@@ -19,7 +20,7 @@ const DashboardLayout = () => {
   // Initialize theme on mount
   useEffect(() => {
     initTheme();
-    
+
     // Listen for system theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = () => {
@@ -32,7 +33,7 @@ const DashboardLayout = () => {
         }
       }
     };
-    
+
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [initTheme]);
@@ -69,9 +70,9 @@ const DashboardLayout = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
       {/* Left Sidebar */}
       <DashboardSidebar />
-      
+
       {/* Main area */}
-      <div 
+      <div
         className={`
           min-h-screen flex flex-col
           transition-all duration-300
@@ -81,16 +82,19 @@ const DashboardLayout = () => {
       >
         {/* Top Bar */}
         <DashboardTopBar />
-        
+
         {/* Content */}
         <main className="flex-1 p-6">
           <Outlet />
         </main>
       </div>
-      
+
       {/* Right Sidebar - conditionally rendered */}
       {SHOW_RIGHT_SIDEBAR && <DashboardRightSidebar />}
-      
+
+      {SHOW_RIGHT_SIDEBAR && <DashboardRightSidebar />}
+
+      <SupportChatPopup />
       <ToastContainer />
     </div>
   );
