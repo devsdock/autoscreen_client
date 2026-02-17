@@ -207,8 +207,10 @@ const DashboardTopBar = () => {
                         if (type.includes("quote")) {
                           navigate(`/dashboard/quotes/${bookingId}`);
                         } else if (type.includes("booking")) {
-                          // If booking moved to job, it might still go to bookings or a special job view
-                          // In this client portal, all bookings are under /dashboard/bookings
+                          // Fetch latest booking details to ensure status is up to date
+                          useDashboardStore
+                            .getState()
+                            .fetchBookingDetails(bookingId);
                           navigate(`/dashboard/bookings/${bookingId}`);
                         } else {
                           navigate("/dashboard/overview");
