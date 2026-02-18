@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, MessageCircle, Send, User, Check, CheckCheck } from 'lucide-react';
+import { X, MessageCircle, Send, User } from 'lucide-react';
 import * as chatService from '../../services/chatService';
 import socketService from '../../services/socketService';
 import useAuthStore from '../../store/useAuthStore';
@@ -64,27 +64,18 @@ const SupportChatPopup = ({ onClose }) => {
         }
     }, [isOpen, socket, loadConversation]);
 
-    // Modifying SupportChatPopup.jsx to join room only when open
-    // Handle Room Joining/Leaving
+    // Handle Room Joining — join when we have a conversation, don't leave on close
+    // (we stay in the chat room to receive messages even when popup is closed)
     useEffect(() => {
-        if (isOpen && socket && conversation?._id) {
-            console.log('Customer joining chat room (OPEN):', conversation._id);
+        if (socket && conversation?._id) {
+            console.log('Customer joining chat room:', conversation._id);
             socket.emit('join-chat', conversation._id);
-        } else if (!isOpen && socket && conversation?._id) {
-            console.log('Customer leaving chat room (CLOSED):', conversation._id);
-            socket.emit('leave-chat', conversation._id);
         }
-
-        // Cleanup on unmount or socket change
-        return () => {
-            if (socket && conversation?._id && isOpen) { // If unmounting while open
-                socket.emit('leave-chat', conversation._id);
-            }
-        };
-    }, [isOpen, socket, conversation?._id]);
+    }, [socket, conversation?._id]);
 
     // Initial load for unread count
     useEffect(() => {
+        if (!user) return;
         const fetchUnread = async () => {
             try {
                 const res = await chatService.getUnreadCount();
@@ -92,17 +83,14 @@ const SupportChatPopup = ({ onClose }) => {
             } catch (e) { }
         };
         fetchUnread();
-    }, []);
+    }, [user]);
 
     // Mark as read when popup opens
     useEffect(() => {
         if (isOpen) {
-            console.log('Popup opened. Conversaton:', conversation);
             if (conversation?._id) {
                 chatService.markAsRead(conversation._id);
                 setUnreadCount(0);
-            } else {
-                console.warn('Popup opened but conversation ID is missing');
             }
         }
     }, [isOpen, conversation?._id]);
@@ -111,67 +99,53 @@ const SupportChatPopup = ({ onClose }) => {
     useEffect(() => {
         if (!socket) return;
 
+        // Fetch unread count on socket connection to ensure sync
+        chatService.getUnreadCount()
+            .then(res => { if (res.success) setUnreadCount(res.data.unreadCount); })
+            .catch(() => { });
+
         const handleNewMessage = (msg) => {
-            console.log('Customer received new_message:', msg);
             // Check if message belongs to current conversation
             if (conversation && String(msg.conversationId) === String(conversation._id)) {
-                console.log('Message matches current conversation. Adding to list.');
                 setMessages(prev => {
-                    if (prev.some(m => m._id === msg._id)) return prev;
+                    if (prev.some(m => String(m._id) === String(msg._id))) return prev;
                     return [...prev, msg];
                 });
 
                 // If open, mark as read immediately
                 if (isOpen) {
                     chatService.markAsRead(conversation._id);
-                } else {
-                    // If closed, increment unread count locally
-                    // We also get 'unread_count_update' but local update is faster
-                    setUnreadCount(prev => prev + 1);
                 }
+                // Don't increment locally — unread_count_update event will handle it
             }
         };
 
-        // Keep other listeners...
+        // unread_count_update is the single source of truth for badge count
         const handleUnreadUpdate = () => {
-            // This event comes to 'customer:ID' room
-            // If we are already handling local update via handleNewMessage, we might duplicate
-            // BUT unread_count_update is safer source of truth.
-            // Let's only fetch if NOT open, rely on local increment or fetch?
-            if (!isOpen) {
-                chatService.getUnreadCount().then(res => {
-                    if (res.success) setUnreadCount(res.data.unreadCount);
-                });
-            }
+            // Always fetch — when open we mark as read so API returns 0, when closed shows actual count
+            chatService.getUnreadCount().then(res => {
+                if (res.success) setUnreadCount(res.data.unreadCount);
+            }).catch(() => { });
         };
 
         const handleMessageNotification = (data) => {
-            // This also comes to 'customer:ID' room
+            // Fallback: add message if not already received via new_message
             if (data.message && conversation && String(data.message.conversationId) === String(conversation._id)) {
-                // Add message to local state immediately
-                console.log('Received notification message:', data.message);
                 setMessages(prev => {
-                    if (prev.some(m => m._id === data.message._id)) return prev;
+                    if (prev.some(m => String(m._id) === String(data.message._id))) return prev;
                     return [...prev, data.message];
                 });
+                if (isOpen) {
+                    chatService.markAsRead(conversation._id);
+                }
             }
-
-            if (!isOpen) {
-                chatService.getUnreadCount().then(res => {
-                    if (res.success) setUnreadCount(res.data.unreadCount);
-                });
-            }
+            // unread_count_update will handle the badge
         };
 
         const handleMessageRead = (data) => {
-            if (conversation) {
-                setMessages(prev => prev.map(msg => {
-                    const isMyMsg = user ? msg.sender?.userId === user._id : msg.sender?.userType === 'customer';
-                    if (isMyMsg && !msg.readBy?.includes(data.userId)) {
-                        return { ...msg, readBy: [...(msg.readBy || []), data.userId] };
-                    }
-                    return msg;
-                }));
+            if (conversation && String(data.conversationId) === String(conversation._id)) {
+                // When admin reads our messages, clear our unread count
+                setUnreadCount(0);
             }
         };
 
@@ -207,12 +181,20 @@ const SupportChatPopup = ({ onClose }) => {
 
             if (res.success) {
                 setInputValue('');
-                const sentMsg = res.data.message;
-                // setMessages(prev => [...prev, sentMsg]); // Removed to prevention duplication
+                // Add sent message to UI immediately from response
+                if (res.data?.message) {
+                    setMessages(prev => {
+                        if (prev.some(m => m._id === res.data.message._id)) return prev;
+                        return [...prev, res.data.message];
+                    });
+                }
 
-                // If it was new, set conversation
+                // If it was a new conversation, reload to get ID and join room
                 if (!conversation) {
-                    loadConversation(); // Refresh to get ID and join room
+                    loadConversation();
+                } else if (res.data?.conversationId && socket) {
+                    // Ensure we are in the chat room
+                    socket.emit('join-chat', res.data.conversationId);
                 }
             }
         } catch (error) {
@@ -255,10 +237,10 @@ const SupportChatPopup = ({ onClose }) => {
                         ) : (
                             <div className="space-y-3">
                                 {messages.map((msg, i) => {
-                                    const isCustomer = msg.sender?.userType === 'customer';
-                                    // If user is null (rare), default to checking userType
-                                    const isMyMsg = user ? msg.sender?.userId === user._id : isCustomer;
-                                    const isRead = msg.readBy && msg.readBy.length > 1;
+                                    const currentUserId = String(user?._id || user?.id || '');
+                                    const isMyMsg = currentUserId
+                                        ? String(msg.sender?.userId) === currentUserId
+                                        : msg.sender?.userType === 'customer';
 
                                     return (
                                         <div key={msg._id || i} className={`flex ${isMyMsg ? 'justify-end' : 'justify-start'}`}>
@@ -267,10 +249,10 @@ const SupportChatPopup = ({ onClose }) => {
                                                     ? 'bg-blue-600 text-white rounded-tr-none'
                                                     : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm border border-slate-100 dark:border-slate-700 rounded-tl-none'}
                                             `}>
-                                                <p>{msg.content}</p>
+                                                <p className="break-words">{msg.content}</p>
                                                 <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 opacity-70
                                                      ${isMyMsg ? 'text-blue-100' : 'text-slate-400'}
-                                                  `}>
+                                                   `}>
                                                     {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </div>
                                             </div>
