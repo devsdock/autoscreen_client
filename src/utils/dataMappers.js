@@ -1,5 +1,26 @@
 import { NodeURL } from "../services/api";
 
+// Helper functions for formatting
+const formatServiceType = (serviceType) => {
+  if (!serviceType) return "-";
+  const st = serviceType.toLowerCase();
+
+  if (st === "replacement") return "Glass Replacement";
+  if (st === "repair") return "Glass Repair";
+  if (st === "tinting") return "Anti-Smash and Grab Film";
+
+  // Fallback for simple capitalization
+  return st.charAt(0).toUpperCase() + st.slice(1);
+};
+
+const formatGlassType = (glassType) => {
+  if (!glassType) return "-";
+  return glassType
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 /**
  * Map API dashboard data to frontend format
  * @param {Object} apiData - Data from API
@@ -44,34 +65,29 @@ export const mapBooking = (booking) => {
           }`.trim()
         : "Unknown Vehicle";
 
-  // Format service name from serviceType and glassType
+  // Format service name
   const formatServiceName = () => {
-    // If service object exists with a name
+    // If service object exists with a name (priority)
     if (typeof booking.service === "object" && booking.service?.name) {
       return booking.service.name;
     }
-    if (typeof booking.service === "string" && booking.service) {
-      return booking.service;
+    if (
+      typeof booking.service === "string" &&
+      booking.service &&
+      booking.service !== booking.serviceType
+    ) {
+      // Check if it's already a formatted string or just the type
+      const lowerService = booking.service.toLowerCase();
+      if (
+        lowerService !== "replacement" &&
+        lowerService !== "repair" &&
+        lowerService !== "tinting"
+      ) {
+        return booking.service;
+      }
     }
 
-    // Build from serviceType
-    const serviceType = (booking.serviceType || "").toLowerCase();
-
-    if (serviceType === "replacement") return "Glass Replacement";
-    if (serviceType === "repair") return "Glass Repair";
-    if (serviceType === "tinting") return "Anti-Smash and Grab Film";
-
-    // Fallback
-    const typeName = serviceType.charAt(0).toUpperCase() + serviceType.slice(1);
-    if (booking.glassType) {
-      const glassName =
-        booking.glassType.charAt(0).toUpperCase() +
-        booking.glassType.slice(1).replace(/-/g, " ");
-      return `${glassName} ${typeName}`;
-    }
-    return typeName || "Auto Glass Service";
-
-    return "Auto Glass Service";
+    return formatServiceType(booking.serviceType || booking.service);
   };
 
   const serviceName = formatServiceName();
@@ -261,6 +277,7 @@ export const mapBooking = (booking) => {
       hasRainSensor: booking.vehicle?.hasRainSensor || false,
     },
     service: serviceName,
+    glassType: formatGlassType(booking.glassType),
     address: addressStr,
     damageImages: damageImages, // Processed with full URLs
     afterImages: afterImages, // Processed with full URLs
@@ -375,7 +392,8 @@ export const mapQuote = (quote) => {
       hasAdasCamera: quote.vehicle?.hasAdasCamera || false,
       hasRainSensor: quote.vehicle?.hasRainSensor || false,
     },
-    serviceType: quote.serviceType || "Glass Replacement",
+    serviceType: formatServiceType(quote.serviceType),
+    glassType: formatGlassType(quote.glassType),
     location: quote.serviceLocation?.address || { city: "N/A" },
     responsesCount: responsesCount,
     images: processImages(quote.damageImages || quote.images || []),

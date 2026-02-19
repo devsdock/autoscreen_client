@@ -310,11 +310,23 @@ const BookingSearching = () => {
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 Service
               </p>
-              <p className="font-medium text-slate-900 dark:text-white capitalize">
-                {booking.glassType
-                  ? `${booking.glassType.replace(/_/g, " ")} ${booking.serviceType || ""}`.trim()
-                  : booking.serviceType || "Glass Service"}
-              </p>
+              <div>
+                <p className="font-medium text-slate-900 dark:text-white capitalize">
+                  {(() => {
+                    if (booking.serviceType === "tinting")
+                      return "Anti-Smash and Grab Film";
+                    if (booking.serviceType === "replacement")
+                      return "Glass Replacement";
+                    if (booking.serviceType === "repair") return "Glass Repair";
+                    return booking.serviceType || "Glass Service";
+                  })()}
+                </p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">
+                  {booking.glassType
+                    ? booking.glassType.replace(/_/g, " ")
+                    : ""}
+                </p>
+              </div>
             </div>
           </div>
 

@@ -344,6 +344,103 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
               </div>
             ))}
 
+          {/* Service Details */}
+          <div>
+            <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
+              Service Details
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
+                  <Car
+                    size={16}
+                    className="text-primary-600 dark:text-primary-400"
+                  />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Service
+                  </p>
+                  <p className="font-medium text-slate-900 dark:text-white">
+                    {booking.service}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {booking.vehicle}
+                  </p>
+                  {(booking.vehicleData?.hasAdasCamera ||
+                    booking.vehicleData?.hasRainSensor) && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {booking.vehicleData?.hasAdasCamera && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                          ADAS
+                        </span>
+                      )}
+                      {booking.vehicleData?.hasRainSensor && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                          Rain Sensor
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
+                  <Clock
+                    size={16}
+                    className="text-primary-600 dark:text-primary-400"
+                  />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Date & Time
+                  </p>
+                  <p className="font-medium text-slate-900 dark:text-white">
+                    {formatDate(booking.scheduledDate, "datetime")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
+                  <Layers
+                    size={16}
+                    className="text-primary-600 dark:text-primary-400"
+                  />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Glass Type
+                  </p>
+                  <p className="font-medium text-slate-900 dark:text-white">
+                    {booking.glassType || "-"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
+                  <MapPin
+                    size={16}
+                    className="text-primary-600 dark:text-primary-400"
+                  />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Location
+                  </p>
+                  <p className="font-medium text-slate-900 dark:text-white">
+                    {booking.locationType}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {booking.address}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Status Timeline */}
           <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
             <h4 className="font-semibold text-slate-900 dark:text-white mb-4">
@@ -413,103 +510,6 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
                   No progress data available
                 </p>
               )}
-            </div>
-          </div>
-
-          {/* Booking Details */}
-          <div>
-            <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
-              Service Details
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
-                  <Car
-                    size={16}
-                    className="text-primary-600 dark:text-primary-400"
-                  />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Service
-                  </p>
-                  <p className="font-medium text-slate-900 dark:text-white">
-                    {booking.service}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {booking.vehicle}
-                  </p>
-                  {(booking.vehicleData?.hasAdasCamera ||
-                    booking.vehicleData?.hasRainSensor) && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {booking.vehicleData?.hasAdasCamera && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
-                          ADAS
-                        </span>
-                      )}
-                      {booking.vehicleData?.hasRainSensor && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
-                          Rain Sensor
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
-                  <Clock
-                    size={16}
-                    className="text-primary-600 dark:text-primary-400"
-                  />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Date & Time
-                  </p>
-                  <p className="font-medium text-slate-900 dark:text-white">
-                    {formatDate(booking.scheduledDate, "datetime")}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
-                  <Layers
-                    size={16}
-                    className="text-primary-600 dark:text-primary-400"
-                  />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Glass Type
-                  </p>
-                  <p className="font-medium text-slate-900 dark:text-white capitalize">
-                    {booking.glassType || "-"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
-                  <MapPin
-                    size={16}
-                    className="text-primary-600 dark:text-primary-400"
-                  />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Location
-                  </p>
-                  <p className="font-medium text-slate-900 dark:text-white">
-                    {booking.locationType}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {booking.address}
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
 

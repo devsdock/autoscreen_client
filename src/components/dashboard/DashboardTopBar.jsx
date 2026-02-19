@@ -204,9 +204,11 @@ const DashboardTopBar = () => {
                         const bookingId =
                           notif.data?.bookingId || notif.data?.quoteId || "";
 
-                        if (type.includes("quote")) {
-                          navigate(`/dashboard/quotes/${bookingId}`);
-                        } else if (type.includes("booking")) {
+                        if (
+                          type.includes("quote") ||
+                          type.includes("booking")
+                        ) {
+                          // REDIRECT TO BOOKING DETAILS DRAWER FOR QUOTES TOO
                           // Fetch latest booking details to ensure status is up to date
                           useDashboardStore
                             .getState()

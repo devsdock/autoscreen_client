@@ -286,6 +286,7 @@ const BookingForm = () => {
         ]);
         setAdminServiceTypes([
           {
+            id: "replacement",
             name: "Glass Replacement",
             description: "Full glass replacement",
             pricing: [
@@ -300,6 +301,7 @@ const BookingForm = () => {
             ],
           },
           {
+            id: "repair",
             name: "Glass Repair",
             description: "Chip and crack repair",
             pricing: [
@@ -314,6 +316,7 @@ const BookingForm = () => {
             ],
           },
           {
+            id: "tinting",
             name: "Anti-Smash and Grab Film",
             description: "Anti-Smash and Grab Film application",
             pricing: [
@@ -360,11 +363,13 @@ const BookingForm = () => {
         try {
           // Normalize serviceType to match backend expectations ("replacement" or "repair")
           const serviceName = formData.service?.name || formData.service || "";
-          const normalizedServiceType = serviceName
-            .toLowerCase()
-            .includes("repair")
-            ? "repair"
-            : "replacement";
+          const normalizedServiceType =
+            formData.service?.id ||
+            (serviceName.toLowerCase().includes("repair")
+              ? "repair"
+              : serviceName.toLowerCase().includes("replacement")
+                ? "replacement"
+                : "tinting");
 
           // Normalize glassType to lowercase with dashes (e.g., "Windscreen" -> "windscreen")
           const normalizedGlassType = (formData.glassType || "windscreen")
@@ -655,7 +660,7 @@ const BookingForm = () => {
     );
   };
 
-  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isSubmittingAddress, setIsSubmittingAddress] = useState(false);
 
   const handleAddAddress = async () => {
     if (!newAddress.line1 || !newAddress.city) {
@@ -663,7 +668,7 @@ const BookingForm = () => {
       return;
     }
 
-    setIsGeocoding(true);
+    setIsSubmittingAddress(true);
     let coords = null;
     try {
       // Construct clean address for better matching
@@ -690,25 +695,20 @@ const BookingForm = () => {
           `${newAddress.city}, South Africa`,
         );
       }
-    } catch (err) {
-    } finally {
-      setIsGeocoding(false);
-    }
 
-    const apiPayload = {
-      label: newAddress.label,
-      addressLine1: newAddress.line1,
-      suburb: newAddress.suburb,
-      city: newAddress.city,
-      postalCode: newAddress.postcode,
-      coordinates: coords,
-      isDefault: addresses.length === 0,
-    };
+      const apiPayload = {
+        label: newAddress.label,
+        addressLine1: newAddress.line1,
+        suburb: newAddress.suburb,
+        city: newAddress.city,
+        postalCode: newAddress.postcode,
+        coordinates: coords,
+        isDefault: addresses.length === 0,
+      };
 
-    let addressToAdd = { ...newAddress, coordinates: coords };
+      let addressToAdd = { ...newAddress, coordinates: coords };
 
-    // Sync with backend profile
-    try {
+      // Sync with backend profile
       const res = await profileService.addAddress(apiPayload);
       if (res.success && Array.isArray(res.data) && res.data.length > 0) {
         // Backend returns array of addresses, get the last one (newest)
@@ -721,24 +721,30 @@ const BookingForm = () => {
           line1: savedBackendAddress.addressLine1, // Keep local consistency
         };
       }
+
+      const id = addAddress(addressToAdd);
+
+      setFormData((prev) => ({
+        ...prev,
+        address: { ...addressToAdd, id: id },
+      }));
+      setIsAddressModalOpen(false);
+      setNewAddress({
+        label: "Home",
+        line1: "",
+        suburb: "",
+        city: "",
+        postcode: "",
+      });
     } catch (e) {
-      addToast({ type: "error", message: "Failed to save address to profile" });
+      console.error("Error in handleAddAddress:", e);
+      addToast({
+        type: "error",
+        message: e?.message || "Failed to save address",
+      });
+    } finally {
+      setIsSubmittingAddress(false);
     }
-
-    const id = addAddress(addressToAdd);
-
-    setFormData((prev) => ({
-      ...prev,
-      address: { ...addressToAdd, id: id },
-    }));
-    setIsAddressModalOpen(false);
-    setNewAddress({
-      label: "Home",
-      line1: "",
-      suburb: "",
-      city: "",
-      postcode: "",
-    });
   };
 
   const handleSubmit = async () => {
@@ -798,14 +804,16 @@ const BookingForm = () => {
 
       const bookingData = {
         provider: provider?.id || null, // Optional for broadcast flow
-        serviceType: (formData.service.name || "")
-          .toLowerCase()
-          .includes("repair")
-          ? "repair"
-          : "replacement",
+        serviceType:
+          formData.service?.id ||
+          formData.service?.name ||
+          formData.service ||
+          "",
         glassType: (formData.glassType || "windscreen")
           .toLowerCase()
-          .replace(" ", "_"),
+          .trim()
+          .replace(/\s+/g, "-") // Use dashes for consistency with backend IDs
+          .replace(/[()]/g, ""), // Remove parentheses common in labels like "Side Window (Front Left)"
         vehicle: {
           make:
             formData.vehicle.make === "Other"
@@ -1792,10 +1800,10 @@ const BookingForm = () => {
           </Button>
           <Button
             onClick={handleAddAddress}
-            loading={isGeocoding}
-            disabled={isGeocoding}
+            loading={isSubmittingAddress}
+            disabled={isSubmittingAddress}
           >
-            {isGeocoding ? "Verifying Location..." : "Add Address"}
+            {isSubmittingAddress ? "Saving..." : "Add Address"}
           </Button>
         </ModalActions>
       </Modal>
