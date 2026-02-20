@@ -37,7 +37,7 @@ const Quotes = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState("all");
+  const [activeFilter, setActiveFilter] = useState("Open");
   const [selectedQuoteId, setSelectedQuoteId] = useState(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showMobileDetail, setShowMobileDetail] = useState(false);
@@ -74,16 +74,31 @@ const Quotes = () => {
           setIsLoading(false);
         }
       } else if (quotes.length > 0 && !selectedQuoteId) {
-        // Auto-select first quote on desktop
+        // Auto-select first quote on desktop that matches the active filter
         if (window.innerWidth >= 1024) {
-          setSelectedQuoteId(quotes[0].id);
-          navigate(`/dashboard/quotes/${quotes[0].id}`, { replace: true });
+          const matchingQuotes =
+            activeFilter === "all"
+              ? quotes
+              : quotes.filter((q) => q.status === activeFilter);
+          if (matchingQuotes.length > 0) {
+            setSelectedQuoteId(matchingQuotes[0].id);
+            navigate(`/dashboard/quotes/${matchingQuotes[0].id}`, {
+              replace: true,
+            });
+          }
         }
       }
     };
 
     checkAndFetchQuote();
-  }, [routeId, quotes, navigate, selectedQuoteId, fetchQuoteDetails]);
+  }, [
+    routeId,
+    quotes,
+    navigate,
+    selectedQuoteId,
+    fetchQuoteDetails,
+    activeFilter,
+  ]);
 
   // Filter quotes
   const filteredQuotes = quotes.filter((quote) => {
@@ -109,6 +124,24 @@ const Quotes = () => {
 
     return true;
   });
+
+  // When filter changes, clear selection if the selected quote doesn't match the filter
+  useEffect(() => {
+    if (selectedQuoteId && activeFilter !== "all") {
+      const selectedQ = quotes.find((q) => q.id === selectedQuoteId);
+      if (selectedQ && selectedQ.status !== activeFilter) {
+        // Selected quote doesn't match filter - try to select first matching quote
+        const firstMatch = filteredQuotes[0];
+        if (firstMatch) {
+          setSelectedQuoteId(firstMatch.id);
+          navigate(`/dashboard/quotes/${firstMatch.id}`, { replace: true });
+        } else {
+          setSelectedQuoteId(null);
+          navigate(`/dashboard/quotes`, { replace: true });
+        }
+      }
+    }
+  }, [activeFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedQuote = quotes.find((q) => q.id === selectedQuoteId);
 
