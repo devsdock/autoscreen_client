@@ -16,6 +16,7 @@ import {
 import useDashboardStore from "../../store/useDashboardStore";
 import useAuthStore from "../../store/useAuthStore";
 import useNotificationStore from "../../store/useNotificationStore";
+import Tooltip from "../ui/Tooltip";
 import Avatar from "../ui/Avatar";
 import { NodeURL } from "../../services/api";
 
@@ -45,13 +46,14 @@ const ThemeToggle = () => {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={() => setDropdownOpen(!dropdownOpen)}
-        className="p-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-        title={`Theme: ${currentTheme.label}`}
-      >
-        <CurrentIcon size={20} />
-      </button>
+      <Tooltip content={`Theme: ${currentTheme.label}`}>
+        <button
+          onClick={() => setDropdownOpen(!dropdownOpen)}
+          className="p-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+        >
+          <CurrentIcon size={20} />
+        </button>
+      </Tooltip>
 
       {dropdownOpen && (
         <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 py-1 z-50">
@@ -226,16 +228,17 @@ const DashboardTopBar = () => {
                       `}
                     >
                       {/* Delete notification button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteNotification(notif._id);
-                        }}
-                        className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                        title="Delete notification"
-                      >
-                        <X size={14} />
-                      </button>
+                      <Tooltip content="Delete notification">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteNotification(notif._id);
+                          }}
+                          className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        >
+                          <X size={14} />
+                        </button>
+                      </Tooltip>
 
                       <div className="flex justify-between items-start mb-1 pr-6">
                         <p

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import Drawer, { DrawerFooter } from "../ui/Drawer";
 import StatusBadge from "../ui/StatusBadge";
+import Tooltip from "../ui/Tooltip";
 import Rating from "../ui/Rating";
 import Button from "../ui/Button";
 import ConfirmModal from "../ui/ConfirmModal";
@@ -188,7 +189,8 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
   const canPay =
     currentPaymentStatus === "unpaid" &&
     ["accepted", "confirmed", "pending payment"].includes(currentStatus);
-  const canComplete = currentStatus === "confirmed";
+  const canComplete = ["confirmed", "in-progress"].includes(currentStatus);
+  const isCompleteEnabled = currentStatus === "in-progress";
   const canReview =
     (currentStatus === "completed" || booking.status === "Completed") &&
     (!booking.rating || !booking.rating.score);
@@ -196,6 +198,7 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
     ["paid", "partially_refunded", "partially refunded"].includes(
       currentPaymentStatus,
     ) || currentStatus === "completed";
+  const isInvoiceEnabled = currentStatus === "completed";
 
   return (
     <>
@@ -692,21 +695,31 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
               </Button>
             )}
             {canComplete && (
-              <Button
-                onClick={() => setIsCompleteModalOpen(true)}
+              <Tooltip
                 className="w-full"
+                content={
+                  !isCompleteEnabled
+                    ? "Technician must start the job first"
+                    : ""
+                }
               >
-                <CheckCircle size={16} />
-                Complete Booking
-              </Button>
+                <Button
+                  onClick={() => setIsCompleteModalOpen(true)}
+                  className="w-full"
+                  disabled={!isCompleteEnabled}
+                >
+                  <CheckCircle size={16} />
+                  Complete Booking
+                </Button>
+              </Tooltip>
             )}
 
             {(canReview || canDownloadInvoice || canCancel) && (
-              <div className="flex gap-2 w-full">
+              <div className="grid grid-flow-col auto-cols-fr gap-2 w-full">
                 {canReview && (
                   <Button
                     variant="secondary"
-                    className="flex-1"
+                    className="w-full"
                     onClick={() => setShowReviewModal(true)}
                   >
                     <Star size={16} />
@@ -714,19 +727,29 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
                   </Button>
                 )}
                 {canDownloadInvoice && (
-                  <Button
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={handleDownloadInvoice}
+                  <Tooltip
+                    className="w-full"
+                    content={
+                      !isInvoiceEnabled
+                        ? "Available once booking is completed"
+                        : ""
+                    }
                   >
-                    <Download size={16} />
-                    Invoice
-                  </Button>
+                    <Button
+                      variant="secondary"
+                      className="w-full"
+                      onClick={handleDownloadInvoice}
+                      disabled={!isInvoiceEnabled}
+                    >
+                      <Download size={16} />
+                      Invoice
+                    </Button>
+                  </Tooltip>
                 )}
                 {canCancel && (
                   <Button
                     variant="outline"
-                    className="flex-1 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20 justify-center"
+                    className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20 justify-center"
                     onClick={() => setShowCancelModal(true)}
                   >
                     Cancel Booking

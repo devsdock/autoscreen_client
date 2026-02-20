@@ -16,6 +16,7 @@ import Input from "../../components/ui/Input";
 import EmptyState from "../../components/ui/EmptyState";
 import BookingDetailDrawer from "../../components/dashboard/BookingDetailDrawer";
 import { downloadInvoice } from "../../utils/invoiceUtils";
+import Tooltip from "../../components/ui/Tooltip";
 import { CardSkeleton } from "../../components/skeletons/CardSkeleton";
 
 const Bookings = () => {
@@ -364,28 +365,43 @@ const Bookings = () => {
                 </div>
 
                 <div className="flex items-center gap-2 lg:flex-shrink-0">
-                  {(["Confirmed", "Completed"].includes(booking.status) ||
-                    (booking.paymentStatus &&
-                      ["Paid", "Partially Refunded"].includes(
-                        booking.paymentStatus,
-                      ))) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        downloadInvoice(
-                          booking.id,
-                          booking.reference,
-                          (msg, type) =>
-                            addToast({ type: type || "error", message: msg }),
-                        );
-                      }}
-                      className="text-primary-600 hover:text-primary-700 font-medium"
-                    >
-                      Invoice
-                    </Button>
-                  )}
+                  {booking.paymentStatus &&
+                    [
+                      "paid",
+                      "partially refunded",
+                      "partially_refunded",
+                    ].includes(booking.paymentStatus.toLowerCase()) && (
+                      <Tooltip
+                        content={
+                          booking.status?.toLowerCase() !== "completed"
+                            ? "Invoice available once booking is completed"
+                            : ""
+                        }
+                      >
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={
+                            booking.status?.toLowerCase() !== "completed"
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadInvoice(
+                              booking.id,
+                              booking.reference,
+                              (msg, type) =>
+                                addToast({
+                                  type: type || "error",
+                                  message: msg,
+                                }),
+                            );
+                          }}
+                          className="text-primary-600 hover:text-primary-700 font-medium"
+                        >
+                          Invoice
+                        </Button>
+                      </Tooltip>
+                    )}
                   <Button
                     variant="secondary"
                     onClick={(e) => {

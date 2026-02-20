@@ -118,6 +118,12 @@ const bookingStatusConfig = {
     icon: Clock,
     label: "Expired",
   },
+  "awaiting-provider-acceptance": {
+    color:
+      "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800",
+    icon: Clock,
+    label: "Awaiting Provider",
+  },
   expired: {
     color:
       "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700",

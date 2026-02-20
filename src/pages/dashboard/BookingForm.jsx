@@ -621,6 +621,10 @@ const BookingForm = () => {
       case 3:
         if (!formData.address) newErrors.address = "Please select an address";
         break;
+      case 4:
+        if (!formData.uploadedImages || formData.uploadedImages.length === 0)
+          newErrors.uploadedImages = "At least one photo is required";
+        break;
       default:
         break;
     }
@@ -1497,7 +1501,8 @@ const BookingForm = () => {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                Upload photos of the damage (optional)
+                Upload Photos of the damage{" "}
+                <span className="text-red-500">*</span>
               </label>
               <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-6 text-center">
                 <input
@@ -1541,6 +1546,11 @@ const BookingForm = () => {
                   ))}
                 </div>
               )}
+              {errors.uploadedImages && (
+                <p className="text-sm text-red-500 mt-2">
+                  {errors.uploadedImages}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -1554,9 +1564,6 @@ const BookingForm = () => {
 
             {/* Radios Broadcast Strategy (Uber Style) */}
             <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 border border-primary-100">
-              <p className="text-xs text-primary-600 dark:text-primary-400 mb-2 font-medium">
-                Matching Strategy
-              </p>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary-600 flex items-center justify-center text-white animate-pulse">
                   <Search size={20} />
