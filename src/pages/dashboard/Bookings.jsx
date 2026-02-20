@@ -50,6 +50,21 @@ const Bookings = () => {
           );
           if (booking) setSelectedBooking(booking);
         }
+
+        // Default to Action Required if any exist, otherwise All
+        const hasActionRequired = mappedBookings.some((b) => {
+          const s = b.status?.toLowerCase();
+          return (
+            s === "awaiting-customer-approval" ||
+            (s === "searching" && b.quotes?.length > 0) ||
+            s === "completed-by-fitter"
+          );
+        });
+        if (hasActionRequired && !id) {
+          setActiveTab("action-required");
+        } else if (!hasActionRequired && activeTab === "action-required") {
+          setActiveTab("all");
+        }
       }
     } catch (err) {
       setError("Failed to load bookings");
@@ -96,22 +111,44 @@ const Bookings = () => {
 
   // Filter logic
   const now = new Date();
+  const actionRequiredCount = bookings.filter((b) => {
+    const s = b.status?.toLowerCase();
+    return (
+      s === "awaiting-customer-approval" ||
+      (s === "searching" && b.quotes?.length > 0) ||
+      s === "completed-by-fitter"
+    );
+  }).length;
+
   const tabs = [
-    { value: "all", label: "All", count: bookings.length },
+    ...(actionRequiredCount > 0
+      ? [
+          {
+            value: "action-required",
+            label: "Action Required",
+            count: actionRequiredCount,
+          },
+        ]
+      : []),
     {
       value: "upcoming",
       label: "Upcoming",
       count: bookings.filter((b) => {
         const s = b.status?.toLowerCase();
+        const isActionRequired =
+          s === "awaiting-customer-approval" ||
+          (s === "searching" && b.quotes?.length > 0) ||
+          s === "completed-by-fitter";
         return (
           [
             "confirmed",
             "accepted",
             "pending payment",
             "awaiting-payment",
-            "awaiting-customer-approval",
             "searching",
-          ].includes(s) && new Date(b.scheduledDate) > now
+          ].includes(s) &&
+          !isActionRequired &&
+          new Date(b.scheduledDate) > now
         );
       }).length,
     },
@@ -128,25 +165,40 @@ const Bookings = () => {
         ["cancelled", "rejected", "expired"].includes(b.status?.toLowerCase()),
       ).length,
     },
+    { value: "all", label: "All", count: bookings.length },
   ];
 
   const filteredBookings = bookings.filter((booking) => {
     const status = booking.status?.toLowerCase();
     // Tab filter
-    if (
-      activeTab === "upcoming" &&
-      !(
-        [
-          "confirmed",
-          "accepted",
-          "pending payment",
-          "awaiting-payment",
-          "awaiting-customer-approval",
-          "searching",
-        ].includes(status) && new Date(booking.scheduledDate) > now
+    if (activeTab === "action-required") {
+      const isActionRequired =
+        status === "awaiting-customer-approval" ||
+        (status === "searching" && booking.quotes?.length > 0) ||
+        status === "completed-by-fitter";
+      if (!isActionRequired) return false;
+    }
+
+    if (activeTab === "upcoming") {
+      const isActionRequired =
+        status === "awaiting-customer-approval" ||
+        (status === "searching" && booking.quotes?.length > 0) ||
+        status === "completed-by-fitter";
+      if (
+        !(
+          [
+            "confirmed",
+            "accepted",
+            "pending payment",
+            "awaiting-payment",
+            "searching",
+          ].includes(status) &&
+          !isActionRequired &&
+          new Date(booking.scheduledDate) > now
+        )
       )
-    )
-      return false;
+        return false;
+    }
     if (activeTab === "completed" && status !== "completed") return false;
     if (
       activeTab === "cancelled" &&
@@ -185,6 +237,16 @@ const Bookings = () => {
         description: "Try a different search term.",
         actionLabel: "Clear Search",
         onAction: () => setSearchQuery(""),
+      };
+    }
+
+    if (activeTab === "action-required") {
+      return {
+        title: "No actions required",
+        description:
+          "You're all caught up! No quotes to review or completed services to confirm.",
+        actionLabel: "Book New Service",
+        onAction: () => navigate("/dashboard/book"),
       };
     }
 
@@ -311,19 +373,15 @@ const Bookings = () => {
                       <span className="font-mono text-sm text-slate-500 dark:text-slate-400">
                         #{booking.reference}
                       </span>
-                      <StatusBadge status={booking.status} type="booking" />
-
-                      {/* Quotes Badge */}
-                      {booking.quotes &&
-                        booking.quotes.length > 0 &&
-                        (booking.status === "awaiting-customer-approval" ||
-                          booking.status === "searching") && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                            <Star size={10} className="fill-current" />
-                            {booking.quotes.length} Quote
-                            {booking.quotes.length !== 1 ? "s" : ""}
-                          </span>
-                        )}
+                      <StatusBadge
+                        status={
+                          booking.status?.toLowerCase() === "searching" &&
+                          booking.quotes?.length > 0
+                            ? "awaiting-customer-approval"
+                            : booking.status
+                        }
+                        type="booking"
+                      />
 
                       <StatusBadge
                         status={booking.paymentStatus}

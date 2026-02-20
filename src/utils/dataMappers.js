@@ -1,4 +1,5 @@
 import { NodeURL } from "../services/api";
+import { formatDate, formatDateTime, formatTimeSlot } from "./dateUtils";
 
 // Helper functions for formatting
 const formatServiceType = (serviceType) => {
@@ -136,15 +137,16 @@ export const mapBooking = (booking) => {
 
     // Status progression levels based on specification
     const statusOrder = {
-      quote: 0, // Initial quote acceptance (quote-based only)
-      pending: 1, // Alternative starting point
-      searching: 1, // Request sent to providers
-      accepted: 2, // Provider accepted the job
-      "awaiting-payment": 3, // User must complete payment
-      confirmed: 4, // Payment completed
-      "in-progress": 5, // Job ongoing
-      completed: 6, // Job finished
-      cancelled: -1, // Cancelled by user/provider
+      quote: 0,
+      pending: 1,
+      searching: 1,
+      accepted: 2,
+      "awaiting-payment": 3,
+      confirmed: 4,
+      "in-progress": 5,
+      "completed-by-fitter": 6,
+      completed: 7,
+      cancelled: -1,
       expired: -1,
       rejected: -1,
     };
@@ -157,7 +159,6 @@ export const mapBooking = (booking) => {
     // Build timeline stages based on booking source
     const stages = [];
 
-    // 1. Quote Accepted (only for quote-based bookings)
     if (isQuoteBased) {
       stages.push({
         status: "Quote Accepted",
@@ -166,79 +167,68 @@ export const mapBooking = (booking) => {
       });
     }
 
-    // 2. Searching (Request sent to providers) - ONLY for direct bookings
+    // 1. Searching
     if (!isQuoteBased) {
       stages.push({
-        status: "Searching",
-        date:
-          booking.searchStartedAt ||
-          booking.createdAt ||
-          new Date().toISOString(),
+        status: "Searching for Provider",
+        date: booking.createdAt,
         completed: currentStatusLevel >= 1,
       });
     }
 
-    // 3. Accepted (Provider accepted the job)
+    // 2. Accepted
     stages.push({
-      status: "Accepted",
-      date:
-        currentStatusLevel >= 2
-          ? booking.acceptedAt ||
-            booking.acceptance?.acceptedAt ||
-            booking.providerAcceptedAt
-          : null,
+      status: "Provider Accepted",
+      date: booking.acceptance?.acceptedAt || booking.acceptedAt,
       completed: currentStatusLevel >= 2,
     });
 
-    // 4. Awaiting Payment (User must complete payment)
-    const awaitingPaymentCompleted = isPaid; // Only completed if actually paid
+    // 3. Payment
     stages.push({
-      status: "Awaiting Payment",
-      date:
-        awaitingPaymentCompleted || currentStatusLevel >= 3
-          ? booking.actualTimes?.confirmedAt ||
-            booking.confirmedAt ||
-            booking.paymentRequestedAt ||
-            booking.acceptedAt
-          : null,
-      completed: awaitingPaymentCompleted,
+      status: "Payment Confirmed",
+      date: booking.actualTimes?.confirmedAt || booking.confirmedAt,
+      completed: isPaid || currentStatusLevel >= 4,
     });
 
-    // 5. Confirmed (Payment completed)
-    // Only completed if status is high enough AND paid
-    const confirmedCompleted = currentStatusLevel >= 4 && isPaid;
+    // 4. Pre-Work Checklist
     stages.push({
-      status: "Confirmed",
-      date: confirmedCompleted
-        ? booking.actualTimes?.confirmedAt ||
-          booking.confirmedAt ||
-          booking.paidAt
-        : null,
-      completed: confirmedCompleted,
+      status: "Pre-Work Checklist",
+      date: booking.checklistBefore?.completedAt,
+      completed:
+        !!booking.checklistBefore?.completedAt || currentStatusLevel >= 5,
     });
 
-    // 6. In Progress (Job ongoing)
+    // 5. In Progress
     stages.push({
-      status: "In Progress",
-      date:
-        currentStatusLevel >= 5
-          ? booking.actualTimes?.startedAt ||
-            booking.startedAt ||
-            booking.inProgressAt
-          : null,
+      status: "Service in Progress",
+      date: booking.actualTimes?.startedAt || booking.startedAt,
       completed: currentStatusLevel >= 5,
     });
 
-    // 7. Completed (Job finished)
+    // 6. Post-Work Checklist
     stages.push({
-      status: "Completed",
-      date:
-        currentStatusLevel >= 6
-          ? booking.actualTimes?.completedAt ||
-            booking.completedAt ||
-            booking.finishedAt
-          : null,
+      status: "Post-Work Checklist",
+      date: booking.checklistAfter?.completedAt,
+      completed:
+        !!booking.checklistAfter?.completedAt || currentStatusLevel >= 6,
+    });
+
+    // 7. Completed by Fitter
+    stages.push({
+      status: "Service Completed by Fitter",
+      date: booking.actualTimes?.completedAt || booking.completedAt,
       completed: currentStatusLevel >= 6,
+    });
+
+    // 8. Completed by Customer
+    stages.push({
+      status: "Service Completed by Customer",
+      date:
+        currentStatus === "completed"
+          ? booking.statusHistory?.find((h) => h.status === "completed")
+              ?.timestamp || new Date()
+          : null,
+      completed: currentStatusLevel >= 7,
     });
 
     return stages;
@@ -346,6 +336,11 @@ export const mapBooking = (booking) => {
         ? booking.suggestions[booking.suggestions.length - 1].note
         : booking.alternateSlotNote,
     timeline: generateTimeline(booking.status, booking.timeline),
+    // Combined date and time for display
+    formattedScheduledDateTime: formatDateTime(
+      booking.scheduledDate,
+      booking.scheduledTimeSlot,
+    ),
   };
 };
 

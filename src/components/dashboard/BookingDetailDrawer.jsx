@@ -189,8 +189,13 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
   const canPay =
     currentPaymentStatus === "unpaid" &&
     ["accepted", "confirmed", "pending payment"].includes(currentStatus);
-  const canComplete = ["confirmed", "in-progress"].includes(currentStatus);
-  const isCompleteEnabled = currentStatus === "in-progress";
+  const canComplete = [
+    "confirmed",
+    "in-progress",
+    "completed-by-fitter",
+  ].includes(currentStatus);
+  const isCompleteEnabled =
+    currentStatus === "in-progress" || currentStatus === "completed-by-fitter";
   const canReview =
     (currentStatus === "completed" || booking.status === "Completed") &&
     (!booking.rating || !booking.rating.score);
@@ -211,7 +216,16 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
         <div className="space-y-6 mb-6">
           {/* Status Badges */}
           <div className="flex items-center gap-2">
-            <StatusBadge status={booking.status} type="booking" size="md" />
+            <StatusBadge
+              status={
+                booking.status?.toLowerCase() === "searching" &&
+                booking.quotes?.length > 0
+                  ? "awaiting-customer-approval"
+                  : booking.status
+              }
+              type="booking"
+              size="md"
+            />
             <StatusBadge
               status={booking.paymentStatus}
               type="payment"
@@ -400,7 +414,8 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
                     Date & Time
                   </p>
                   <p className="font-medium text-slate-900 dark:text-white">
-                    {formatDate(booking.scheduledDate, "datetime")}
+                    {booking.formattedScheduledDateTime ||
+                      formatDate(booking.scheduledDate, "datetime")}
                   </p>
                 </div>
               </div>

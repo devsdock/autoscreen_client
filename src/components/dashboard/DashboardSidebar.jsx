@@ -103,6 +103,7 @@ const DashboardSidebar = () => {
 
   const handleLogout = async () => {
     addToast({ type: "info", message: "Logging out..." });
+    sessionStorage.removeItem("action_banner_dismissed");
     await logout();
   };
 
