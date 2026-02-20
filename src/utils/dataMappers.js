@@ -15,7 +15,31 @@ const formatServiceType = (serviceType) => {
 
 const formatGlassType = (glassType) => {
   if (!glassType) return "-";
-  return glassType
+  const st = glassType.toLowerCase();
+
+  // Special case for common positions
+  const positions = ["front-left", "front-right", "rear-left", "rear-right"];
+  const foundPosition = positions.find((pos) => st.includes(pos));
+
+  if (foundPosition) {
+    const typePart = st
+      .replace(foundPosition, "")
+      .replace(/-$/, "")
+      .replace(/^-/, "");
+    const formattedType = typePart
+      .split("-")
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+    const formattedPos = foundPosition
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+
+    return `${formattedType} (${formattedPos})`;
+  }
+
+  return st
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
