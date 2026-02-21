@@ -58,28 +58,17 @@ const DashboardSidebar = () => {
   const getBadgeCount = (label) => {
     switch (label) {
       case "Request Quotes":
-      case "My Quotes": // fallback in case name changes
-        return (
-          quotes?.filter(
-            (q) =>
-              ![
-                "Closed",
-                "Cancelled",
-                "closed",
-                "cancelled",
-                "Accepted",
-                "accepted",
-              ].includes(q.status),
-          )?.length || 0
-        );
+        return quotes?.filter((q) => q.status === "Responses")?.length || 0;
       case "My Bookings":
         return (
-          bookings?.filter(
-            (b) =>
-              !["Completed", "Cancelled", "completed", "cancelled"].includes(
-                b.status,
-              ),
-          )?.length || 0
+          bookings?.filter((b) => {
+            const s = b.status?.toLowerCase();
+            const actionRequired =
+              s === "awaiting-customer-approval" ||
+              (s === "searching" &&
+                (b.quotes?.length > 0 || b.suggestions?.length > 0));
+            return actionRequired;
+          })?.length || 0
         );
       default:
         return 0;
@@ -104,6 +93,7 @@ const DashboardSidebar = () => {
   const handleLogout = async () => {
     addToast({ type: "info", message: "Logging out..." });
     sessionStorage.removeItem("action_banner_dismissed");
+    sessionStorage.removeItem("dismissed_completed_bookings");
     await logout();
   };
 
