@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Phone,
   MapPin,
@@ -23,6 +23,7 @@ import Rating from "../ui/Rating";
 import Button from "../ui/Button";
 import ConfirmModal from "../ui/ConfirmModal";
 import Modal, { ModalActions } from "../ui/Modal";
+import { Player } from "@lottiefiles/react-lottie-player";
 import PaymentModal from "./PaymentModal";
 import useDashboardStore, {
   formatDate,
@@ -33,7 +34,13 @@ import { downloadInvoice } from "../../utils/invoiceUtils";
 import { useNavigate } from "react-router-dom";
 import ReviewModal from "./ReviewModal";
 
-const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
+const BookingDetailDrawer = ({
+  booking,
+  isOpen,
+  onClose,
+  onUpdate,
+  initialAction,
+}) => {
   const navigate = useNavigate();
   const { addToast } = useDashboardStore();
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -46,12 +53,10 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
   const [pendingPaymentAmount, setPendingPaymentAmount] = useState(null);
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
 
-  if (!booking) return null;
-
   const damageImages =
-    booking.damageImages ||
-    booking.quote?.damageImages ||
-    booking.completionDetails?.beforeImages ||
+    booking?.damageImages ||
+    booking?.quote?.damageImages ||
+    booking?.completionDetails?.beforeImages ||
     [];
 
   const handleCancel = async () => {
@@ -175,8 +180,8 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
     }
   };
 
-  const currentStatus = booking.status?.toLowerCase() || "";
-  const currentPaymentStatus = booking.paymentStatus?.toLowerCase() || "";
+  const currentStatus = booking?.status?.toLowerCase() || "";
+  const currentPaymentStatus = booking?.paymentStatus?.toLowerCase() || "";
 
   const canCancel = [
     "confirmation",
@@ -197,13 +202,29 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
   const isCompleteEnabled =
     currentStatus === "in-progress" || currentStatus === "completed-by-fitter";
   const canReview =
-    (currentStatus === "completed" || booking.status === "Completed") &&
-    (!booking.rating || !booking.rating.score);
+    (currentStatus === "completed" || booking?.status === "Completed") &&
+    (!booking?.rating || !booking?.rating?.score);
   const canDownloadInvoice =
     ["paid", "partially_refunded", "partially refunded"].includes(
       currentPaymentStatus,
-    ) || currentStatus === "completed";
-  const isInvoiceEnabled = currentStatus === "completed";
+    ) ||
+    currentStatus === "completed" ||
+    currentStatus === "completed-by-fitter";
+  const isInvoiceEnabled =
+    currentStatus === "completed" || currentStatus === "completed-by-fitter";
+
+  // Handle initial action (e.g., from deep link)
+  useEffect(() => {
+    if (isOpen && initialAction) {
+      if (initialAction === "review" && canReview) {
+        setShowReviewModal(true);
+      } else if (initialAction === "acknowledge" && canComplete) {
+        setIsCompleteModalOpen(true);
+      }
+    }
+  }, [isOpen, initialAction, canReview, canComplete]);
+
+  if (!booking) return null;
 
   return (
     <>
@@ -232,6 +253,34 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
               size="md"
             />
           </div>
+
+          {/* Service Completed Banner inline */}
+          {currentStatus === "completed-by-fitter" && (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+              <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center flex-shrink-0 text-green-600 dark:text-green-400">
+                <CheckCircle size={20} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-bold text-green-900 dark:text-green-200">
+                  Service Completed!
+                </h3>
+                <p className="text-xs text-green-800 dark:text-green-300 mt-1">
+                  The fitter has marked your service as completed. Please review
+                  and acknowledge the work to finalize your booking.
+                </p>
+                <div className="flex gap-4 mt-3">
+                  <Button
+                    variant="primary"
+                    disabled={loading}
+                    size="xs"
+                    onClick={() => handleComplete()}
+                  >
+                    {loading ? "Completing..." : "Complete Booking"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Received Quotes Section */}
           {(currentStatus === "awaiting-customer-approval" ||

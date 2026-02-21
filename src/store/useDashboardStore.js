@@ -603,7 +603,7 @@ const useDashboardStore = create(
               ...b,
               paymentStatus: "Paid",
               timeline: b.timeline.map((t) =>
-                t.status === "Payment Received"
+                t.status === "Awaiting Payment"
                   ? { ...t, completed: true, date: new Date().toISOString() }
                   : t,
               ),
@@ -736,14 +736,15 @@ const useDashboardStore = create(
           },
           timeline: [
             {
-              status: "Request Sent",
+              status: "Searching",
               date: new Date().toISOString(),
               completed: true,
             },
-            { status: "Provider Accepted", date: null, completed: false },
-            { status: "Payment Completed", date: null, completed: false },
-            { status: "Booking Confirmed", date: null, completed: false },
-            { status: "Job Completed", date: null, completed: false },
+            { status: "Accepted", date: null, completed: false },
+            { status: "Awaiting Payment", date: null, completed: false },
+            { status: "Confirmed", date: null, completed: false },
+            { status: "In Progress", date: null, completed: false },
+            { status: "Completed", date: null, completed: false },
           ],
           createdAt: new Date().toISOString(),
           acceptedAt: null,

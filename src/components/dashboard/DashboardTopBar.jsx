@@ -197,7 +197,7 @@ const DashboardTopBar = () => {
                   </div>
                 ) : (
                   notifications.map((notif) => (
-                    <button
+                    <div
                       key={notif._id}
                       onClick={() => {
                         if (!notif.isRead) markAsRead(notif._id);
@@ -210,8 +210,6 @@ const DashboardTopBar = () => {
                           type.includes("quote") ||
                           type.includes("booking")
                         ) {
-                          // REDIRECT TO BOOKING DETAILS DRAWER FOR QUOTES TOO
-                          // Fetch latest booking details to ensure status is up to date
                           useDashboardStore
                             .getState()
                             .fetchBookingDetails(bookingId);
@@ -222,23 +220,24 @@ const DashboardTopBar = () => {
 
                         setNotifOpen(false);
                       }}
+                      role="button"
+                      tabIndex={0}
                       className={`
-                        w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border-b border-slate-50 dark:border-slate-700/50 last:border-0 relative group
+                        w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border-b border-slate-50 dark:border-slate-700/50 last:border-0 relative group cursor-pointer block
                         ${!notif.isRead ? "bg-primary-50/30 dark:bg-primary-900/10" : ""}
                       `}
                     >
                       {/* Delete notification button */}
-                      <Tooltip content="Delete notification">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteNotification(notif._id);
-                          }}
-                          className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                        >
-                          <X size={14} />
-                        </button>
-                      </Tooltip>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteNotification(notif._id);
+                        }}
+                        className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        title="Delete notification"
+                      >
+                        <X size={14} />
+                      </button>
 
                       <div className="flex justify-between items-start mb-1 pr-6">
                         <p
@@ -260,7 +259,7 @@ const DashboardTopBar = () => {
                           minute: "2-digit",
                         })}
                       </p>
-                    </button>
+                    </div>
                   ))
                 )}
               </div>

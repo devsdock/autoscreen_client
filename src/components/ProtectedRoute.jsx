@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
-import useAuthStore from '../store/useAuthStore'
-import useDashboardStore from '../store/useDashboardStore'
-import { AUTH_WEB_URL, STORAGE_KEYS } from '../services/api'
-
+import { useEffect, useState } from "react";
+import useAuthStore from "../store/useAuthStore";
+import useDashboardStore from "../store/useDashboardStore";
+import { AUTH_WEB_URL, STORAGE_KEYS } from "../services/api";
 
 /**
  * Protected Route wrapper component
@@ -10,23 +9,29 @@ import { AUTH_WEB_URL, STORAGE_KEYS } from '../services/api'
  * Redirects to login if not authenticated
  */
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, isLoading, initAuth, setAuth, user: currentUser } = useAuthStore()
-  const [checking, setChecking] = useState(true)
+  const {
+    isAuthenticated,
+    isLoading,
+    initAuth,
+    setAuth,
+    user: currentUser,
+  } = useAuthStore();
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log('[ProtectedRoute] Starting auth check...');
-        
+        console.log("[ProtectedRoute] Starting auth check...");
+
         // First, check if auth data is passed in URL (from cross-port redirect)
-        const urlParams = new URLSearchParams(window.location.search)
-        const authDataStr = urlParams.get('authData')
-        
+        const urlParams = new URLSearchParams(window.location.search);
+        const authDataStr = urlParams.get("authData");
+
         if (authDataStr) {
           try {
-            const authData = JSON.parse(decodeURIComponent(authDataStr))
-            console.log('[ProtectedRoute] Found auth data in URL:', authData)
-            
+            const authData = JSON.parse(decodeURIComponent(authDataStr));
+            console.log("[ProtectedRoute] Found auth data in URL:", authData);
+
             if (authData.token && authData.user) {
               // 1. Check if this is a DIFFERENT user than before (by comparing to localStorage, not store)
               // This prevents false "new user" detection when the persist middleware hasn't hydrated yet
@@ -35,68 +40,119 @@ const ProtectedRoute = ({ children }) => {
               try {
                 storedUser = storedUserStr ? JSON.parse(storedUserStr) : null;
               } catch (e) {
-                console.error('[ProtectedRoute] Failed to parse stored user:', e);
+                console.error(
+                  "[ProtectedRoute] Failed to parse stored user:",
+                  e,
+                );
               }
 
               // Only clear dashboard if the user ID has ACTUALLY changed
-              const isDifferentUser = storedUser && (
-                (storedUser.id && authData.user.id && storedUser.id !== authData.user.id) ||
-                (storedUser._id && authData.user._id && storedUser._id !== authData.user._id)
-              );
+              const isDifferentUser =
+                storedUser &&
+                ((storedUser.id &&
+                  authData.user.id &&
+                  storedUser.id !== authData.user.id) ||
+                  (storedUser._id &&
+                    authData.user._id &&
+                    storedUser._id !== authData.user._id));
 
               if (isDifferentUser) {
-                console.log('[ProtectedRoute] Different user detected, clearing stale dashboard data...');
+                console.log(
+                  "[ProtectedRoute] Different user detected, clearing stale dashboard data...",
+                );
                 const dashboardStore = useDashboardStore.getState();
                 dashboardStore.clearData();
               }
 
               // 2. Store in localStorage for this domain
-              localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, authData.token)
-              localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(authData.user))
-              
+              localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, authData.token);
+              localStorage.setItem(
+                STORAGE_KEYS.USER,
+                JSON.stringify(authData.user),
+              );
+
               // 3. Clean the URL
               try {
-                const url = new URL(window.location.href)
-                url.searchParams.delete('authData')
-                window.history.replaceState({}, document.title, url.pathname + url.search)
+                const url = new URL(window.location.href);
+                url.searchParams.delete("authData");
+                window.history.replaceState(
+                  {},
+                  document.title,
+                  url.pathname + url.search,
+                );
               } catch (e) {
-                console.error('[ProtectedRoute] URL cleanup failed:', e)
+                console.error("[ProtectedRoute] URL cleanup failed:", e);
               }
 
               // 4. Update the auth store immediately
-              setAuth(authData.token, authData.user)
-              setChecking(false)
-              return
+              setAuth(authData.token, authData.user);
+
+              // 5. Check for saved redirect URL (from email deep links)
+              const savedRedirect = localStorage.getItem(
+                "customer_redirect_after_login",
+              );
+              if (savedRedirect) {
+                localStorage.removeItem("customer_redirect_after_login");
+                // Navigate to the saved path (strip the basename /customer)
+                const redirectPath = savedRedirect.replace(/^\/customer/, "");
+                if (
+                  redirectPath &&
+                  redirectPath !== "/" &&
+                  redirectPath !== "/dashboard"
+                ) {
+                  window.location.pathname = savedRedirect;
+                  return;
+                }
+              }
+
+              setChecking(false);
+              return;
             }
           } catch (e) {
-            console.error('[ProtectedRoute] Failed to parse auth data from URL:', e)
+            console.error(
+              "[ProtectedRoute] Failed to parse auth data from URL:",
+              e,
+            );
           }
         }
-        
+
         // 4. Fallback: check if token exists in localStorage
-        const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)
-        console.log('[ProtectedRoute] Token in localStorage:', !!token)
-        
+        const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+        console.log("[ProtectedRoute] Token in localStorage:", !!token);
+
         if (!token) {
-          console.log('[ProtectedRoute] No token found, redirecting to login')
-          window.location.href = `${AUTH_WEB_URL}/auth`
-          return
+          console.log("[ProtectedRoute] No token found, redirecting to login");
+          // Save the intended URL so we can redirect after login
+          const intendedPath =
+            window.location.pathname + window.location.search;
+          if (
+            intendedPath &&
+            intendedPath !== "/customer/dashboard" &&
+            intendedPath !== "/customer/"
+          ) {
+            localStorage.setItem("customer_redirect_after_login", intendedPath);
+          }
+          window.location.href = `${AUTH_WEB_URL}/auth`;
+          return;
         }
-        
+
         // 5. Token exists, initialize auth store (validates session if needed)
-        console.log('[ProtectedRoute] Token found, initializing auth store...')
-        await initAuth()
-        setChecking(false)
+        console.log("[ProtectedRoute] Token found, initializing auth store...");
+        await initAuth();
+        setChecking(false);
       } catch (error) {
-        console.error('[ProtectedRoute] Critical error during auth check:', error)
+        console.error(
+          "[ProtectedRoute] Critical error during auth check:",
+          error,
+        );
         // If everything fails, redirect to login
-        window.location.href = `${AUTH_WEB_URL}/auth`
+        window.location.href = `${AUTH_WEB_URL}/auth`;
       }
-    }
-    
-    checkAuth()
+    };
+
+    checkAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, []);
 
   // Show loading state while checking auth
   if (checking || isLoading) {
@@ -107,17 +163,28 @@ const ProtectedRoute = ({ children }) => {
           <p className="text-slate-600">Loading...</p>
         </div>
       </div>
-    )
+    );
   }
 
   // Redirect to login if still not authenticated after check
   if (!isAuthenticated) {
-    console.log('[ProtectedRoute] Not authenticated after check, redirecting to login')
+    console.log(
+      "[ProtectedRoute] Not authenticated after check, redirecting to login",
+    );
+    // Save the intended URL so we can redirect after login
+    const intendedPath = window.location.pathname + window.location.search;
+    if (
+      intendedPath &&
+      intendedPath !== "/customer/dashboard" &&
+      intendedPath !== "/customer/"
+    ) {
+      localStorage.setItem("customer_redirect_after_login", intendedPath);
+    }
     // Show a small loader while the browser triggers the jump
     setTimeout(() => {
-      window.location.href = `${AUTH_WEB_URL}/auth`
+      window.location.href = `${AUTH_WEB_URL}/auth`;
     }, 0);
-    
+
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
@@ -125,12 +192,12 @@ const ProtectedRoute = ({ children }) => {
           <p className="text-slate-600">Redirecting to login...</p>
         </div>
       </div>
-    )
+    );
   }
 
-  console.log('[ProtectedRoute] Authenticated, rendering children')
+  console.log("[ProtectedRoute] Authenticated, rendering children");
   // User is authenticated, render children
-  return children
-}
+  return children;
+};
 
-export default ProtectedRoute
+export default ProtectedRoute;

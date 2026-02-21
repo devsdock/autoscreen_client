@@ -21,7 +21,7 @@ import { CardSkeleton } from "../../components/skeletons/CardSkeleton";
 
 const Bookings = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id, action } = useParams();
   const { addToast } = useDashboardStore();
 
   const [bookings, setBookings] = useState([]);
@@ -56,14 +56,16 @@ const Bookings = () => {
           const s = b.status?.toLowerCase();
           return (
             s === "awaiting-customer-approval" ||
-            (s === "searching" && b.quotes?.length > 0) ||
-            s === "completed-by-fitter"
+            (s === "searching" && b.quotes?.length > 0)
           );
         });
         if (hasActionRequired && !id) {
           setActiveTab("action-required");
-        } else if (!hasActionRequired && activeTab === "action-required") {
-          setActiveTab("all");
+        } else if (
+          !hasActionRequired &&
+          (activeTab === "action-required" || activeTab === "all")
+        ) {
+          setActiveTab("upcoming");
         }
       }
     } catch (err) {
@@ -115,8 +117,7 @@ const Bookings = () => {
     const s = b.status?.toLowerCase();
     return (
       s === "awaiting-customer-approval" ||
-      (s === "searching" && b.quotes?.length > 0) ||
-      s === "completed-by-fitter"
+      (s === "searching" && b.quotes?.length > 0)
     );
   }).length;
 
@@ -137,8 +138,7 @@ const Bookings = () => {
         const s = b.status?.toLowerCase();
         const isActionRequired =
           s === "awaiting-customer-approval" ||
-          (s === "searching" && b.quotes?.length > 0) ||
-          s === "completed-by-fitter";
+          (s === "searching" && b.quotes?.length > 0);
         return (
           [
             "confirmed",
@@ -155,8 +155,10 @@ const Bookings = () => {
     {
       value: "completed",
       label: "Completed",
-      count: bookings.filter((b) => b.status?.toLowerCase() === "completed")
-        .length,
+      count: bookings.filter((b) => {
+        const s = b.status?.toLowerCase();
+        return s === "completed" || s === "completed-by-fitter";
+      }).length,
     },
     {
       value: "cancelled",
@@ -174,16 +176,14 @@ const Bookings = () => {
     if (activeTab === "action-required") {
       const isActionRequired =
         status === "awaiting-customer-approval" ||
-        (status === "searching" && booking.quotes?.length > 0) ||
-        status === "completed-by-fitter";
+        (status === "searching" && booking.quotes?.length > 0);
       if (!isActionRequired) return false;
     }
 
     if (activeTab === "upcoming") {
       const isActionRequired =
         status === "awaiting-customer-approval" ||
-        (status === "searching" && booking.quotes?.length > 0) ||
-        status === "completed-by-fitter";
+        (status === "searching" && booking.quotes?.length > 0);
       if (
         !(
           [
@@ -199,7 +199,12 @@ const Bookings = () => {
       )
         return false;
     }
-    if (activeTab === "completed" && status !== "completed") return false;
+    if (
+      activeTab === "completed" &&
+      status !== "completed" &&
+      status !== "completed-by-fitter"
+    )
+      return false;
     if (
       activeTab === "cancelled" &&
       !["cancelled", "rejected", "expired"].includes(status)
@@ -431,7 +436,9 @@ const Bookings = () => {
                     ].includes(booking.paymentStatus.toLowerCase()) && (
                       <Tooltip
                         content={
-                          booking.status?.toLowerCase() !== "completed"
+                          !["completed", "completed-by-fitter"].includes(
+                            booking.status?.toLowerCase(),
+                          )
                             ? "Invoice available once booking is completed"
                             : ""
                         }
@@ -440,7 +447,9 @@ const Bookings = () => {
                           variant="ghost"
                           size="sm"
                           disabled={
-                            booking.status?.toLowerCase() !== "completed"
+                            !["completed", "completed-by-fitter"].includes(
+                              booking.status?.toLowerCase(),
+                            )
                           }
                           onClick={(e) => {
                             e.stopPropagation();
@@ -482,6 +491,7 @@ const Bookings = () => {
         isOpen={!!selectedBooking}
         onClose={handleCloseDrawer}
         onUpdate={fetchBookings}
+        initialAction={action}
       />
     </div>
   );

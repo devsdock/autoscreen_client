@@ -214,7 +214,10 @@ export const mapBooking = (booking) => {
       status: "Awaiting Payment",
       date:
         booking.statusHistory?.find((h) => h.status === "awaiting-payment")
-          ?.timestamp || null,
+          ?.timestamp ||
+        (currentStatusLevel >= 3
+          ? booking.acceptance?.acceptedAt || booking.updatedAt
+          : null),
       completed: currentStatusLevel >= 3 || isPaid,
     });
 
@@ -236,7 +239,7 @@ export const mapBooking = (booking) => {
     stages.push({
       status: "Completed",
       date: booking.actualTimes?.completedAt || booking.completedAt,
-      completed: currentStatusLevel >= 7,
+      completed: currentStatusLevel >= 6,
     });
 
     return stages;

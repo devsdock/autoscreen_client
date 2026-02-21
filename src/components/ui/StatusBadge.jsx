@@ -284,12 +284,14 @@ const StatusBadge = ({
     quote: quoteStatusConfig,
   };
 
+  const normalizedStatus = status?.trim()?.toLowerCase();
+
   const config =
-    configs[type]?.[status] ||
-    configs[type]?.[status?.toLowerCase()] ||
+    configs[type]?.[status?.trim()] ||
+    configs[type]?.[normalizedStatus] ||
     configs[type]?.[
       Object.keys(configs[type]).find(
-        (k) => k.toLowerCase() === status?.toLowerCase(),
+        (k) => k.toLowerCase() === normalizedStatus,
       )
     ];
 

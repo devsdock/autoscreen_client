@@ -21,16 +21,21 @@ export const bookingsData = [
       service: 1650,
       callout: 150,
       materials: 50,
-      total: 1850
+      total: 1850,
     },
     timeline: [
-      { status: "Quote Accepted", date: "2025-06-14T10:00:00Z", completed: true },
-      { status: "Booking Confirmed", date: "2025-06-15T14:30:00Z", completed: true },
-      { status: "Appointment Scheduled", date: "2025-06-18T09:00:00Z", completed: false },
-      { status: "Job Completed", date: null, completed: false },
-      { status: "Payment Received", date: null, completed: false }
+      { status: "Searching", date: "2025-06-14T10:00:00Z", completed: true },
+      { status: "Accepted", date: "2025-06-15T14:30:00Z", completed: true },
+      {
+        status: "Awaiting Payment",
+        date: "2025-06-18T09:00:00Z",
+        completed: true,
+      },
+      { status: "Confirmed", date: "2025-06-18T09:00:00Z", completed: true },
+      { status: "In Progress", date: null, completed: false },
+      { status: "Completed", date: null, completed: false },
     ],
-    createdAt: "2025-06-14T10:00:00Z"
+    createdAt: "2025-06-14T10:00:00Z",
   },
   {
     id: "BK-5672",
@@ -54,16 +59,21 @@ export const bookingsData = [
       service: 450,
       callout: 0,
       materials: 0,
-      total: 450
+      total: 450,
     },
     timeline: [
-      { status: "Quote Accepted", date: "2025-06-08T09:00:00Z", completed: true },
-      { status: "Booking Confirmed", date: "2025-06-08T14:00:00Z", completed: true },
-      { status: "Appointment Scheduled", date: "2025-06-10T11:00:00Z", completed: true },
-      { status: "Job Completed", date: "2025-06-10T12:30:00Z", completed: true },
-      { status: "Payment Received", date: "2025-06-10T12:45:00Z", completed: true }
+      { status: "Searching", date: "2025-06-08T09:00:00Z", completed: true },
+      { status: "Accepted", date: "2025-06-08T14:00:00Z", completed: true },
+      {
+        status: "Awaiting Payment",
+        date: "2025-06-10T11:00:00Z",
+        completed: true,
+      },
+      { status: "Confirmed", date: "2025-06-10T11:00:00Z", completed: true },
+      { status: "In Progress", date: "2025-06-10T12:30:00Z", completed: true },
+      { status: "Completed", date: "2025-06-10T12:45:00Z", completed: true },
     ],
-    createdAt: "2025-06-08T09:00:00Z"
+    createdAt: "2025-06-08T09:00:00Z",
   },
   {
     id: "BK-5665",
@@ -86,16 +96,21 @@ export const bookingsData = [
       service: 1100,
       callout: 100,
       materials: 0,
-      total: 1200
+      total: 1200,
     },
     timeline: [
-      { status: "Quote Accepted", date: "2025-05-26T08:00:00Z", completed: true },
-      { status: "Booking Confirmed", date: "2025-05-26T10:00:00Z", completed: true },
-      { status: "Appointment Scheduled", date: "2025-05-28T14:00:00Z", completed: true },
-      { status: "Job Completed", date: "2025-05-28T15:30:00Z", completed: true },
-      { status: "Payment Received", date: "2025-05-28T16:00:00Z", completed: true }
+      { status: "Searching", date: "2025-05-26T08:00:00Z", completed: true },
+      { status: "Accepted", date: "2025-05-26T10:00:00Z", completed: true },
+      {
+        status: "Awaiting Payment",
+        date: "2025-05-28T14:00:00Z",
+        completed: true,
+      },
+      { status: "Confirmed", date: "2025-05-28T14:00:00Z", completed: true },
+      { status: "In Progress", date: "2025-05-28T15:30:00Z", completed: true },
+      { status: "Completed", date: "2025-05-28T16:00:00Z", completed: true },
     ],
-    createdAt: "2025-05-26T08:00:00Z"
+    createdAt: "2025-05-26T08:00:00Z",
   },
   {
     id: "BK-5660",
@@ -119,14 +134,14 @@ export const bookingsData = [
       service: 2200,
       callout: 0,
       materials: 100,
-      total: 2300
+      total: 2300,
     },
     timeline: [
-      { status: "Quote Accepted", date: "2025-05-18T11:00:00Z", completed: true },
-      { status: "Booking Confirmed", date: "2025-05-18T15:00:00Z", completed: true },
-      { status: "Cancelled", date: "2025-05-19T09:00:00Z", completed: true }
+      { status: "Searching", date: "2025-05-18T11:00:00Z", completed: true },
+      { status: "Accepted", date: "2025-05-18T15:00:00Z", completed: true },
+      { status: "Cancelled", date: "2025-05-19T09:00:00Z", completed: true },
     ],
-    createdAt: "2025-05-18T11:00:00Z"
+    createdAt: "2025-05-18T11:00:00Z",
   },
   {
     id: "BK-5655",
@@ -149,19 +164,20 @@ export const bookingsData = [
       service: 350,
       callout: 100,
       materials: 0,
-      total: 450
+      total: 450,
     },
     timeline: [
-      { status: "Quote Accepted", date: "2025-05-08T09:00:00Z", completed: true },
-      { status: "Booking Confirmed", date: "2025-05-08T11:00:00Z", completed: true },
-      { status: "Appointment Scheduled", date: "2025-05-10T10:00:00Z", completed: true },
-      { status: "Job Completed", date: "2025-05-10T10:45:00Z", completed: true },
-      { status: "Payment Received", date: "2025-05-10T11:00:00Z", completed: true }
+      { status: "Searching", date: "2025-05-08T09:00:00Z", completed: true },
+      { status: "Accepted", date: "2025-05-08T11:00:00Z", completed: true },
+      {
+        status: "Awaiting Payment",
+        date: "2025-05-10T10:00:00Z",
+        completed: true,
+      },
+      { status: "Confirmed", date: "2025-05-10T10:00:00Z", completed: true },
+      { status: "In Progress", date: "2025-05-10T10:45:00Z", completed: true },
+      { status: "Completed", date: "2025-05-10T11:00:00Z", completed: true },
     ],
-    createdAt: "2025-05-08T09:00:00Z"
-  }
+    createdAt: "2025-05-08T09:00:00Z",
+  },
 ];
-
-
-
-

@@ -1,14 +1,14 @@
-import { useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
-import DashboardSidebar from './DashboardSidebar';
-import DashboardTopBar from './DashboardTopBar';
-import DashboardRightSidebar from './DashboardRightSidebar';
-import ToastContainer from '../ui/Toast';
-import useDashboardStore from '../../store/useDashboardStore';
-import useAuthStore from '../../store/useAuthStore';
-import useNotificationStore from '../../store/useNotificationStore';
-import socketService from '../../services/socketService';
-import SupportChatPopup from '../chat/SupportChatPopup';
+import { useEffect } from "react";
+import { Outlet } from "react-router-dom";
+import DashboardSidebar from "./DashboardSidebar";
+import DashboardTopBar from "./DashboardTopBar";
+import DashboardRightSidebar from "./DashboardRightSidebar";
+import ToastContainer from "../ui/Toast";
+import useDashboardStore from "../../store/useDashboardStore";
+import useAuthStore from "../../store/useAuthStore";
+import useNotificationStore from "../../store/useNotificationStore";
+import socketService from "../../services/socketService";
+import SupportChatPopup from "../chat/SupportChatPopup";
 
 // Toggle this to show/hide the right sidebar
 // Set to true to enable the right sidebar in the future
@@ -22,20 +22,20 @@ const DashboardLayout = () => {
     initTheme();
 
     // Listen for system theme changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => {
       const theme = useDashboardStore.getState().theme;
-      if (theme === 'system') {
+      if (theme === "system") {
         if (mediaQuery.matches) {
-          document.documentElement.classList.add('dark');
+          document.documentElement.classList.add("dark");
         } else {
-          document.documentElement.classList.remove('dark');
+          document.documentElement.classList.remove("dark");
         }
       }
     };
 
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
   }, [initTheme]);
 
   // Auto-close mobile sidebar on resize
@@ -46,19 +46,21 @@ const DashboardLayout = () => {
       }
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, [setSidebarOpen]);
 
   // Socket & Notifications Init
   const { user } = useAuthStore();
   const { fetchNotifications } = useNotificationStore();
+  const { fetchBookings, fetchQuotes } = useDashboardStore();
 
   useEffect(() => {
     if (user?._id) {
-
       socketService.connect(user._id);
       fetchNotifications();
+      fetchBookings();
+      fetchQuotes();
     }
 
     return () => {
@@ -76,8 +78,8 @@ const DashboardLayout = () => {
         className={`
           min-h-screen flex flex-col
           transition-all duration-300
-          ${sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-[240px]'}
-          ${SHOW_RIGHT_SIDEBAR ? 'xl:mr-[320px]' : ''}
+          ${sidebarCollapsed ? "lg:ml-[72px]" : "lg:ml-[240px]"}
+          ${SHOW_RIGHT_SIDEBAR ? "xl:mr-[320px]" : ""}
         `}
       >
         {/* Top Bar */}
@@ -92,8 +94,6 @@ const DashboardLayout = () => {
       {/* Right Sidebar - conditionally rendered */}
       {SHOW_RIGHT_SIDEBAR && <DashboardRightSidebar />}
 
-      {SHOW_RIGHT_SIDEBAR && <DashboardRightSidebar />}
-
       <SupportChatPopup />
       <ToastContainer />
     </div>
@@ -101,4 +101,3 @@ const DashboardLayout = () => {
 };
 
 export default DashboardLayout;
-
