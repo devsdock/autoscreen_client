@@ -318,7 +318,9 @@ const BookSearch = () => {
             (formData.serviceType.toLowerCase() === "replacement" &&
               st.name === "Glass Replacement") ||
             (formData.serviceType.toLowerCase() === "repair" &&
-              st.name === "Glass Repair"),
+              st.name === "Glass Repair") ||
+            (formData.serviceType.toLowerCase() === "tinting" &&
+              st.name === "Anti-Smash and Grab Film"),
         );
 
         if (match) {

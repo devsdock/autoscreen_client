@@ -22,74 +22,7 @@ export const formatCurrency = (amount) => {
 };
 
 // Helper to format date
-export const formatDate = (dateString, format = "short") => {
-  if (!dateString) return "-";
-
-  let date;
-  if (
-    typeof dateString === "string" &&
-    /^\d{4}-\d{2}-\d{2}$/.test(dateString)
-  ) {
-    const [y, m, d] = dateString.split("-").map(Number);
-    date = new Date(y, m - 1, d);
-  } else {
-    date = new Date(dateString);
-  }
-
-  if (isNaN(date.getTime())) return "-";
-
-  if (format === "short") {
-    return date.toLocaleDateString("en-ZA", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  }
-  if (format === "long") {
-    return date.toLocaleDateString("en-ZA", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  }
-  if (format === "time") {
-    return date.toLocaleTimeString("en-ZA", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  }
-  if (format === "datetime") {
-    return `${formatDate(dateString, "short")} at ${formatDate(
-      dateString,
-      "time",
-    )}`;
-  }
-  return date.toLocaleDateString("en-ZA");
-};
-
-// Helper for relative time
-export const getRelativeTime = (dateString) => {
-  if (!dateString) return "-";
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "-";
-
-  const now = new Date();
-  const diffMs = now - date;
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-  const diffWeeks = Math.floor(diffDays / 7);
-
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffWeeks === 1) return "1 week ago";
-  return `${diffWeeks} weeks ago`;
-};
+export { formatDate, getRelativeTime } from "../utils/dateUtils";
 
 const useDashboardStore = create(
   persist(

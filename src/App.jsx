@@ -25,6 +25,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { useEffect } from "react";
 import { useSettingsStore } from "./store/useSettingsStore";
 import MaintenancePage from "./pages/MaintenancePage";
+import ImpersonatePage from "./pages/auth/ImpersonatePage";
 
 const App = () => {
   const { settings, fetchSettings } = useSettingsStore();
@@ -41,6 +42,7 @@ const App = () => {
     <Routes>
       {/* Redirect root to dashboard */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/impersonate" element={<ImpersonatePage />} />
 
       {/* Dashboard Routes - Protected */}
       <Route

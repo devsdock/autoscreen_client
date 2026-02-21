@@ -50,6 +50,7 @@ class SocketService {
       // Handle Booking Updates
       if (
         type === "booking_accepted" ||
+        type === "quote_accepted" || // Added
         type === "booking_confirmed" ||
         type === "booking_status_updated" ||
         type === "booking_quote_received" || // Added

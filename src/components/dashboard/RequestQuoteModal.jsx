@@ -230,6 +230,8 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
       newErrors.serviceType = "Service type is required";
     if (!formData.glassType) newErrors.glassType = "Glass type is required";
     if (!formData.city) newErrors.city = "City is required";
+    if (!formData.images || formData.images.length === 0)
+      newErrors.images = "At least one photo is required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -741,7 +743,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
               {/* Image Upload */}
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                  Upload Photos (Optional)
+                  Upload Photos <span className="text-red-500">*</span>
                 </label>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
                   Add photos of the damage to help providers give accurate
@@ -791,6 +793,9 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                       </div>
                     ))}
                   </div>
+                )}
+                {errors.images && (
+                  <p className="text-sm text-red-500 mt-2">{errors.images}</p>
                 )}
               </div>
             </form>

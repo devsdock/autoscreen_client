@@ -286,6 +286,7 @@ const BookingForm = () => {
         ]);
         setAdminServiceTypes([
           {
+            id: "replacement",
             name: "Glass Replacement",
             description: "Full glass replacement",
             pricing: [
@@ -300,6 +301,7 @@ const BookingForm = () => {
             ],
           },
           {
+            id: "repair",
             name: "Glass Repair",
             description: "Chip and crack repair",
             pricing: [
@@ -314,6 +316,7 @@ const BookingForm = () => {
             ],
           },
           {
+            id: "tinting",
             name: "Anti-Smash and Grab Film",
             description: "Anti-Smash and Grab Film application",
             pricing: [
@@ -360,11 +363,13 @@ const BookingForm = () => {
         try {
           // Normalize serviceType to match backend expectations ("replacement" or "repair")
           const serviceName = formData.service?.name || formData.service || "";
-          const normalizedServiceType = serviceName
-            .toLowerCase()
-            .includes("repair")
-            ? "repair"
-            : "replacement";
+          const normalizedServiceType =
+            formData.service?.id ||
+            (serviceName.toLowerCase().includes("repair")
+              ? "repair"
+              : serviceName.toLowerCase().includes("replacement")
+                ? "replacement"
+                : "tinting");
 
           // Normalize glassType to lowercase with dashes (e.g., "Windscreen" -> "windscreen")
           const normalizedGlassType = (formData.glassType || "windscreen")
@@ -616,6 +621,10 @@ const BookingForm = () => {
       case 3:
         if (!formData.address) newErrors.address = "Please select an address";
         break;
+      case 4:
+        if (!formData.uploadedImages || formData.uploadedImages.length === 0)
+          newErrors.uploadedImages = "At least one photo is required";
+        break;
       default:
         break;
     }
@@ -655,7 +664,7 @@ const BookingForm = () => {
     );
   };
 
-  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isSubmittingAddress, setIsSubmittingAddress] = useState(false);
 
   const handleAddAddress = async () => {
     if (!newAddress.line1 || !newAddress.city) {
@@ -663,7 +672,7 @@ const BookingForm = () => {
       return;
     }
 
-    setIsGeocoding(true);
+    setIsSubmittingAddress(true);
     let coords = null;
     try {
       // Construct clean address for better matching
@@ -690,25 +699,20 @@ const BookingForm = () => {
           `${newAddress.city}, South Africa`,
         );
       }
-    } catch (err) {
-    } finally {
-      setIsGeocoding(false);
-    }
 
-    const apiPayload = {
-      label: newAddress.label,
-      addressLine1: newAddress.line1,
-      suburb: newAddress.suburb,
-      city: newAddress.city,
-      postalCode: newAddress.postcode,
-      coordinates: coords,
-      isDefault: addresses.length === 0,
-    };
+      const apiPayload = {
+        label: newAddress.label,
+        addressLine1: newAddress.line1,
+        suburb: newAddress.suburb,
+        city: newAddress.city,
+        postalCode: newAddress.postcode,
+        coordinates: coords,
+        isDefault: addresses.length === 0,
+      };
 
-    let addressToAdd = { ...newAddress, coordinates: coords };
+      let addressToAdd = { ...newAddress, coordinates: coords };
 
-    // Sync with backend profile
-    try {
+      // Sync with backend profile
       const res = await profileService.addAddress(apiPayload);
       if (res.success && Array.isArray(res.data) && res.data.length > 0) {
         // Backend returns array of addresses, get the last one (newest)
@@ -721,24 +725,30 @@ const BookingForm = () => {
           line1: savedBackendAddress.addressLine1, // Keep local consistency
         };
       }
+
+      const id = addAddress(addressToAdd);
+
+      setFormData((prev) => ({
+        ...prev,
+        address: { ...addressToAdd, id: id },
+      }));
+      setIsAddressModalOpen(false);
+      setNewAddress({
+        label: "Home",
+        line1: "",
+        suburb: "",
+        city: "",
+        postcode: "",
+      });
     } catch (e) {
-      addToast({ type: "error", message: "Failed to save address to profile" });
+      console.error("Error in handleAddAddress:", e);
+      addToast({
+        type: "error",
+        message: e?.message || "Failed to save address",
+      });
+    } finally {
+      setIsSubmittingAddress(false);
     }
-
-    const id = addAddress(addressToAdd);
-
-    setFormData((prev) => ({
-      ...prev,
-      address: { ...addressToAdd, id: id },
-    }));
-    setIsAddressModalOpen(false);
-    setNewAddress({
-      label: "Home",
-      line1: "",
-      suburb: "",
-      city: "",
-      postcode: "",
-    });
   };
 
   const handleSubmit = async () => {
@@ -798,14 +808,16 @@ const BookingForm = () => {
 
       const bookingData = {
         provider: provider?.id || null, // Optional for broadcast flow
-        serviceType: (formData.service.name || "")
-          .toLowerCase()
-          .includes("repair")
-          ? "repair"
-          : "replacement",
+        serviceType:
+          formData.service?.id ||
+          formData.service?.name ||
+          formData.service ||
+          "",
         glassType: (formData.glassType || "windscreen")
           .toLowerCase()
-          .replace(" ", "_"),
+          .trim()
+          .replace(/\s+/g, "-") // Use dashes for consistency with backend IDs
+          .replace(/[()]/g, ""), // Remove parentheses common in labels like "Side Window (Front Left)"
         vehicle: {
           make:
             formData.vehicle.make === "Other"
@@ -1489,7 +1501,8 @@ const BookingForm = () => {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                Upload photos of the damage (optional)
+                Upload Photos of the damage{" "}
+                <span className="text-red-500">*</span>
               </label>
               <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-6 text-center">
                 <input
@@ -1533,6 +1546,11 @@ const BookingForm = () => {
                   ))}
                 </div>
               )}
+              {errors.uploadedImages && (
+                <p className="text-sm text-red-500 mt-2">
+                  {errors.uploadedImages}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -1546,9 +1564,6 @@ const BookingForm = () => {
 
             {/* Radios Broadcast Strategy (Uber Style) */}
             <div className="bg-primary-50 dark:bg-primary-900/20 rounded-xl p-4 border border-primary-100">
-              <p className="text-xs text-primary-600 dark:text-primary-400 mb-2 font-medium">
-                Matching Strategy
-              </p>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary-600 flex items-center justify-center text-white animate-pulse">
                   <Search size={20} />
@@ -1792,10 +1807,10 @@ const BookingForm = () => {
           </Button>
           <Button
             onClick={handleAddAddress}
-            loading={isGeocoding}
-            disabled={isGeocoding}
+            loading={isSubmittingAddress}
+            disabled={isSubmittingAddress}
           >
-            {isGeocoding ? "Verifying Location..." : "Add Address"}
+            {isSubmittingAddress ? "Saving..." : "Add Address"}
           </Button>
         </ModalActions>
       </Modal>

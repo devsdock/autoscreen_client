@@ -3,7 +3,7 @@ export const faqData = [
     id: 1,
     question: "How do I request a quote?",
     answer:
-      "Click 'Request a Quote' from your dashboard or the My Quotes page. Fill in your vehicle details, select the glass type and service needed, and submit. You'll receive responses from verified providers within 2-4 hours.",
+      "Click 'Request a Quote' from your dashboard or the Request Quotes page. Fill in your vehicle details, select the glass type and service needed, and submit. You'll receive responses from verified providers within 2-4 hours.",
   },
   {
     id: 2,
@@ -15,7 +15,7 @@ export const faqData = [
     id: 3,
     question: "How do I accept a quote and book?",
     answer:
-      "Go to My Quotes, select a quote with responses, review the provider offers, and click 'Accept Quote' on your preferred option. This will create a booking and you can then confirm the appointment time with the provider.",
+      "Go to Request Quotes, select a quote with responses, review the provider offers, and click 'Accept Quote' on your preferred option. This will create a booking and you can then confirm the appointment time with the provider.",
   },
   {
     id: 4,

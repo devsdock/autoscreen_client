@@ -88,17 +88,17 @@ const bookingStatusConfig = {
     icon: Clock,
     label: "In Progress",
   },
-  Completed: {
-    color:
-      "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800",
-    icon: Check,
-    label: "Completed",
-  },
   completed: {
     color:
       "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800",
     icon: Check,
-    label: "Completed",
+    label: "Service Completed by Customer",
+  },
+  "completed-by-fitter": {
+    color:
+      "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800",
+    icon: AlertCircle,
+    label: "Service Completed by Fitter",
   },
   Cancelled: {
     color:
@@ -117,6 +117,12 @@ const bookingStatusConfig = {
       "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700",
     icon: Clock,
     label: "Expired",
+  },
+  "awaiting-provider-acceptance": {
+    color:
+      "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800",
+    icon: Clock,
+    label: "Awaiting Provider",
   },
   expired: {
     color:
