@@ -92,13 +92,13 @@ const bookingStatusConfig = {
     color:
       "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800",
     icon: Check,
-    label: "Service Completed by Customer",
+    label: "Completed",
   },
   "completed-by-fitter": {
     color:
-      "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800",
-    icon: AlertCircle,
-    label: "Service Completed by Fitter",
+      "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800",
+    icon: Check,
+    label: "Completed",
   },
   Cancelled: {
     color:

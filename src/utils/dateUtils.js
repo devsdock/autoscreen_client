@@ -151,10 +151,15 @@ export const formatTimeSlot = (slot) => {
 export const formatDateTime = (date, slot) => {
   if (!date) return "-";
   const datePart = formatDate(date, "short");
-  const timePart = formatTimeSlot(slot) || formatDate(date, "time");
+  const timeSlot = formatTimeSlot(slot);
 
-  // If time is 00:00 and no slot, just show date
-  if (timePart === "00:00" && !slot) return datePart;
+  if (timeSlot) {
+    return `${datePart} at ${timeSlot}`;
+  }
+
+  const timePart = formatDate(date, "time");
+  // If time is 00:00 (likely unspecified) and no slot, just show date
+  if (timePart === "00:00") return datePart;
 
   return `${datePart} at ${timePart}`;
 };

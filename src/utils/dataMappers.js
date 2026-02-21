@@ -156,78 +156,50 @@ export const mapBooking = (booking) => {
     // Check payment status
     const isPaid = (booking.paymentStatus || "").toLowerCase() === "paid";
 
-    // Build timeline stages based on booking source
+    // Build timeline stages
     const stages = [];
 
-    if (isQuoteBased) {
-      stages.push({
-        status: "Quote Accepted",
-        date: booking.quoteAcceptedAt || booking.createdAt,
-        completed: currentStatusLevel >= 0,
-      });
-    }
-
-    // 1. Searching
-    if (!isQuoteBased) {
-      stages.push({
-        status: "Searching for Provider",
-        date: booking.createdAt,
-        completed: currentStatusLevel >= 1,
-      });
-    }
+    // 1. Searching / Initial Request
+    stages.push({
+      status: "Searching",
+      date: booking.createdAt,
+      completed: currentStatusLevel >= 1,
+    });
 
     // 2. Accepted
     stages.push({
-      status: "Provider Accepted",
+      status: "Accepted",
       date: booking.acceptance?.acceptedAt || booking.acceptedAt,
       completed: currentStatusLevel >= 2,
     });
 
-    // 3. Payment
+    // 3. Awaiting Payment
     stages.push({
-      status: "Payment Confirmed",
+      status: "Awaiting Payment",
+      date:
+        booking.statusHistory?.find((h) => h.status === "awaiting-payment")
+          ?.timestamp || null,
+      completed: currentStatusLevel >= 3 || isPaid,
+    });
+
+    // 4. Confirmed
+    stages.push({
+      status: "Confirmed",
       date: booking.actualTimes?.confirmedAt || booking.confirmedAt,
       completed: isPaid || currentStatusLevel >= 4,
     });
 
-    // 4. Pre-Work Checklist
-    stages.push({
-      status: "Pre-Work Checklist",
-      date: booking.checklistBefore?.completedAt,
-      completed:
-        !!booking.checklistBefore?.completedAt || currentStatusLevel >= 5,
-    });
-
     // 5. In Progress
     stages.push({
-      status: "Service in Progress",
+      status: "In Progress",
       date: booking.actualTimes?.startedAt || booking.startedAt,
       completed: currentStatusLevel >= 5,
     });
 
-    // 6. Post-Work Checklist
+    // 6. Completed
     stages.push({
-      status: "Post-Work Checklist",
-      date: booking.checklistAfter?.completedAt,
-      completed:
-        !!booking.checklistAfter?.completedAt || currentStatusLevel >= 6,
-    });
-
-    // 7. Completed by Fitter
-    stages.push({
-      status: "Service Completed by Fitter",
+      status: "Completed",
       date: booking.actualTimes?.completedAt || booking.completedAt,
-      completed: currentStatusLevel >= 6,
-    });
-
-    // 8. Completed by Customer
-    stages.push({
-      status: "Service Completed by Customer",
-      date:
-        currentStatus === "completed"
-          ? booking.statusHistory?.find((h) => h.status === "completed")
-              ?.timestamp || new Date()
-          : null,
       completed: currentStatusLevel >= 7,
     });
 
