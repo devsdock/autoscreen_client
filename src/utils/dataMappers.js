@@ -14,6 +14,42 @@ const formatServiceType = (serviceType) => {
   return st.charAt(0).toUpperCase() + st.slice(1);
 };
 
+const formatBookingStatus = (status) => {
+  if (!status) return "Pending";
+  const s = status.toLowerCase();
+
+  switch (s) {
+    case "searching":
+      return "Searching";
+    case "awaiting-customer-approval":
+      return "Action Required";
+    case "pending":
+      return "Pending";
+    case "accepted":
+      return "Accepted";
+    case "awaiting-payment":
+      return "Awaiting Payment";
+    case "confirmed":
+      return "Confirmed";
+    case "in-progress":
+      return "In Progress";
+    case "completed":
+      return "Completed";
+    case "completed-by-fitter":
+      return "Completed";
+    case "cancelled":
+      return "Cancelled";
+    case "expired":
+      return "Expired";
+    case "rejected":
+      return "Rejected";
+    case "awaiting-provider-acceptance":
+      return "Awaiting Provider";
+    default:
+      return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+};
+
 const formatGlassType = (glassType) => {
   if (!glassType) return "-";
   const st = glassType.toLowerCase();
@@ -272,6 +308,7 @@ export const mapBooking = (booking) => {
       booking.serviceLocationType === "workshop"
         ? "In-Store"
         : "Mobile Service",
+    statusLabel: formatBookingStatus(booking.status),
     paymentStatus: normalizedPaymentStatus,
     price: {
       service:

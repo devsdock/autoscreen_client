@@ -106,10 +106,10 @@ export const formatDate = (dateString, format = "short") => {
     });
   }
   if (format === "datetime") {
-    return `${formatDate(dateString, "short")} at ${formatDate(
-      dateString,
-      "time",
-    )}`;
+    const dPart = formatDate(dateString, "short");
+    const tPart = formatDate(dateString, "time");
+    if (tPart === "00:00") return dPart;
+    return `${dPart} at ${tPart}`;
   }
   return date.toLocaleDateString("en-ZA");
 };
@@ -139,9 +139,15 @@ export const getRelativeTime = (dateString) => {
  */
 export const formatTimeSlot = (slot) => {
   if (!slot) return "";
-  if (typeof slot === "string") return slot;
-  if (slot.start && slot.end) return `${slot.start} - ${slot.end}`;
-  if (slot.start) return slot.start;
+  if (typeof slot === "string") {
+    if (slot === "00:00" || slot === "00:00 - 00:00") return "";
+    return slot;
+  }
+  if (slot.start && slot.end) {
+    if (slot.start === "00:00" && slot.end === "00:00") return "";
+    return `${slot.start} - ${slot.end}`;
+  }
+  if (slot.start && slot.start !== "00:00") return slot.start;
   return "";
 };
 
