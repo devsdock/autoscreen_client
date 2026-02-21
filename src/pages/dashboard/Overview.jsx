@@ -734,7 +734,7 @@ const Overview = () => {
                 <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="text-left py-3 px-4"></th>
+                <th className="text-right py-3 px-4"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
@@ -778,9 +778,7 @@ const Overview = () => {
                     </span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">
-                      {booking.status}
-                    </span>
+                    <StatusBadge status={booking.status} type="booking" />
                   </td>
                   <td className="py-4 px-4 text-right">
                     <div className="relative inline-block text-left">

@@ -714,7 +714,7 @@ const BookingDetailDrawer = ({ booking, isOpen, onClose, onUpdate }) => {
                 className="w-full"
                 content={
                   !isCompleteEnabled
-                    ? "Technician must start the job first"
+                    ? "Technician will notify you when work is ready for inspection"
                     : ""
                 }
               >
