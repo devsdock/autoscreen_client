@@ -27,6 +27,7 @@ import Tabs from "../../components/ui/Tabs";
 import Input from "../../components/ui/Input";
 import EmptyState from "../../components/ui/EmptyState";
 import PaymentModal from "../../components/dashboard/PaymentModal";
+import { PaymentsSkeleton } from "../../components/skeletons/PageSkeleton";
 
 const Payments = () => {
   const { addToast } = useDashboardStore();
@@ -138,6 +139,10 @@ const Payments = () => {
   const handleDownloadReceipt = (payment) => {
     addToast({ type: "success", message: "Receipt downloaded" });
   };
+
+  if (loading) {
+    return <PaymentsSkeleton />;
+  }
 
   return (
     <div className="space-y-6">
