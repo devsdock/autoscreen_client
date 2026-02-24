@@ -2,7 +2,7 @@ import { NodeURL } from "../services/api";
 import { formatDate, formatDateTime, formatTimeSlot } from "./dateUtils";
 
 // Helper functions for formatting
-const formatServiceType = (serviceType) => {
+export const formatServiceType = (serviceType) => {
   if (!serviceType) return "-";
   const st = serviceType.toLowerCase();
 
@@ -353,6 +353,7 @@ export const mapBooking = (booking) => {
       booking.scheduledDate,
       booking.scheduledTimeSlot,
     ),
+    cancellation: booking.cancellation || null,
   };
 };
 

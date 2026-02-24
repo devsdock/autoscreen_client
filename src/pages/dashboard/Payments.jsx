@@ -12,8 +12,10 @@ import useDashboardStore, {
   formatDate,
   formatCurrency,
 } from "../../store/useDashboardStore";
-import paymentService from "../../services/paymentService"; // Updated import
-import bookingService from "../../services/bookingService"; // Still needed for some fallback or navigation links if any
+import paymentService from "../../services/paymentService";
+import bookingService from "../../services/bookingService";
+import { downloadInvoice } from "../../utils/invoiceUtils";
+import { formatServiceType } from "../../utils/dataMappers";
 import PageHeader from "../../components/ui/PageHeader";
 import Card, {
   CardHeader,
@@ -42,14 +44,6 @@ const Payments = () => {
       setLoading(true);
       try {
         const res = await paymentService.getMyPayments({
-          status:
-            activeTab === "all"
-              ? undefined
-              : activeTab === "pending"
-              ? undefined
-              : activeTab === "completed"
-              ? "Paid"
-              : "Refunded",
           search: searchQuery,
         });
 
@@ -66,7 +60,7 @@ const Payments = () => {
     };
 
     fetchPayments();
-  }, [addToast, activeTab, searchQuery]);
+  }, [addToast, searchQuery]);
 
   // Calculate summary stats
   const totalSpent = payments
@@ -85,7 +79,7 @@ const Payments = () => {
       value: "pending",
       label: "Pending",
       count: payments.filter(
-        (p) => p.status === "Unpaid" || p.status === "Pending"
+        (p) => p.status === "Unpaid" || p.status === "Pending",
       ).length,
     },
     {
@@ -136,7 +130,9 @@ const Payments = () => {
   });
 
   const handleDownloadReceipt = (payment) => {
-    addToast({ type: "success", message: "Receipt downloaded" });
+    downloadInvoice(payment.bookingId, payment.bookingRef, (msg, type) =>
+      addToast({ message: msg, type }),
+    );
   };
 
   return (
@@ -256,7 +252,7 @@ const Payments = () => {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-slate-900 dark:text-white">
-                        {payment.service}
+                        {formatServiceType(payment.service)}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -306,10 +302,13 @@ const Payments = () => {
                         </Button>
                       )}
                       {(payment.status === "Pending" ||
-                        payment.status === "Refunded") && (
-                        <Button size="sm" variant="ghost">
-                          View
-                        </Button>
+                        payment.status === "Refunded" ||
+                        payment.status === "Cancelled") && (
+                        <Link to={`/dashboard/bookings/${payment.bookingId}`}>
+                          <Button size="sm" variant="ghost">
+                            View
+                          </Button>
+                        </Link>
                       )}
                     </td>
                   </tr>
@@ -330,7 +329,7 @@ const Payments = () => {
                         (index + 1).toString().padStart(2, "0")}
                     </span>
                     <p className="font-semibold text-slate-900 dark:text-white mt-1">
-                      {payment.service}
+                      {formatServiceType(payment.service)}
                     </p>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
                       {payment.providerName}
@@ -368,6 +367,15 @@ const Payments = () => {
                         Receipt
                       </Button>
                     )}
+                    {(payment.status === "Pending" ||
+                      payment.status === "Refunded" ||
+                      payment.status === "Cancelled") && (
+                      <Link to={`/dashboard/bookings/${payment.bookingId}`}>
+                        <Button size="sm" variant="ghost">
+                          View
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>
@@ -385,8 +393,8 @@ const Payments = () => {
           // Re-fetch handled by effect usually, but we can optimistically update
           setPayments((prev) =>
             prev.map((p) =>
-              p.id === selectedPayment.id ? { ...p, status: "Paid" } : p
-            )
+              p.id === selectedPayment.id ? { ...p, status: "Paid" } : p,
+            ),
           );
         }}
       />

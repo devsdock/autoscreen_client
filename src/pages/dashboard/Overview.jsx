@@ -26,7 +26,6 @@ import useDashboardStore, {
 } from "../../store/useDashboardStore";
 import dashboardService from "../../services/dashboardService";
 import bookingService from "../../services/bookingService";
-import { Player } from "@lottiefiles/react-lottie-player";
 import { mapDashboardData } from "../../utils/dataMappers";
 import StatusBadge from "../../components/ui/StatusBadge";
 import Button from "../../components/ui/Button";
@@ -48,11 +47,6 @@ const Overview = () => {
   const [showTimeRangeDropdown, setShowTimeRangeDropdown] = useState(false);
   const menuRef = useRef(null);
   const timeRangeRef = useRef(null);
-
-  const [showCompletedModal, setShowCompletedModal] = useState(false);
-  const [targetCompletedBookingId, setTargetCompletedBookingId] =
-    useState(null);
-  const [isCompleting, setIsCompleting] = useState(false);
   // Toggle to show/hide timeline - set to true to show booking progress
   const SHOW_TIMELINE = true;
 
@@ -63,6 +57,8 @@ const Overview = () => {
     updateUser,
     setVehicles,
     setAddresses,
+    setBookings,
+    setQuotes,
     addToast,
   } = useDashboardStore();
 
@@ -86,6 +82,14 @@ const Overview = () => {
             setAddresses(mappedData.user.addresses);
           }
         }
+
+        // Update store with bookings and quotes to ensure reactivity with sockets
+        if (mappedData?.recentBookings) {
+          setBookings(mappedData.recentBookings);
+        }
+        if (mappedData?.recentQuotes) {
+          setQuotes(mappedData.recentQuotes);
+        }
       }
     } catch (err) {
       setError(err?.message || "Failed to load dashboard data");
@@ -102,8 +106,9 @@ const Overview = () => {
 
   // Use API data if available, otherwise fall back to store
   const user = apiData?.user || storeUser;
+  // Use store for bookings to ensure reactivity with socket updates
   const bookings =
-    apiData?.recentBookings || (isLoading ? [] : apiData ? [] : storeBookings);
+    storeBookings.length > 0 ? storeBookings : apiData?.recentBookings || [];
   const quotes =
     apiData?.recentQuotes || (isLoading ? [] : apiData ? [] : storeQuotes);
   const stats = apiData?.stats || {
@@ -116,73 +121,6 @@ const Overview = () => {
 
   const nextBooking = apiData?.nextBooking;
   const latestBooking = bookings[0];
-  const targetCompletedBooking = bookings.find(
-    (b) => b.id === targetCompletedBookingId,
-  );
-
-  useEffect(() => {
-    const completedFitterBookings = bookings.filter((b) => {
-      const s = b.status?.toLowerCase();
-      return s === "completed-by-fitter";
-    });
-
-    let dismissedBookings = [];
-    try {
-      dismissedBookings = JSON.parse(
-        sessionStorage.getItem("dismissed_completed_bookings") || "[]",
-      );
-    } catch (e) {}
-
-    const hasUnacknowledged = completedFitterBookings.filter(
-      (b) => !dismissedBookings.includes(b.id),
-    );
-
-    if (hasUnacknowledged.length > 0) {
-      setTargetCompletedBookingId(hasUnacknowledged[0].id);
-      setShowCompletedModal(true);
-    } else {
-      setShowCompletedModal(false);
-    }
-  }, [bookings]);
-
-  const handleDismissModal = () => {
-    setShowCompletedModal(false);
-    const activeIds = bookings
-      .filter((b) => b.status?.toLowerCase() === "completed-by-fitter")
-      .map((b) => b.id);
-    let dismissedBookings = [];
-    try {
-      dismissedBookings = JSON.parse(
-        sessionStorage.getItem("dismissed_completed_bookings") || "[]",
-      );
-    } catch (e) {}
-    sessionStorage.setItem(
-      "dismissed_completed_bookings",
-      JSON.stringify([...new Set([...dismissedBookings, ...activeIds])]),
-    );
-  };
-
-  const handleDashboardCompleteBooking = async () => {
-    if (!targetCompletedBookingId) return;
-    setIsCompleting(true);
-    try {
-      const res = await bookingService.completeBooking(
-        targetCompletedBookingId,
-      );
-      if (res.success) {
-        if (addToast)
-          addToast({ type: "success", message: "Booking marked as completed" });
-        setShowCompletedModal(false);
-        fetchData();
-      }
-    } catch (error) {
-      console.error("Error completing booking:", error);
-      if (addToast)
-        addToast({ type: "error", message: "Failed to complete booking" });
-    } finally {
-      setIsCompleting(false);
-    }
-  };
 
   // Get filtered date range text and logic
   const getFilterData = () => {
@@ -378,66 +316,6 @@ const Overview = () => {
           Request a Quote
         </Button>
       </div>
-
-      {/* Service Completed Modal */}
-      <Modal
-        isOpen={showCompletedModal}
-        onClose={handleDismissModal}
-        title=""
-        size="sm"
-      >
-        <div className="text-center pb-2">
-          <Player
-            src="https://assets3.lottiefiles.com/packages/lf20_lk80fpsm.json"
-            className="player mx-auto"
-            loop
-            autoplay
-            style={{ height: "160px", width: "160px" }}
-          />
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white mt-2">
-            Service Completed!
-          </h3>
-          {targetCompletedBooking && (
-            <div className="mt-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800 text-left">
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                Booking #{targetCompletedBooking.reference}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                {typeof targetCompletedBooking.service === "object" &&
-                targetCompletedBooking.service
-                  ? targetCompletedBooking.service.name
-                  : targetCompletedBooking.service || "General Service"}{" "}
-                •{" "}
-                {typeof targetCompletedBooking.vehicle === "object" &&
-                targetCompletedBooking.vehicle
-                  ? `${targetCompletedBooking.vehicle.year || ""} ${targetCompletedBooking.vehicle.make || ""} ${targetCompletedBooking.vehicle.model || ""}`.trim()
-                  : targetCompletedBooking.vehicle || "Unknown Vehicle"}
-              </p>
-            </div>
-          )}
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-3 mb-6">
-            The fitter has marked your service as completed. Please review and
-            acknowledge the work to finalize your booking.
-          </p>
-          <div className="flex gap-3 justify-center">
-            <Button
-              variant="outline"
-              disabled={isCompleting}
-              onClick={handleDismissModal}
-            >
-              Not yet
-            </Button>
-            <Button
-              variant="primary"
-              disabled={isCompleting}
-              onClick={handleDashboardCompleteBooking}
-            >
-              <CheckCircle size={16} />
-              {isCompleting ? "Completing..." : "Completed"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Main Booking Card */}
       {latestBooking && (

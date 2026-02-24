@@ -3,19 +3,19 @@ import { request } from "./api";
 /**
  * Payment Service
  * Endpoints: /customer/payments/...
- * Supports both simple Stripe payments and Stripe Connect destination charges
+ * Supports Paystack secure checkout and split payments
  */
 const paymentService = {
-  getConfig: () => {
+  getPaystackConfig: () => {
     return request({
       method: "GET",
-      url: "/customer/payments/config",
+      url: "/customer/payments/config-paystack",
     });
   },
 
   /**
    * Get all payments (history + pending)
-   * Includes Stripe Connect transactions and legacy payments
+   * Includes Paystack transactions and legacy payments
    *
    * @param params Query parameters (status, search)
    */
@@ -42,20 +42,26 @@ const paymentService = {
   },
 
   /**
-   * Create a Stripe Payment Intent
-   * If provider has Stripe Connect, creates a destination charge
-   * Otherwise, creates a simple payment intent
-   *
-   * @returns {Object} Response with clientSecret, id, and optionally:
-   *   - isConnectPayment: boolean - whether this is a Connect destination charge
-   *   - platformFee: number - platform commission (only for Connect)
-   *   - providerAmount: number - amount going to provider (only for Connect)
+   * Initialize Paystack Payment
+   * @param {string} bookingId
+   * @returns {Object} { success, authorization_url, reference }
    */
-  createPaymentIntent: (bookingId) => {
+  initializePaystack: (bookingId) => {
     return request({
       method: "POST",
-      url: "/customer/payments/create-intent",
+      url: "/customer/payments/initialize-paystack",
       data: { bookingId },
+    });
+  },
+
+  /**
+   * Verify Paystack Payment
+   * @param {string} reference
+   */
+  verifyPaystack: (reference) => {
+    return request({
+      method: "GET",
+      url: `/customer/payments/verify-paystack/${reference}`,
     });
   },
 };

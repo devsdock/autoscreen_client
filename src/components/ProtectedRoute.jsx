@@ -64,6 +64,9 @@ const ProtectedRoute = ({ children }) => {
                 dashboardStore.clearData();
               }
 
+              // Clear banner dismissal state on fresh auth redirect
+              sessionStorage.removeItem("dismissed_completed_bookings");
+
               // 2. Store in localStorage for this domain
               localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, authData.token);
               localStorage.setItem(

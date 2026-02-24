@@ -65,6 +65,16 @@ const bookingService = {
   },
 
   /**
+   * Get cancellation fee preview
+   */
+  getCancellationQuote: (bookingId) => {
+    return request({
+      method: "GET",
+      url: `/customer/bookings/${bookingId}/cancellation-quote`,
+    });
+  },
+
+  /**
    * Reschedule a booking
    */
   rescheduleBooking: (bookingId, data) => {

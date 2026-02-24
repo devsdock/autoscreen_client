@@ -44,6 +44,8 @@ const BookingDetailDrawer = ({
   const navigate = useNavigate();
   const { addToast } = useDashboardStore();
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelQuoteLoading, setCancelQuoteLoading] = useState(false);
+  const [cancelQuote, setCancelQuote] = useState(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -72,6 +74,22 @@ const BookingDetailDrawer = ({
     } finally {
       setLoading(false);
       setShowCancelModal(false);
+      setCancelQuote(null);
+    }
+  };
+
+  const handleOpenCancelModal = async () => {
+    setCancelQuoteLoading(true);
+    setShowCancelModal(true); // Open modal early so it shows a spinner
+    try {
+      const resp = await bookingService.getCancellationQuote(booking.id);
+      if (resp.success) {
+        setCancelQuote(resp.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch cancellation quote:", error);
+    } finally {
+      setCancelQuoteLoading(false);
     }
   };
 
@@ -731,15 +749,50 @@ const BookingDetailDrawer = ({
                 <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
                   Price
                 </h4>
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800 space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-slate-600 dark:text-slate-400">
                       {booking.service}
                     </span>
-                    <span className="font-bold text-primary-600 dark:text-primary-400 text-2xl">
+                    <span className="font-bold text-slate-900 dark:text-white">
                       {formatCurrency(booking.price?.total || 0)}
                     </span>
                   </div>
+
+                  {/* Show Refund/Cancellation Breakdown if applicable */}
+                  {booking.status === "Cancelled" && booking.cancellation && (
+                    <div className="pt-3 mt-3 border-t border-slate-200 dark:border-slate-700 bg-red-50/50 dark:bg-red-900/10 -mx-4 -mb-4 p-4 rounded-b-xl">
+                      {booking.cancellation.fee > 0 && (
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm text-red-600 dark:text-red-400">
+                            Cancellation Fee
+                          </span>
+                          <span className="font-medium text-red-600 dark:text-red-400">
+                            - {formatCurrency(booking.cancellation.fee)}
+                          </span>
+                        </div>
+                      )}
+                      {booking.cancellation.refundAmount > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                            Refund Processed
+                            {booking.cancellation.refundStatus === "pending" &&
+                              " (Pending)"}
+                          </span>
+                          <span className="font-bold text-green-700 dark:text-green-400">
+                            {formatCurrency(booking.cancellation.refundAmount)}
+                          </span>
+                        </div>
+                      )}
+                      {booking.cancellation.refundAmount === 0 &&
+                        booking.cancellation.fee > 0 && (
+                          <p className="text-xs text-red-500 mt-2 italic">
+                            No refund available. Cancellation fee equals full
+                            booking amount.
+                          </p>
+                        )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -814,7 +867,7 @@ const BookingDetailDrawer = ({
                   <Button
                     variant="outline"
                     className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20 justify-center"
-                    onClick={() => setShowCancelModal(true)}
+                    onClick={handleOpenCancelModal}
                   >
                     Cancel Booking
                   </Button>
@@ -837,14 +890,92 @@ const BookingDetailDrawer = ({
       {/* Cancel Confirmation Modal */}
       <ConfirmModal
         isOpen={showCancelModal}
-        onClose={() => setShowCancelModal(false)}
+        onClose={() => {
+          setShowCancelModal(false);
+          setCancelQuote(null);
+        }}
         onConfirm={handleCancel}
         title="Cancel this booking?"
-        message="Are you sure you want to cancel this booking? Cancellation may be subject to a fee if outside the grace period."
+        message={
+          cancelQuoteLoading ? (
+            <div className="flex items-center justify-center p-4">
+              <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+            </div>
+          ) : cancelQuote ? (
+            <div className="text-left mt-2">
+              <p className="mb-4 text-slate-600 dark:text-slate-300">
+                Are you sure you want to cancel this booking?
+              </p>
+
+              {cancelQuote.isPaid && (
+                <div className="bg-slate-50 dark:bg-slate-800/80 rounded-lg p-3 border border-slate-200 dark:border-slate-700 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-400">
+                      Booking Total:
+                    </span>
+                    <span className="font-medium text-slate-900 dark:text-slate-100">
+                      {formatCurrency(cancelQuote.bookingTotal)}
+                    </span>
+                  </div>
+
+                  {cancelQuote.cancellationFee > 0 && (
+                    <div className="flex justify-between text-red-600 dark:text-red-400">
+                      <span>
+                        Cancellation Fee
+                        {cancelQuote.wasWithinGracePeriod
+                          ? ""
+                          : " (Outside Grace Period)"}
+                        :
+                      </span>
+                      <span>
+                        - {formatCurrency(cancelQuote.cancellationFee)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between font-bold">
+                    <span
+                      className={
+                        cancelQuote.refundAmount > 0
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-slate-900 dark:text-slate-100"
+                      }
+                    >
+                      Refund Amount:
+                    </span>
+                    <span
+                      className={
+                        cancelQuote.refundAmount > 0
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-slate-900 dark:text-slate-100"
+                      }
+                    >
+                      {formatCurrency(cancelQuote.refundAmount)}
+                    </span>
+                  </div>
+
+                  {cancelQuote.refundAmount > 0 ? (
+                    <p className="text-xs text-slate-500 mt-2 pt-2 text-center italic">
+                      Refunds are processed to your original payment method
+                      within 3-5 business days.
+                    </p>
+                  ) : cancelQuote.cancellationFee > 0 ? (
+                    <p className="text-xs text-red-500 mt-2 pt-2 text-center italic">
+                      No refund available. The cancellation fee equals the full
+                      booking amount.
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          ) : (
+            "Are you sure you want to cancel this booking? Cancellation may be subject to a fee if outside the grace period."
+          )
+        }
         confirmLabel="Cancel Booking"
         cancelLabel="Keep Booking"
         type="danger"
-        loading={loading}
+        loading={loading || cancelQuoteLoading}
       />
 
       <PaymentModal

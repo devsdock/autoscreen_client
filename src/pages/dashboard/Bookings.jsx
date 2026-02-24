@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Search, Calendar, Filter, Loader2, Star } from "lucide-react";
 import useDashboardStore, {
   formatDate,
   formatCurrency,
 } from "../../store/useDashboardStore";
 import bookingService from "../../services/bookingService";
+import paymentService from "../../services/paymentService";
 import { mapBooking } from "../../utils/dataMappers";
 import PageHeader from "../../components/ui/PageHeader";
 import Card from "../../components/ui/Card";
@@ -26,6 +27,8 @@ const Bookings = () => {
 
   const [bookings, setBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [tabsInitialized, setTabsInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -59,13 +62,13 @@ const Bookings = () => {
             (s === "searching" && b.quotes?.length > 0)
           );
         });
-        if (hasActionRequired && !id) {
-          setActiveTab("action-required");
-        } else if (
-          !hasActionRequired &&
-          (activeTab === "action-required" || activeTab === "all")
-        ) {
-          setActiveTab("upcoming");
+        if (!tabsInitialized && !id) {
+          if (hasActionRequired) {
+            setActiveTab("action-required");
+          } else if (activeTab === "all" || activeTab === "action-required") {
+            setActiveTab("upcoming");
+          }
+          setTabsInitialized(true);
         }
       }
     } catch (err) {
@@ -75,9 +78,42 @@ const Bookings = () => {
     }
   };
 
+  const location = useLocation();
+
+  const verifyPayment = async (reference) => {
+    try {
+      setIsVerifying(true);
+      const res = await paymentService.verifyPaystack(reference);
+      if (res.success) {
+        addToast({
+          type: "success",
+          message: "Payment confirmed! Your booking is now scheduled.",
+        });
+        fetchBookings();
+      }
+    } catch (err) {
+      addToast({
+        type: "error",
+        message: "Failed to verify payment. Please contact support.",
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   useEffect(() => {
     fetchBookings();
-  }, []);
+
+    const queryParams = new URLSearchParams(location.search);
+    const reference = queryParams.get("reference");
+    const trxref = queryParams.get("trxref");
+
+    if (reference || trxref) {
+      verifyPayment(reference || trxref);
+      // Clean up URL
+      navigate("/dashboard/bookings", { replace: true });
+    }
+  }, [location.search]);
 
   // Sync selected booking when ID changes or bookings list updates
   useEffect(() => {
@@ -301,6 +337,20 @@ const Bookings = () => {
   };
 
   const emptyState = getEmptyState();
+
+  if (isVerifying) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <Loader2 className="w-10 h-10 text-primary-600 animate-spin" />
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
+          Verifying Payment...
+        </h2>
+        <p className="text-slate-500 dark:text-slate-400">
+          Please wait while we confirm your appointment.
+        </p>
+      </div>
+    );
+  }
 
   if (isLoading && bookings.length === 0) {
     return (

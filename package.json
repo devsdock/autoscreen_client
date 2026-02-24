@@ -10,8 +10,6 @@
   },
   "dependencies": {
     "@lottiefiles/react-lottie-player": "^3.6.0",
-    "@stripe/react-stripe-js": "^5.5.0",
-    "@stripe/stripe-js": "^8.6.4",
     "axios": "^1.13.2",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.468.0",
