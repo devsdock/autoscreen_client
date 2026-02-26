@@ -114,6 +114,19 @@ export const commonSAModels = {
     "Sandero",
     "Megane",
   ],
+  Nissan: [
+    "NP200",
+    "NP300 Hardbody",
+    "Navara",
+    "Magnite",
+    "Almera",
+    "X-Trail",
+    "Qashqai",
+    "Micra",
+    "Patrol",
+    "NV350 Impendulo",
+    "NV200",
+  ],
   Isuzu: ["D-Max", "mu-X", "KB"],
 };
 
