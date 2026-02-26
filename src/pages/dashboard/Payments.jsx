@@ -300,7 +300,18 @@ const Payments = () => {
                     <td className="px-6 py-4">
                       <span className="text-sm text-slate-600 dark:text-slate-400">
                         {payment.method && payment.method !== "—"
-                          ? payment.method
+                          ? payment.method.toLowerCase().includes("card") ||
+                            payment.method.toLowerCase().includes("visa") ||
+                            payment.method
+                              .toLowerCase()
+                              .includes("mastercard") ||
+                            payment.method.toLowerCase().includes("••••")
+                            ? "Card"
+                            : payment.method.toLowerCase() === "cash"
+                              ? "Cash"
+                              : payment.method.toLowerCase() === "eft"
+                                ? "EFT"
+                                : payment.method
                           : "—"}
                       </span>
                     </td>
