@@ -15,6 +15,7 @@ import {
   FileText,
   MessageSquare,
   Layers,
+  RotateCcw,
 } from "lucide-react";
 import Drawer, { DrawerFooter } from "../ui/Drawer";
 import StatusBadge from "../ui/StatusBadge";
@@ -552,7 +553,9 @@ const BookingDetailDrawer = ({
                       `}
                       >
                         {step.completed ? (
-                          isCancelled ? (
+                          step.isRefund ? (
+                            <RotateCcw size={14} />
+                          ) : isCancelled ? (
                             <X size={14} />
                           ) : (
                             <CheckCircle size={14} />
@@ -752,45 +755,67 @@ const BookingDetailDrawer = ({
                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800 space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-slate-600 dark:text-slate-400">
-                      {booking.service}
+                      Booking Amount
                     </span>
                     <span className="font-bold text-slate-900 dark:text-white">
                       {formatCurrency(booking.price?.total || 0)}
                     </span>
                   </div>
 
-                  {/* Show Refund/Cancellation Breakdown if applicable */}
-                  {booking.status === "Cancelled" && booking.cancellation && (
-                    <div className="pt-3 mt-3 border-t border-slate-200 dark:border-slate-700 bg-red-50/50 dark:bg-red-900/10 -mx-4 -mb-4 p-4 rounded-b-xl">
-                      {booking.cancellation.fee > 0 && (
-                        <div className="flex justify-between items-center mb-2">
+                  {/* Show Refund/Cancellation Breakdown */}
+                  {(booking.cancellation?.refundAmount > 0 ||
+                    booking.cancellation?.fee > 0 ||
+                    booking.paymentStatus === "Refunded" ||
+                    booking.paymentStatus === "Partial Refund") && (
+                    <div className="pt-3 mt-3 border-t border-slate-200 dark:border-slate-700 bg-slate-100/30 dark:bg-slate-900/20 -mx-4 -mb-4 p-4 rounded-b-xl space-y-2">
+                      {booking.cancellation?.fee > 0 && (
+                        <div className="flex justify-between items-center">
                           <span className="text-sm text-red-600 dark:text-red-400">
                             Cancellation Fee
                           </span>
                           <span className="font-medium text-red-600 dark:text-red-400">
-                            - {formatCurrency(booking.cancellation.fee)}
+                            {formatCurrency(booking.cancellation.fee)}
                           </span>
                         </div>
                       )}
-                      {booking.cancellation.refundAmount > 0 && (
+                      {(booking.cancellation?.refundAmount > 0 ||
+                        booking.paymentStatus === "Refunded" ||
+                        booking.paymentStatus === "Partial Refund") && (
                         <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                            Refund Processed
-                            {booking.cancellation.refundStatus === "pending" &&
+                          <span className="text-sm font-medium text-purple-700 dark:text-purple-400">
+                            {booking.paymentStatus === "Partial Refund"
+                              ? "Partial Refund Processed"
+                              : "Refund Processed"}
+                            {booking.cancellation?.refundStatus === "pending" &&
                               " (Pending)"}
                           </span>
-                          <span className="font-bold text-green-700 dark:text-green-400">
-                            {formatCurrency(booking.cancellation.refundAmount)}
+                          <span className="font-bold text-purple-700 dark:text-purple-400">
+                            -{" "}
+                            {formatCurrency(
+                              booking.cancellation?.refundAmount ||
+                                (booking.paymentStatus === "Refunded"
+                                  ? booking.price?.total
+                                  : 0),
+                            )}
                           </span>
                         </div>
                       )}
-                      {booking.cancellation.refundAmount === 0 &&
-                        booking.cancellation.fee > 0 && (
-                          <p className="text-xs text-red-500 mt-2 italic">
-                            No refund available. Cancellation fee equals full
-                            booking amount.
-                          </p>
-                        )}
+
+                      {/* Net Total after adjustments */}
+                      <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Net Total
+                        </span>
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          {formatCurrency(
+                            (booking.price?.total || 0) -
+                              (booking.cancellation?.refundAmount ||
+                                (booking.paymentStatus === "Refunded"
+                                  ? booking.price?.total
+                                  : 0)),
+                          )}
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>

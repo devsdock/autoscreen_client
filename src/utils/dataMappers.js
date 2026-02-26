@@ -242,14 +242,32 @@ export const mapBooking = (booking) => {
       completed: currentStatusLevel >= 6,
     });
 
+    // 7. Refund (Special Case)
+    if (
+      currentStatus === "cancelled" &&
+      (booking.cancellation?.refundAmount > 0 ||
+        booking.paymentStatus === "refunded")
+    ) {
+      stages.push({
+        status: "Refund Processed",
+        date: booking.cancellation?.refundedAt || booking.updatedAt,
+        completed: true,
+        isRefund: true,
+      });
+    }
+
     return stages;
   };
 
   // Normalize payment status
-  const normalizedPaymentStatus = booking.paymentStatus
-    ? booking.paymentStatus.charAt(0).toUpperCase() +
-      booking.paymentStatus.slice(1).toLowerCase()
-    : "Unpaid";
+  const getNormalizedPaymentStatus = () => {
+    if (!booking.paymentStatus) return "Unpaid";
+    const ps = booking.paymentStatus.toLowerCase();
+    if (ps === "partially_refunded") return "Partial Refund";
+    return ps.charAt(0).toUpperCase() + ps.slice(1);
+  };
+
+  const normalizedPaymentStatus = getNormalizedPaymentStatus();
 
   // Format address
   let addressStr = "Location not specified";
@@ -313,6 +331,7 @@ export const mapBooking = (booking) => {
         : "Mobile Service",
     statusLabel: formatBookingStatus(booking.status),
     paymentStatus: normalizedPaymentStatus,
+    refundAmount: booking.cancellation?.refundAmount || 0,
     price: {
       service:
         (booking.priceBreakdown?.glassPrice || 0) +

@@ -7,6 +7,9 @@ import {
   Calendar,
   Receipt,
   Download,
+  Clock,
+  RotateCcw,
+  History,
 } from "lucide-react";
 import useDashboardStore, {
   formatDate,
@@ -70,6 +73,9 @@ const Payments = () => {
   const pendingTotal = payments
     .filter((p) => p.status === "Unpaid")
     .reduce((sum, p) => sum + p.amount, 0);
+  const totalRefunded = payments
+    .filter((p) => p.status === "Refunded")
+    .reduce((sum, p) => sum + (p.refundAmount || p.amount), 0);
   const lastPaid = payments
     .filter((p) => p.status === "Paid")
     .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
@@ -148,7 +154,7 @@ const Payments = () => {
       />
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={Wallet}
           value={formatCurrency(totalSpent)}
@@ -157,16 +163,22 @@ const Payments = () => {
           iconColor="text-green-600 dark:text-green-400"
         />
         <StatCard
-          icon={CreditCard}
+          icon={Clock}
           value={formatCurrency(pendingTotal)}
           label="Pending Payments"
           iconBgColor="bg-amber-50 dark:bg-amber-900/20"
           iconColor="text-amber-600 dark:text-amber-400"
         />
         <StatCard
-          icon={Receipt}
-          value={lastPaid ? formatCurrency(lastPaid.amount) : "—"}
-          subValue={lastPaid ? `on ${formatDate(lastPaid.date)}` : undefined}
+          icon={RotateCcw}
+          value={formatCurrency(totalRefunded)}
+          label="Total Refunded"
+          iconBgColor="bg-red-50 dark:bg-red-900/20"
+          iconColor="text-red-600 dark:text-red-400"
+        />
+        <StatCard
+          icon={History}
+          value={lastPaid ? formatDate(lastPaid.date) : "N/A"}
           label="Last Payment"
           iconBgColor="bg-blue-50 dark:bg-blue-900/20"
           iconColor="text-blue-600 dark:text-blue-400"
@@ -266,9 +278,17 @@ const Payments = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="font-semibold text-slate-900 dark:text-white">
-                        {formatCurrency(payment.amount)}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-slate-900 dark:text-white">
+                          {formatCurrency(payment.amount)}
+                        </span>
+                        {payment.status === "Refunded" &&
+                          payment.refundAmount > 0 && (
+                            <span className="text-[10px] text-red-600 dark:text-red-400 font-medium">
+                              Refund: {formatCurrency(payment.refundAmount)}
+                            </span>
+                          )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-slate-600 dark:text-slate-400">

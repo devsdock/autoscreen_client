@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Search, Calendar, Filter, Loader2, Star } from "lucide-react";
+import {
+  Search,
+  Calendar,
+  Filter,
+  Loader2,
+  Star,
+  RotateCcw,
+} from "lucide-react";
 import useDashboardStore, {
   formatDate,
   formatCurrency,
@@ -443,6 +450,17 @@ const Bookings = () => {
                         type="payment"
                       />
                     </div>
+                    {["refunded", "partial refund"].includes(
+                      booking.paymentStatus?.toLowerCase(),
+                    ) &&
+                      booking.refundAmount > 0 && (
+                        <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 font-medium bg-red-50 dark:bg-red-900/10 px-2 py-0.5 rounded-full w-fit">
+                          <RotateCcw size={12} />
+                          <span>
+                            Refunded: {formatCurrency(booking.refundAmount)}
+                          </span>
+                        </div>
+                      )}
                   </div>
 
                   <div>

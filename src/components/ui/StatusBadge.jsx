@@ -171,25 +171,25 @@ const paymentStatusConfig = {
   },
   Refunded: {
     color:
-      "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700",
+      "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800",
     icon: CreditCard,
     label: "Refunded",
   },
   refunded: {
     color:
-      "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700",
+      "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800",
     icon: CreditCard,
     label: "Refunded",
   },
   "Partially Refunded": {
     color:
-      "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700",
+      "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800",
     icon: CreditCard,
     label: "Partially Refunded",
   },
   partially_refunded: {
     color:
-      "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700",
+      "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800",
     icon: CreditCard,
     label: "Partially Refunded",
   },
