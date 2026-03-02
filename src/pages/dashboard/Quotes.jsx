@@ -80,7 +80,12 @@ const Quotes = () => {
         if (found) {
           setSelectedQuoteId(found.id);
           // If the found quote has a different status than active filter, switch to All or its status
-          if (activeFilter !== "all" && found.status !== activeFilter) {
+          // ONLY if this is a new selection (routeId changed from something else)
+          if (
+            activeFilter !== "all" &&
+            found.status !== activeFilter &&
+            selectedQuoteId !== routeId
+          ) {
             setActiveFilter("all");
           }
           if (window.innerWidth < 1024) {
@@ -92,7 +97,11 @@ const Quotes = () => {
           const fetched = await fetchQuoteDetails(routeId);
           if (fetched) {
             setSelectedQuoteId(routeId);
-            if (activeFilter !== "all" && fetched.status !== activeFilter) {
+            if (
+              activeFilter !== "all" &&
+              fetched.status !== activeFilter &&
+              selectedQuoteId !== routeId
+            ) {
               setActiveFilter("all");
             }
             if (window.innerWidth < 1024) {
