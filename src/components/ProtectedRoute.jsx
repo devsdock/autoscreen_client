@@ -78,6 +78,7 @@ const ProtectedRoute = ({ children }) => {
               try {
                 const url = new URL(window.location.href);
                 url.searchParams.delete("authData");
+                url.searchParams.delete("u");
                 window.history.replaceState(
                   {},
                   document.title,
@@ -142,6 +143,43 @@ const ProtectedRoute = ({ children }) => {
         // 5. Token exists, initialize auth store (validates session if needed)
         console.log("[ProtectedRoute] Token found, initializing auth store...");
         await initAuth();
+
+        // 6. User mismatch check for deep links (e.g. email links)
+        const emailCheck = urlParams.get("u");
+        if (emailCheck) {
+          const freshUser = useAuthStore.getState().user;
+          const currentEmail = freshUser?.email;
+
+          if (
+            currentEmail &&
+            emailCheck &&
+            currentEmail.toLowerCase() !==
+              decodeURIComponent(emailCheck).toLowerCase()
+          ) {
+            console.warn(
+              `[ProtectedRoute] Auth mismatch! URL intended for ${emailCheck}, but logged in as ${currentEmail}`,
+            );
+
+            // Set a flag or session storage to show a warning on the landing page
+            sessionStorage.setItem("deep_link_user_mismatch", emailCheck);
+          }
+        }
+
+        // 7. Cleanup URL parameters (including user hints)
+        try {
+          const url = new URL(window.location.href);
+          if (url.searchParams.has("u")) {
+            url.searchParams.delete("u");
+            window.history.replaceState(
+              {},
+              document.title,
+              url.pathname + url.search,
+            );
+          }
+        } catch (e) {
+          console.error("[ProtectedRoute] URL cleanup failed:", e);
+        }
+
         setChecking(false);
       } catch (error) {
         console.error(

@@ -261,11 +261,11 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
             <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
               <Car size={16} className="text-slate-500 dark:text-slate-400" />
             </div>
-            <div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/30 rounded-lg border border-slate-100 dark:border-slate-800 flex-1">
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wide opacity-70">
                 Vehicle
               </p>
-              <p className="font-medium text-slate-800 dark:text-slate-200">
+              <p className="font-medium text-slate-900 dark:text-white text-sm">
                 {typeof quote.vehicle === "object"
                   ? `${quote.vehicle.year || ""} ${quote.vehicle.make || ""} ${
                       quote.vehicle.model || ""
@@ -274,10 +274,10 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
               </p>
               {(quote.vehicleData?.hasAdasCamera ||
                 quote.vehicleData?.hasRainSensor) && (
-                <div className="flex flex-wrap gap-1 mt-1">
+                <div className="flex flex-wrap gap-1 mt-1.5">
                   {quote.vehicleData?.hasAdasCamera && (
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
-                      ADAS
+                      ADAS Camera
                     </span>
                   )}
                   {quote.vehicleData?.hasRainSensor && (
@@ -299,19 +299,59 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
               />
             </div>
             <div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Service
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide opacity-70">
+                Selected Services & Glass
               </p>
-              <p className="font-medium text-slate-800 dark:text-slate-200">
-                {Array.isArray(quote.glassTypes) && quote.glassTypes.length > 0
-                  ? quote.glassTypes.join(", ")
-                  : quote.glassType}{" "}
-                -{" "}
-                {Array.isArray(quote.serviceTypes) &&
-                quote.serviceTypes.length > 0
-                  ? quote.serviceTypes.join(", ")
-                  : quote.serviceType}
-              </p>
+              <div className="space-y-2">
+                {quote.serviceSelections &&
+                quote.serviceSelections.length > 0 ? (
+                  quote.serviceSelections.map((selection, sIdx) => (
+                    <div
+                      key={sIdx}
+                      className="flex flex-col p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/50 shadow-sm"
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="w-5 h-5 rounded bg-primary-500/10 flex items-center justify-center text-primary-600 dark:text-primary-400">
+                          <FileText size={12} />
+                        </div>
+                        <span className="font-bold text-xs text-slate-900 dark:text-slate-100 uppercase tracking-tight">
+                          {selection.serviceName}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 ml-7">
+                        {selection.glassTypes &&
+                        selection.glassTypes.length > 0 ? (
+                          selection.glassTypes.map((gt, gIdx) => (
+                            <span
+                              key={gIdx}
+                              className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 text-slate-600 dark:text-slate-300"
+                            >
+                              {gt}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic ml-1">
+                            No glass selected
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-lg shadow-sm">
+                    <p className="font-medium text-slate-900 dark:text-white text-sm">
+                      {Array.isArray(quote.serviceTypes)
+                        ? quote.serviceTypes.join(", ")
+                        : quote.serviceType}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      {Array.isArray(quote.glassTypes)
+                        ? quote.glassTypes.join(", ")
+                        : quote.glassType || "-"}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

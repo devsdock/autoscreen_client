@@ -54,3 +54,4 @@ The customer portal never shows Platform Fee or Provider Earnings — those are 
 _Portal: **autoscreen_client** | Last updated: 2 March 2026_
 
 | CLI-MULT | 🟢 FIXED | Multiple Portals — Service Arrays | **Multi-selection fields not resolving in lists/details** | **Fixed:** Updated dataMapping and lists across Provider Earnings/Jobs, Customer Payments, Admin Bookings/Quotes to iterate over serviceSelections arrays and render dynamically.\n
+| GLB-MEM | �� FIXED | Backend Node — Sorting Limits | **Sort exceeded memory limit of 33554432 bytes** | **Fixed:** Addressed llowDiskUse:true to all pagination and document fetching Mongoose.find().sort() pipelines to stop out of memory errors.\n

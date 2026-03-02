@@ -866,10 +866,10 @@ const BookingDetailDrawer = ({
 
                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800 space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">
-                      Booking Amount
+                    <span className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                      Service Amount
                     </span>
-                    <span className="font-bold text-slate-900 dark:text-white">
+                    <span className="font-bold text-slate-900 dark:text-white text-lg">
                       {formatCurrency(booking.price?.total || 0)}
                     </span>
                   </div>

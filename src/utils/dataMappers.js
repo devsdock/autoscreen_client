@@ -4,6 +4,9 @@ import { formatDate, formatDateTime, formatTimeSlot } from "./dateUtils";
 // Helper functions for formatting
 export const formatServiceType = (serviceType) => {
   if (!serviceType) return "-";
+  if (Array.isArray(serviceType)) {
+    return serviceType.map((st) => formatServiceType(st)).join(", ");
+  }
   const st = serviceType.toLowerCase();
 
   if (st === "replacement") return "Glass Replacement";
@@ -52,6 +55,9 @@ const formatBookingStatus = (status) => {
 
 const formatGlassType = (glassType) => {
   if (!glassType) return "-";
+  if (Array.isArray(glassType)) {
+    return glassType.map((gt) => formatGlassType(gt)).join(", ");
+  }
   const st = glassType.toLowerCase();
 
   // Special case for common positions
@@ -128,6 +134,10 @@ export const mapBooking = (booking) => {
 
   // Format service name
   const formatServiceName = () => {
+    // Check for plural serviceTypes first
+    if (booking.serviceTypes?.length > 1) {
+      return booking.serviceTypes.map(formatServiceType).join(", ");
+    }
     // If service object exists with a name (priority)
     if (typeof booking.service === "object" && booking.service?.name) {
       return booking.service.name;

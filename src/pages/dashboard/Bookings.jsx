@@ -7,6 +7,7 @@ import {
   Loader2,
   Star,
   RotateCcw,
+  AlertCircle,
 } from "lucide-react";
 import useDashboardStore, {
   formatDate,
@@ -43,6 +44,27 @@ const Bookings = () => {
     (state) => state.fetchBookingDetails,
   );
   const [error, setError] = useState(null);
+  const [mismatchEmail, setMismatchEmail] = useState(null);
+
+  // Check for Deep Link User Mismatch
+  useEffect(() => {
+    const mismatch = sessionStorage.getItem("deep_link_user_mismatch");
+    if (mismatch) {
+      setMismatchEmail(mismatch);
+    }
+  }, []);
+
+  const handleLogoutAndSwitch = () => {
+    sessionStorage.removeItem("deep_link_user_mismatch");
+    const { logout } = useAuthStore.getState();
+    logout();
+    window.location.reload();
+  };
+
+  const dismissMismatch = () => {
+    sessionStorage.removeItem("deep_link_user_mismatch");
+    setMismatchEmail(null);
+  };
 
   const fetchBookings = async () => {
     try {
@@ -392,6 +414,45 @@ const Bookings = () => {
         title="My Bookings"
         subtitle="Track your auto glass appointments"
       />
+
+      {/* Mismatch Warning */}
+      {mismatchEmail && (
+        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl flex items-start gap-3">
+          <AlertCircle
+            className="text-amber-600 dark:text-amber-400 mt-0.5"
+            size={20}
+          />
+          <div className="flex-1">
+            <h3 className="font-semibold text-amber-900 dark:text-amber-100">
+              Account Mismatch Detected
+            </h3>
+            <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+              You clicked a link for <strong>{mismatchEmail}</strong>, but you
+              are currently logged in as{" "}
+              <strong>{useAuthStore.getState().user?.email}</strong>. The
+              booking you are looking for may not be visible.
+            </p>
+            <div className="flex gap-3 mt-3">
+              <Button
+                onClick={handleLogoutAndSwitch}
+                size="sm"
+                variant="secondary"
+                className="bg-amber-100 dark:bg-amber-900 hover:bg-amber-200 dark:hover:bg-amber-800 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-100"
+              >
+                Log Out & Switch
+              </Button>
+              <Button
+                onClick={dismissMismatch}
+                size="sm"
+                variant="ghost"
+                className="text-amber-700 dark:text-amber-400"
+              >
+                Stay as {useAuthStore.getState().user?.name}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">

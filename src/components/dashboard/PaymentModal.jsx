@@ -74,78 +74,14 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
     >
       <div className="space-y-6">
         {/* Amount Summary */}
-        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-700/50">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-slate-600 dark:text-slate-400">
-                Service Amount
-              </span>
-              <span className="text-slate-900 dark:text-white font-medium">
-                {formatCurrency(payment.breakdown.service)}
-              </span>
-            </div>
-            {payment.breakdown.callout > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-600 dark:text-slate-400">
-                  Callout Fee
-                </span>
-                <span className="text-slate-900 dark:text-white font-medium">
-                  {formatCurrency(payment.breakdown.callout)}
-                </span>
-              </div>
-            )}
-            {surcharge > 0 && (
-              <div className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400 font-medium">
-                <span>Transaction Coverage</span>
-                <span>+{formatCurrency(surcharge)}</span>
-              </div>
-            )}
-            <div className="border-t border-slate-200 dark:border-slate-700 pt-3 mt-1">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-slate-900 dark:text-white">
-                  Total Payable
-                </span>
-                <span className="font-bold text-primary-600 dark:text-primary-400 text-2xl">
-                  {formatCurrency(payment.amount + surcharge)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Fee Coverage Toggle */}
-        <div
-          className={`p-4 rounded-xl border transition-all cursor-pointer ${
-            coversFees
-              ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/10 dark:border-emerald-800"
-              : "bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700"
-          }`}
-          onClick={() => setCoversFees(!coversFees)}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-                coversFees
-                  ? "bg-emerald-500 border-emerald-500"
-                  : "bg-white border-slate-300 dark:bg-slate-700 dark:border-slate-600"
-              }`}
-            >
-              {coversFees && (
-                <Zap size={14} className="text-white fill-current" />
-              )}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                Cover transaction fees
-              </p>
-              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                Add{" "}
-                {formatCurrency(
-                  payment.amount / (1 - 0.029 * 1.15) - payment.amount,
-                )}{" "}
-                to support our platform and avoid processing deductions.
-              </p>
-            </div>
+        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6 border border-slate-100 dark:border-slate-700/50">
+          <div className="flex justify-between items-center">
+            <span className="text-slate-600 dark:text-slate-400 font-medium">
+              Service Amount
+            </span>
+            <span className="text-primary-600 dark:text-primary-400 font-bold text-3xl">
+              {formatCurrency(payment.amount)}
+            </span>
           </div>
         </div>
 
@@ -199,7 +135,7 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
           disabled={loading}
           className="px-8 bg-primary-600 hover:bg-primary-700 text-white"
         >
-          Proceed to Pay {formatCurrency(payment.amount + surcharge)}
+          Proceed to Pay {formatCurrency(payment.amount)}
         </Button>
       </ModalActions>
     </Modal>
@@ -207,4 +143,3 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
 };
 
 export default PaymentModal;
-
