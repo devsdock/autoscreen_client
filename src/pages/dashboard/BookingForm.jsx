@@ -176,7 +176,9 @@ const BookingForm = () => {
   const [formData, setFormData] = useState({
     // Step 1: Service & Vehicle
     // Service must be explicitly selected by the user
-    service: null,
+    serviceTypes:
+      searchCriteria?.serviceTypes ||
+      (searchCriteria?.serviceType ? [searchCriteria.serviceType] : []),
     vehicle: {
       make: searchCriteria?.vehicleMake || "",
       model: searchCriteria?.vehicleModel || "",
@@ -186,7 +188,9 @@ const BookingForm = () => {
       otherMake: "",
       otherModel: "",
     },
-    glassType: searchCriteria?.glassType || "",
+    glassTypes:
+      searchCriteria?.glassTypes ||
+      (searchCriteria?.glassType ? [searchCriteria.glassType] : []),
 
     // Step 2: Date & Time
     scheduledDate: "",
@@ -198,6 +202,7 @@ const BookingForm = () => {
     // Step 4: Remarks & Images
     remarks: "",
     uploadedImages: [],
+    serviceSelections: searchCriteria?.serviceSelections || [], // [{serviceName, serviceType, glassTypes: []}]
   });
 
   const [errors, setErrors] = useState({});
@@ -281,6 +286,7 @@ const BookingForm = () => {
           "Side Window (Rear Left)",
           "Side Window (Rear Right)",
           "Rear Window",
+          "Door Glass",
           "Quarter Glass",
           "Sunroof",
         ]);
@@ -296,6 +302,7 @@ const BookingForm = () => {
               { glassType: "Side Window (Rear Left)", price: 850 },
               { glassType: "Side Window (Rear Right)", price: 850 },
               { glassType: "Rear Window", price: 1450 },
+              { glassType: "Door Glass", price: 850 },
               { glassType: "Quarter Glass", price: 650 },
               { glassType: "Sunroof", price: 2200 },
             ],
@@ -311,6 +318,7 @@ const BookingForm = () => {
               { glassType: "Side Window (Rear Left)", price: 450 },
               { glassType: "Side Window (Rear Right)", price: 450 },
               { glassType: "Rear Window", price: 450 },
+              { glassType: "Door Glass", price: 450 },
               { glassType: "Quarter Glass", price: 450 },
               { glassType: "Sunroof", price: 450 },
             ],
@@ -434,17 +442,16 @@ const BookingForm = () => {
   useEffect(() => {
     if (
       adminServiceTypes.length > 0 &&
-      searchCriteria?.serviceType &&
-      !formData.service
+      searchCriteria?.serviceTypes &&
+      formData.serviceTypes.length === 0
     ) {
-      const matchingService = adminServiceTypes.find(
-        (st) => st.name === searchCriteria.serviceType,
-      );
-      if (matchingService) {
-        setFormData((prev) => ({ ...prev, service: matchingService }));
-      }
+      setFormData((prev) => ({
+        ...prev,
+        serviceTypes: searchCriteria.serviceTypes,
+        serviceSelections: searchCriteria.serviceSelections || [],
+      }));
     }
-  }, [adminServiceTypes, searchCriteria, formData.service]);
+  }, [adminServiceTypes, searchCriteria, formData.serviceTypes]);
 
   // Pre-fill from saved details (Uber Style)
   useEffect(() => {
@@ -540,6 +547,110 @@ const BookingForm = () => {
     }
   };
 
+  const handleToggleService = (serviceName) => {
+    setFormData((prev) => {
+      const currentServices = prev.serviceTypes || [];
+      const isSelected = currentServices.includes(serviceName);
+      const newServices = isSelected
+        ? currentServices.filter((s) => s !== serviceName)
+        : [...currentServices, serviceName];
+
+      // Sync serviceSelections
+      let newServiceSelections = [...(prev.serviceSelections || [])];
+      if (isSelected) {
+        newServiceSelections = newServiceSelections.filter(
+          (s) => s.serviceName !== serviceName,
+        );
+      } else {
+        const matchingDef = adminServiceTypes.find(
+          (st) => st.name === serviceName,
+        );
+        const stType =
+          matchingDef?.id ||
+          (serviceName.toLowerCase().includes("repair")
+            ? "repair"
+            : serviceName.toLowerCase().includes("replacement")
+              ? "replacement"
+              : "tinting");
+
+        newServiceSelections.push({
+          serviceName,
+          serviceType: stType,
+          glassTypes: [],
+        });
+      }
+
+      // Filter glass types to only keep those valid for the new set of services
+      const validGlassTypes = new Set();
+      adminServiceTypes.forEach((st) => {
+        if (newServices.includes(st.name)) {
+          st.pricing?.forEach((p) => {
+            if (p.price > 0) validGlassTypes.add(p.glassType);
+          });
+        }
+      });
+
+      const newGlassTypes = (prev.glassTypes || []).filter((g) =>
+        validGlassTypes.has(g),
+      );
+
+      return {
+        ...prev,
+        serviceTypes: newServices,
+        glassTypes: newGlassTypes, // Remove invalid ones
+        serviceSelections: newServiceSelections,
+      };
+    });
+
+    if (errors.serviceType)
+      setErrors((prev) => ({ ...prev, serviceType: null }));
+    if (errors.glassType) setErrors((prev) => ({ ...prev, glassType: null }));
+  };
+
+  const handleToggleGlassForService = (serviceName, glassName) => {
+    setFormData((prev) => {
+      const newServiceSelections = prev.serviceSelections.map((s) => {
+        if (s.serviceName === serviceName) {
+          const currentGlass = s.glassTypes || [];
+          const isSelected = currentGlass.includes(glassName);
+          const newGlassList = isSelected
+            ? currentGlass.filter((g) => g !== glassName)
+            : [...currentGlass, glassName];
+          return { ...s, glassTypes: newGlassList };
+        }
+        return s;
+      });
+
+      // Update global glassTypes for backward compatibility (union of all)
+      const allSelectedGlass = new Set();
+      newServiceSelections.forEach((s) => {
+        s.glassTypes.forEach((g) => allSelectedGlass.add(g));
+      });
+
+      return {
+        ...prev,
+        serviceSelections: newServiceSelections,
+        glassTypes: Array.from(allSelectedGlass),
+      };
+    });
+
+    if (errors.glassType) setErrors((prev) => ({ ...prev, glassType: null }));
+  };
+
+  const handleToggleGlass = (glassName) => {
+    setFormData((prev) => {
+      const currentGlass = prev.glassTypes || [];
+      const isSelected = currentGlass.includes(glassName);
+      const newGlass = isSelected
+        ? currentGlass.filter((g) => g !== glassName)
+        : [...currentGlass, glassName];
+
+      return { ...prev, glassTypes: newGlass };
+    });
+
+    if (errors.glassType) setErrors((prev) => ({ ...prev, glassType: null }));
+  };
+
   const updateVehicle = (field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -595,8 +706,10 @@ const BookingForm = () => {
     switch (step) {
       case 1:
         // Check service type first (new flow: service → glass type)
-        if (!formData.service) newErrors.service = "Please select a service";
-        if (!formData.glassType) newErrors.glassType = "Glass type is required";
+        if (!formData.serviceTypes || formData.serviceTypes.length === 0)
+          newErrors.service = "Please select a service";
+        if (!formData.glassTypes || formData.glassTypes.length === 0)
+          newErrors.glassType = "Glass type is required";
         if (!formData.vehicle.make)
           newErrors.vehicleMake = "Vehicle make is required";
         if (!formData.vehicle.model)
@@ -643,17 +756,64 @@ const BookingForm = () => {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files);
-    const newImages = files.map((file) => ({
-      id: URL.createObjectURL(file),
-      url: URL.createObjectURL(file),
-      name: file.name,
-      file: file, // Store the original file for upload
-    }));
+    const validImages = [];
+
+    for (const file of files) {
+      if (
+        file.type.startsWith("image/") ||
+        file.name.toLowerCase().endsWith(".heic")
+      ) {
+        let fileToProcess = file;
+
+        // Handle HEIC images
+        if (
+          file.type === "image/heic" ||
+          file.name.toLowerCase().endsWith(".heic")
+        ) {
+          try {
+            if (window.heic2any) {
+              const loadingId = addToast({
+                type: "info",
+                message: "Processing HEIC image...",
+              });
+              const result = await window.heic2any({
+                blob: file,
+                toType: "image/jpeg",
+                quality: 0.7,
+              });
+
+              const blob = Array.isArray(result) ? result[0] : result;
+              fileToProcess = new File(
+                [blob],
+                file.name.replace(/\.[^/.]+$/, "") + ".jpg",
+                {
+                  type: "image/jpeg",
+                },
+              );
+              // Note: addToast return ID is used for removal if store supports it,
+              // otherwise we just let it fade.
+            }
+          } catch (err) {
+            console.error("HEIC conversion failed:", err);
+            addToast({ type: "error", message: "Failed to process HEIC file" });
+            continue;
+          }
+        }
+
+        validImages.push({
+          id: URL.createObjectURL(fileToProcess),
+          url: URL.createObjectURL(fileToProcess),
+          name: fileToProcess.name,
+          file: fileToProcess,
+        });
+      }
+    }
+
     updateFormData("uploadedImages", [
       ...formData.uploadedImages,
-      ...newImages,
+      ...validImages,
     ]);
   };
 
@@ -752,7 +912,11 @@ const BookingForm = () => {
   };
 
   const handleSubmit = async () => {
-    if (!formData.service || !formData.address || !formData.vehicle) {
+    if (
+      !formData.serviceTypes?.length ||
+      !formData.address ||
+      !formData.vehicle
+    ) {
       addToast({ type: "error", message: "Incomplete booking details" });
       return;
     }
@@ -784,12 +948,30 @@ const BookingForm = () => {
       }
 
       // Get the actual service price for the selected glass type
-      const servicePrice =
-        formData.service.pricing?.find(
-          (p) => p.glassType === formData.glassType,
-        )?.price ||
-        formData.service.fromPrice ||
-        0;
+      let servicePrice = 0;
+      formData.serviceTypes.forEach((serviceName) => {
+        const adminService = adminServiceTypes.find(
+          (st) => st.name === serviceName,
+        );
+        if (adminService) {
+          formData.glassTypes.forEach((gt) => {
+            const pricingEntry = adminService.pricing?.find(
+              (p) => p.glassType === gt,
+            );
+            if (pricingEntry) {
+              servicePrice += pricingEntry.price;
+            }
+          });
+        }
+      });
+      if (servicePrice === 0 && formData.serviceTypes.length > 0) {
+        formData.serviceTypes.forEach((serviceName) => {
+          const adminService = adminServiceTypes.find(
+            (st) => st.name === serviceName,
+          );
+          if (adminService) servicePrice += adminService.fromPrice || 0;
+        });
+      }
 
       // Calculate commission (lock in current rates)
       const commissionAmount =
@@ -808,16 +990,21 @@ const BookingForm = () => {
 
       const bookingData = {
         provider: provider?.id || null, // Optional for broadcast flow
-        serviceType:
-          formData.service?.id ||
-          formData.service?.name ||
-          formData.service ||
-          "",
-        glassType: (formData.glassType || "windscreen")
-          .toLowerCase()
-          .trim()
-          .replace(/\s+/g, "-") // Use dashes for consistency with backend IDs
-          .replace(/[()]/g, ""), // Remove parentheses common in labels like "Side Window (Front Left)"
+        serviceTypes: (() => {
+          const mappedServices = new Set();
+          formData.serviceTypes.forEach((service) => {
+            const st = service.toLowerCase();
+            if (st.includes("replacement")) mappedServices.add("replacement");
+            else if (st.includes("repair")) mappedServices.add("repair");
+            else if (st.includes("smash") || st.includes("tint"))
+              mappedServices.add("tinting");
+            else mappedServices.add("other");
+          });
+          return Array.from(mappedServices);
+        })(),
+        glassTypes: formData.glassTypes.map((g) =>
+          g.toLowerCase().trim().replace(/\s+/g, "-").replace(/[()]/g, ""),
+        ),
         vehicle: {
           make:
             formData.vehicle.make === "Other"
@@ -855,6 +1042,7 @@ const BookingForm = () => {
         },
         customerNotes: formData.remarks,
         damageImages: uploadedImageUrls, // Add uploaded images to booking
+        serviceSelections: formData.serviceSelections,
       };
 
       // Final safety net: Ensure coordinates are present
@@ -999,61 +1187,38 @@ const BookingForm = () => {
             {/* Service Type Selection - FIRST */}
             <div>
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                Select Service Type
+                Select Service Types
               </h3>
               <div className="space-y-3">
-                {(searchCriteria?.serviceType
-                  ? adminServiceTypes.filter(
-                      (st) => st.name === searchCriteria.serviceType,
-                    )
-                  : adminServiceTypes
-                ).map((serviceType) => {
-                  const isSelected =
-                    formData.service?.name === serviceType.name;
-
-                  // Get price for selected glass type, or first price as fallback
-                  const displayPrice =
-                    isSelected && formData.glassType
-                      ? serviceType.pricing?.find(
-                          (p) => p.glassType === formData.glassType,
-                        )?.price ||
-                        serviceType.pricing?.[0]?.price ||
-                        0
-                      : serviceType.pricing?.[0]?.price || 0;
+                {adminServiceTypes.map((serviceType) => {
+                  const isSelected = formData.serviceTypes?.includes(
+                    serviceType.name,
+                  );
 
                   return (
                     <div
                       key={serviceType.id || serviceType.name}
-                      onClick={() => {
-                        updateFormData("service", serviceType);
-                        // Clear glass type when service changes
-                        updateFormData("glassType", "");
-                      }}
-                      className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                      onClick={() => handleToggleService(serviceType.name)}
+                      className={`relative p-4 rounded-xl border cursor-pointer transition-all ${
                         isSelected
-                          ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-600"
+                          ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-600 ring-1 ring-primary-500"
                           : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700"
                       }`}
                     >
+                      {isSelected && (
+                        <div className="absolute top-4 right-4 w-5 h-5 bg-primary-600 text-white rounded-full flex items-center justify-center">
+                          <Check size={12} strokeWidth={3} />
+                        </div>
+                      )}
                       <div className="flex items-center justify-between">
-                        <div className="flex-1">
+                        <div className="flex-1 pr-8">
                           <div className="flex items-center gap-2">
                             <h4 className="font-semibold text-slate-900 dark:text-white">
                               {serviceType.name}
                             </h4>
-                            {isSelected && (
-                              <Check
-                                size={18}
-                                className="text-primary-600 dark:text-primary-400"
-                              />
-                            )}
                           </div>
                           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                            {isSelected && formData.glassType
-                              ? `${
-                                  formData.glassType
-                                } ${serviceType.name.toLowerCase()}`
-                              : serviceType.description}
+                            {serviceType.description}
                           </p>
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
                             <Clock size={12} /> ~
@@ -1073,12 +1238,77 @@ const BookingForm = () => {
               )}
             </div>
 
-            {/* Glass Type Selection - SECOND (filtered by service) */}
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                Select Glass Type
+            {/* Glass Type Selection - SECOND (Grouped by Service) */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4 mt-6">
+                Select Glass for Each Service{" "}
+                <span className="text-red-500">*</span>
               </h3>
-              {!formData.service && (
+
+              {formData.serviceSelections &&
+              formData.serviceSelections.length > 0 ? (
+                <div className="space-y-6">
+                  {formData.serviceSelections.map((selection) => {
+                    const serviceDef = adminServiceTypes.find(
+                      (st) => st.name === selection.serviceName,
+                    );
+                    const validGlassForThisService =
+                      serviceDef?.pricing
+                        ?.filter((p) => p.price > 0)
+                        .map((p) => p.glassType)
+                        .sort() || [];
+
+                    return (
+                      <div
+                        key={selection.serviceName}
+                        className="p-4 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30"
+                      >
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-8 h-8 rounded-lg bg-primary-500/10 flex items-center justify-center text-primary-600 dark:text-primary-400">
+                            <FileText size={16} />
+                          </div>
+                          <h3 className="font-bold text-slate-900 dark:text-white">
+                            {selection.serviceName}
+                          </h3>
+                        </div>
+
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                          {validGlassForThisService.map((glassName) => {
+                            const isSelected =
+                              selection.glassTypes.includes(glassName);
+                            return (
+                              <button
+                                key={glassName}
+                                type="button"
+                                onClick={() =>
+                                  handleToggleGlassForService(
+                                    selection.serviceName,
+                                    glassName,
+                                  )
+                                }
+                                className={`relative p-3 rounded-xl border text-[11px] font-medium transition-all text-left ${
+                                  isSelected
+                                    ? "border-primary-500 bg-primary-50 text-primary-700 ring-1 ring-primary-500 dark:bg-primary-900/20 dark:border-primary-600 dark:text-primary-300"
+                                    : "border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-300 hover:border-primary-300"
+                                }`}
+                              >
+                                {isSelected && (
+                                  <div className="absolute top-1 right-1 w-3 h-3 bg-primary-600 text-white rounded-full flex items-center justify-center">
+                                    <Check size={8} strokeWidth={3} />
+                                  </div>
+                                )}
+                                <span className={`${isSelected ? "pr-3" : ""}`}>
+                                  {glassName}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
                 <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
                   <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
                     ℹ️ Please select a service type above first
@@ -1089,43 +1319,9 @@ const BookingForm = () => {
                   </p>
                 </div>
               )}
-
-              <div className="mt-4">
-                <PremiumSelect
-                  label="Glass Type"
-                  required
-                  value={formData.glassType}
-                  options={(() => {
-                    if (!formData.service) return [];
-
-                    // Filter glass types that have pricing for selected service
-                    const availableGlassTypes = glassTypes.filter(
-                      (glassType) => {
-                        const pricingEntry = formData.service.pricing?.find(
-                          (p) => p.glassType === glassType,
-                        );
-                        return pricingEntry && pricingEntry.price > 0;
-                      },
-                    );
-
-                    return availableGlassTypes;
-                  })()}
-                  onChange={(val) => updateFormData("glassType", val)}
-                  placeholder={
-                    !formData.service
-                      ? "Select service first"
-                      : "Select glass type"
-                  }
-                  error={errors.glassType}
-                  searchable
-                  disabled={!formData.service}
-                  emptyMessage={
-                    !formData.service
-                      ? "Please select a service type first"
-                      : "No glass types available for this service"
-                  }
-                />
-              </div>
+              {errors.glassType && (
+                <p className="text-red-500 text-sm mt-1">{errors.glassType}</p>
+              )}
             </div>
 
             <div>
@@ -1258,95 +1454,88 @@ const BookingForm = () => {
                 )}
               </div>
 
-              <div className="mt-4">
-                <PremiumSelect
-                  label="Glass Type"
-                  required
-                  value={formData.glassType}
-                  options={glassTypes}
-                  onChange={(val) => updateFormData("glassType", val)}
-                  placeholder="Select glass type"
-                  error={errors.glassType}
-                  searchable
-                />
-              </div>
-
               {/* ADAS & Rain Sensor Options - ONLY for Windscreen */}
-              {(formData.glassType === "Windscreen" ||
-                (formData.glassType || "").toLowerCase() === "windscreen") && (
-                <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-                    Vehicle Features
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateVehicle(
-                          "hasAdasCamera",
-                          !formData.vehicle.hasAdasCamera,
-                        )
-                      }
-                      className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
-                        formData.vehicle.hasAdasCamera
-                          ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-600"
-                          : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700"
-                      }`}
-                    >
-                      <div
-                        className={`w-6 h-6 rounded flex items-center justify-center border-2 transition-all ${
+              {formData.glassTypes &&
+                formData.glassTypes.some(
+                  (g) => g.toLowerCase() === "windscreen",
+                ) && (
+                  <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+                      Vehicle Features
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateVehicle(
+                            "hasAdasCamera",
+                            !formData.vehicle.hasAdasCamera,
+                          )
+                        }
+                        className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
                           formData.vehicle.hasAdasCamera
-                            ? "bg-primary-600 border-primary-600 text-white"
-                            : "border-slate-300 dark:border-slate-600"
+                            ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-600"
+                            : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700"
                         }`}
                       >
-                        {formData.vehicle.hasAdasCamera && <Check size={14} />}
-                      </div>
-                      <div className="text-left">
-                        <div className="font-semibold text-slate-900 dark:text-white text-sm">
-                          ADAS Camera
+                        <div
+                          className={`w-6 h-6 rounded flex items-center justify-center border-2 transition-all ${
+                            formData.vehicle.hasAdasCamera
+                              ? "bg-primary-600 border-primary-600 text-white"
+                              : "border-slate-300 dark:border-slate-600"
+                          }`}
+                        >
+                          {formData.vehicle.hasAdasCamera && (
+                            <Check size={14} />
+                          )}
                         </div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                          Advanced Driver Assistance System
+                        <div className="text-left">
+                          <div className="font-semibold text-slate-900 dark:text-white text-sm">
+                            ADAS Camera
+                          </div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                            Advanced Driver Assistance System
+                          </div>
                         </div>
-                      </div>
-                    </button>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateVehicle(
-                          "hasRainSensor",
-                          !formData.vehicle.hasRainSensor,
-                        )
-                      }
-                      className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
-                        formData.vehicle.hasRainSensor
-                          ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-600"
-                          : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700"
-                      }`}
-                    >
-                      <div
-                        className={`w-6 h-6 rounded flex items-center justify-center border-2 transition-all ${
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateVehicle(
+                            "hasRainSensor",
+                            !formData.vehicle.hasRainSensor,
+                          )
+                        }
+                        className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
                           formData.vehicle.hasRainSensor
-                            ? "bg-primary-600 border-primary-600 text-white"
-                            : "border-slate-300 dark:border-slate-600"
+                            ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-600"
+                            : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700"
                         }`}
                       >
-                        {formData.vehicle.hasRainSensor && <Check size={14} />}
-                      </div>
-                      <div className="text-left">
-                        <div className="font-semibold text-slate-900 dark:text-white text-sm">
-                          Rain / Light Sensor
+                        <div
+                          className={`w-6 h-6 rounded flex items-center justify-center border-2 transition-all ${
+                            formData.vehicle.hasRainSensor
+                              ? "bg-primary-600 border-primary-600 text-white"
+                              : "border-slate-300 dark:border-slate-600"
+                          }`}
+                        >
+                          {formData.vehicle.hasRainSensor && (
+                            <Check size={14} />
+                          )}
                         </div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                          Automatic wipers and lights
+                        <div className="text-left">
+                          <div className="font-semibold text-slate-900 dark:text-white text-sm">
+                            Rain / Light Sensor
+                          </div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                            Automatic wipers and lights
+                          </div>
                         </div>
-                      </div>
-                    </button>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
           </div>
         )}
@@ -1587,10 +1776,10 @@ const BookingForm = () => {
                   Service
                 </p>
                 <p className="font-medium text-slate-900 dark:text-white">
-                  {formData.service?.name}
+                  {formData.serviceTypes?.join(", ")}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {formData.glassType}
+                  {formData.glassTypes?.join(", ")}
                 </p>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">

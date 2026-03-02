@@ -303,7 +303,14 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                 Service
               </p>
               <p className="font-medium text-slate-800 dark:text-slate-200">
-                {quote.glassType} - {quote.serviceType}
+                {Array.isArray(quote.glassTypes) && quote.glassTypes.length > 0
+                  ? quote.glassTypes.join(", ")
+                  : quote.glassType}{" "}
+                -{" "}
+                {Array.isArray(quote.serviceTypes) &&
+                quote.serviceTypes.length > 0
+                  ? quote.serviceTypes.join(", ")
+                  : quote.serviceType}
               </p>
             </div>
           </div>

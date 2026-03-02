@@ -1,42 +1,50 @@
-import { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Clock, 
-  MapPin, 
+import { useState } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import {
+  ArrowLeft,
+  Clock,
+  MapPin,
   FileText,
   Star,
   BadgeCheck,
   Award,
   Calendar,
-  MessageSquare
-} from 'lucide-react';
-import useDashboardStore, { formatDate, formatCurrency } from '../../store/useDashboardStore';
-import Card, { CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
-import StatusBadge from '../../components/ui/StatusBadge';
-import Button from '../../components/ui/Button';
-import Rating from '../../components/ui/Rating';
-import ConfirmModal from '../../components/ui/ConfirmModal';
-import EmptyState from '../../components/ui/EmptyState';
+  MessageSquare,
+} from "lucide-react";
+import useDashboardStore, {
+  formatDate,
+  formatCurrency,
+} from "../../store/useDashboardStore";
+import Card, {
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "../../components/ui/Card";
+import StatusBadge from "../../components/ui/StatusBadge";
+import Button from "../../components/ui/Button";
+import Rating from "../../components/ui/Rating";
+import ConfirmModal from "../../components/ui/ConfirmModal";
+import EmptyState from "../../components/ui/EmptyState";
 
 const QuoteDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { quotes, getQuoteResponses, acceptQuote, addToast } = useDashboardStore();
-  
-  const quote = quotes.find(q => q.id === id);
+  const { quotes, getQuoteResponses, acceptQuote, addToast } =
+    useDashboardStore();
+
+  const quote = quotes.find((q) => q.id === id);
   const responses = getQuoteResponses(id);
-  
+
   const [acceptingResponse, setAcceptingResponse] = useState(null);
   const [loading, setLoading] = useState(false);
-  
+
   if (!quote) {
     return (
       <div className="text-center py-12">
         <p className="text-slate-500">Quote not found</p>
-        <Button 
-          variant="secondary" 
-          onClick={() => navigate('/dashboard/quotes')}
+        <Button
+          variant="secondary"
+          onClick={() => navigate("/dashboard/quotes")}
           className="mt-4"
         >
           <ArrowLeft size={18} />
@@ -45,55 +53,67 @@ const QuoteDetail = () => {
       </div>
     );
   }
-  
+
   const handleAcceptQuote = async () => {
     if (!acceptingResponse) return;
-    
+
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     const bookingId = acceptQuote(quote.id, acceptingResponse.id);
     setLoading(false);
     setAcceptingResponse(null);
-    
+
     if (bookingId) {
       navigate(`/dashboard/bookings/${bookingId}`);
     }
   };
-  
+
   const handleMessageProvider = () => {
-    addToast({ type: 'info', message: 'Messaging feature coming soon!' });
+    addToast({ type: "info", message: "Messaging feature coming soon!" });
   };
-  
-  const canAcceptQuotes = quote.status === 'Open' || quote.status === 'Received Responses';
-  
+
+  const canAcceptQuotes =
+    quote.status === "Open" || quote.status === "Received Responses";
+
   return (
     <div className="space-y-6">
       {/* Back Link */}
-      <Link 
+      <Link
         to="/dashboard/quotes"
         className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors"
       >
         <ArrowLeft size={16} />
         Back to Quotes
       </Link>
-      
+
       {/* Quote Summary Card */}
       <Card>
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <span className="font-mono text-lg text-slate-900">#{quote.id}</span>
+              <span className="font-mono text-lg text-slate-900">
+                #{quote.id}
+              </span>
               <StatusBadge status={quote.status} type="quote" size="md" />
             </div>
-            
+
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">{quote.vehicle}</h2>
+              <h2 className="text-xl font-semibold text-slate-900">
+                {quote.vehicle}
+              </h2>
               <p className="text-slate-600 mt-1">
-                {quote.glassType} · {quote.serviceType}
+                {Array.isArray(quote.glassTypes) && quote.glassTypes.length > 0
+                  ? quote.glassTypes.join(", ")
+                  : quote.glassType}{" "}
+                ·{" "}
+                {Array.isArray(quote.serviceTypes) &&
+                quote.serviceTypes.length > 0
+                  ? quote.serviceTypes.join(", ")
+                  : quote.serviceType}
               </p>
             </div>
-            
+
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-600">
               <span className="flex items-center gap-1.5">
                 <MapPin size={16} className="text-slate-400" />
@@ -104,24 +124,25 @@ const QuoteDetail = () => {
                 Requested {formatDate(quote.dateRequested)}
               </span>
             </div>
-            
+
             {quote.notes && (
               <div className="pt-2 border-t border-slate-100">
                 <p className="text-sm text-slate-500">
-                  <span className="font-medium text-slate-700">Notes:</span> {quote.notes}
+                  <span className="font-medium text-slate-700">Notes:</span>{" "}
+                  {quote.notes}
                 </p>
               </div>
             )}
           </div>
         </div>
       </Card>
-      
+
       {/* Provider Responses */}
       <div>
         <h3 className="text-lg font-semibold text-slate-900 mb-4">
           Provider Responses {responses.length > 0 && `(${responses.length})`}
         </h3>
-        
+
         {responses.length === 0 ? (
           <Card>
             <EmptyState
@@ -133,10 +154,10 @@ const QuoteDetail = () => {
         ) : (
           <div className="grid gap-4">
             {responses.map((response) => (
-              <Card 
+              <Card
                 key={response.id}
                 className={`
-                  ${quote.acceptedResponseId === response.id ? 'ring-2 ring-green-500 bg-green-50/50' : ''}
+                  ${quote.acceptedResponseId === response.id ? "ring-2 ring-green-500 bg-green-50/50" : ""}
                 `}
               >
                 <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
@@ -148,7 +169,9 @@ const QuoteDetail = () => {
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="font-semibold text-slate-900">{response.providerName}</h4>
+                          <h4 className="font-semibold text-slate-900">
+                            {response.providerName}
+                          </h4>
                           {response.providerVerified && (
                             <span className="flex items-center gap-1 text-xs text-primary-600 bg-primary-50 px-1.5 py-0.5 rounded-full">
                               <BadgeCheck size={12} />
@@ -162,15 +185,15 @@ const QuoteDetail = () => {
                             </span>
                           )}
                         </div>
-                        <Rating 
-                          value={response.providerRating} 
+                        <Rating
+                          value={response.providerRating}
                           reviewCount={response.providerReviews}
                           size="sm"
                           className="mt-1"
                         />
                       </div>
                     </div>
-                    
+
                     {/* Quote Details */}
                     <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                       <div>
@@ -184,14 +207,14 @@ const QuoteDetail = () => {
                         Available {formatDate(response.availability)}
                       </div>
                     </div>
-                    
+
                     {response.note && (
                       <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">
                         {response.note}
                       </p>
                     )}
                   </div>
-                  
+
                   {/* Actions */}
                   <div className="flex flex-col gap-2 lg:flex-shrink-0">
                     {quote.acceptedResponseId === response.id ? (
@@ -203,12 +226,18 @@ const QuoteDetail = () => {
                         <Button onClick={() => setAcceptingResponse(response)}>
                           Accept Quote
                         </Button>
-                        <Button variant="secondary" onClick={handleMessageProvider}>
+                        <Button
+                          variant="secondary"
+                          onClick={handleMessageProvider}
+                        >
                           Message Provider
                         </Button>
                       </>
                     ) : (
-                      <Button variant="secondary" onClick={handleMessageProvider}>
+                      <Button
+                        variant="secondary"
+                        onClick={handleMessageProvider}
+                      >
                         Message Provider
                       </Button>
                     )}
@@ -219,14 +248,18 @@ const QuoteDetail = () => {
           </div>
         )}
       </div>
-      
+
       {/* Accept Quote Confirmation Modal */}
       <ConfirmModal
         isOpen={!!acceptingResponse}
         onClose={() => setAcceptingResponse(null)}
         onConfirm={handleAcceptQuote}
         title="Accept this quote?"
-        message={acceptingResponse ? `Accept quote from ${acceptingResponse.providerName} for ${formatCurrency(acceptingResponse.price)}? This will create a booking.` : ''}
+        message={
+          acceptingResponse
+            ? `Accept quote from ${acceptingResponse.providerName} for ${formatCurrency(acceptingResponse.price)}? This will create a booking.`
+            : ""
+        }
         confirmLabel="Accept Quote"
         type="info"
         loading={loading}
@@ -236,7 +269,3 @@ const QuoteDetail = () => {
 };
 
 export default QuoteDetail;
-
-
-
-

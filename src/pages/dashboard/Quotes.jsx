@@ -57,7 +57,11 @@ const Quotes = () => {
       if (routeId) {
         const found = quotes.find((q) => q.id === routeId);
         if (found) {
-          setSelectedQuoteId(routeId);
+          setSelectedQuoteId(found.id);
+          // If the found quote has a different status than active filter, switch to All or its status
+          if (activeFilter !== "all" && found.status !== activeFilter) {
+            setActiveFilter("all");
+          }
           if (window.innerWidth < 1024) {
             setShowMobileDetail(true);
           }
@@ -67,6 +71,9 @@ const Quotes = () => {
           const fetched = await fetchQuoteDetails(routeId);
           if (fetched) {
             setSelectedQuoteId(routeId);
+            if (activeFilter !== "all" && fetched.status !== activeFilter) {
+              setActiveFilter("all");
+            }
             if (window.innerWidth < 1024) {
               setShowMobileDetail(true);
             }
@@ -311,9 +318,30 @@ const Quotes = () => {
                       </div>
 
                       {/* Service Type */}
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                        {quote.glassType} {quote.serviceType}
-                      </p>
+                      <div className="flex flex-col gap-1 mt-1.5 mb-1.5">
+                        {quote.serviceSelections &&
+                        quote.serviceSelections.length > 0 ? (
+                          quote.serviceSelections.map((sel, idx) => (
+                            <p
+                              key={idx}
+                              className="text-sm font-medium text-slate-700 dark:text-slate-300"
+                            >
+                              {sel.serviceName}
+                            </p>
+                          ))
+                        ) : (
+                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            {Array.isArray(quote.glassTypes) &&
+                            quote.glassTypes.length > 0
+                              ? quote.glassTypes.join(", ")
+                              : quote.glassType}{" "}
+                            {Array.isArray(quote.serviceTypes) &&
+                            quote.serviceTypes.length > 0
+                              ? quote.serviceTypes.join(", ")
+                              : quote.serviceType}
+                          </p>
+                        )}
+                      </div>
 
                       {/* Vehicle */}
                       <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 mb-1">

@@ -46,11 +46,11 @@ const paymentService = {
    * @param {string} bookingId
    * @returns {Object} { success, authorization_url, reference }
    */
-  initializePaystack: (bookingId) => {
+  initializePaystack: (bookingId, coversFees = false) => {
     return request({
       method: "POST",
       url: "/customer/payments/initialize-paystack",
-      data: { bookingId },
+      data: { bookingId, coversFees },
     });
   },
 

@@ -32,8 +32,8 @@ const Support = () => {
   const { bookings, addToast } = useDashboardStore();
   const [publicSettings, setPublicSettings] = useState({
     supportEmail: "support@autoscreen.co.za",
-    supportPhone: "+27 71 046 1517",
-    supportWhatsApp: "+27 71 046 1517",
+    supportPhone: "078 965 9317",
+    supportWhatsApp: "078 965 9317",
   });
   const [issueForm, setIssueForm] = useState({
     type: "",
@@ -48,8 +48,8 @@ const Support = () => {
       if (settings) {
         setPublicSettings({
           supportEmail: settings.supportEmail || "support@autoscreen.co.za",
-          supportPhone: settings.supportPhone || "+27 71 046 1517",
-          supportWhatsApp: settings.supportWhatsApp || "+27 71 046 1517",
+          supportPhone: settings.supportPhone || "078 965 9317",
+          supportWhatsApp: settings.supportWhatsApp || "078 965 9317",
         });
       }
     };
@@ -132,7 +132,8 @@ const Support = () => {
       formData.append("type", issueForm.type);
       formData.append("subject", issueForm.subject);
       formData.append("description", issueForm.description);
-      if (issueForm.bookingId) formData.append("referenceId", issueForm.bookingId);
+      if (issueForm.bookingId)
+        formData.append("referenceId", issueForm.bookingId);
       uploadedFiles.forEach((file) => formData.append("files", file));
 
       const res = await supportTicketService.createTicket(formData);
@@ -144,11 +145,17 @@ const Support = () => {
         if (fileInputRef.current) fileInputRef.current.value = "";
         setFormKey((k) => k + 1); // remount form so PremiumSelect resets
         setIsSubmitted(true);
-        addToast({ type: "success", message: "Support ticket submitted successfully!" });
+        addToast({
+          type: "success",
+          message: "Support ticket submitted successfully!",
+        });
       }
     } catch (error) {
       console.error("Failed to submit ticket", error);
-      addToast({ type: "error", message: "Failed to submit ticket. Please try again." });
+      addToast({
+        type: "error",
+        message: "Failed to submit ticket. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -289,7 +296,11 @@ const Support = () => {
             </CardHeader>
             <CardContent>
               {/* The form is now always rendered here. Success message is shown in a Modal. */}
-              <form key={formKey} onSubmit={handleSubmitIssue} className="space-y-4">
+              <form
+                key={formKey}
+                onSubmit={handleSubmitIssue}
+                className="space-y-4"
+              >
                 <PremiumSelect
                   label="Issue Type"
                   options={issueTypes.map((opt) => opt.label)}
@@ -367,10 +378,11 @@ const Support = () => {
                   onClick={() => fileInputRef.current?.click()}
                   className={`
                       border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer
-                      ${isDragging
-                      ? "border-primary-500 bg-primary-50/50 dark:bg-primary-900/10"
-                      : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
-                    }
+                      ${
+                        isDragging
+                          ? "border-primary-500 bg-primary-50/50 dark:bg-primary-900/10"
+                          : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                      }
                     `}
                 >
                   <input
@@ -497,8 +509,8 @@ const Support = () => {
             </p>
           )}
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-            Your issue has been successfully submitted. Our support team
-            will get back to you within 24 hours.
+            Your issue has been successfully submitted. Our support team will
+            get back to you within 24 hours.
           </p>
           <div className="space-y-3">
             {/* <Button

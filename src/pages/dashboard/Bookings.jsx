@@ -463,11 +463,22 @@ const Bookings = () => {
                       )}
                   </div>
 
-                  <div>
-                    <h3 className="font-semibold text-slate-900 dark:text-white">
-                      {booking.service}
-                    </h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                  <div className="flex flex-col gap-1 items-start">
+                    {booking.serviceSelections?.length > 0 ? (
+                      booking.serviceSelections.map((sel, idx) => (
+                        <h3
+                          key={idx}
+                          className="font-semibold text-slate-900 dark:text-white"
+                        >
+                          {sel.serviceName}
+                        </h3>
+                      ))
+                    ) : (
+                      <h3 className="font-semibold text-slate-900 dark:text-white">
+                        {booking.service}
+                      </h3>
+                    )}
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                       {booking.vehicle}
                     </p>
                   </div>
@@ -499,6 +510,7 @@ const Bookings = () => {
                   {booking.paymentStatus &&
                     [
                       "paid",
+                      "refunded",
                       "partially refunded",
                       "partially_refunded",
                     ].includes(booking.paymentStatus.toLowerCase()) && (
@@ -506,7 +518,12 @@ const Bookings = () => {
                         content={
                           !["completed", "completed-by-fitter"].includes(
                             booking.status?.toLowerCase(),
-                          )
+                          ) &&
+                          ![
+                            "refunded",
+                            "partially_refunded",
+                            "partially refunded",
+                          ].includes(booking.paymentStatus?.toLowerCase())
                             ? "Invoice available once booking is completed"
                             : ""
                         }
@@ -517,7 +534,12 @@ const Bookings = () => {
                           disabled={
                             !["completed", "completed-by-fitter"].includes(
                               booking.status?.toLowerCase(),
-                            )
+                            ) &&
+                            ![
+                              "refunded",
+                              "partially_refunded",
+                              "partially refunded",
+                            ].includes(booking.paymentStatus?.toLowerCase())
                           }
                           onClick={(e) => {
                             e.stopPropagation();

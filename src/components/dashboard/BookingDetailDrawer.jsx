@@ -56,11 +56,52 @@ const BookingDetailDrawer = ({
   const [pendingPaymentAmount, setPendingPaymentAmount] = useState(null);
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
 
-  const damageImages =
+  const [convertedImages, setConvertedImages] = useState({});
+
+  const rawDamageImages =
     booking?.damageImages ||
     booking?.quote?.damageImages ||
     booking?.completionDetails?.beforeImages ||
     [];
+
+  // Handle HEIC conversions for existing booking data
+  useEffect(() => {
+    if (rawDamageImages.length > 0 && window.heic2any) {
+      rawDamageImages.forEach(async (img, idx) => {
+        const isHeic =
+          typeof img === "string" &&
+          (img.startsWith("data:image/heic") ||
+            img.toLowerCase().endsWith(".heic"));
+
+        if (isHeic && !convertedImages[idx]) {
+          try {
+            const response = await fetch(img);
+            const blob = await response.blob();
+            const result = await window.heic2any({
+              blob,
+              toType: "image/jpeg",
+              quality: 0.7,
+            });
+            const convertedBlob = Array.isArray(result) ? result[0] : result;
+            const url = URL.createObjectURL(convertedBlob);
+            setConvertedImages((prev) => ({ ...prev, [idx]: url }));
+          } catch (err) {
+            console.error("Failed to convert HEIC image:", err);
+          }
+        }
+      });
+    }
+
+    return () => {
+      Object.values(convertedImages).forEach((url) => {
+        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+      });
+    };
+  }, [rawDamageImages]);
+
+  const damageImages = rawDamageImages.map(
+    (img, idx) => convertedImages[idx] || img,
+  );
 
   const handleCancel = async () => {
     setLoading(true);
@@ -224,13 +265,17 @@ const BookingDetailDrawer = ({
     (currentStatus === "completed" || booking?.status === "Completed") &&
     (!booking?.rating || !booking?.rating?.score);
   const canDownloadInvoice =
-    ["paid", "partially_refunded", "partially refunded"].includes(
+    ["paid", "refunded", "partially_refunded", "partially refunded"].includes(
       currentPaymentStatus,
     ) ||
     currentStatus === "completed" ||
     currentStatus === "completed-by-fitter";
   const isInvoiceEnabled =
-    currentStatus === "completed" || currentStatus === "completed-by-fitter";
+    currentStatus === "completed" ||
+    currentStatus === "completed-by-fitter" ||
+    ["refunded", "partially_refunded", "partially refunded"].includes(
+      currentPaymentStatus,
+    );
 
   // Handle initial action (e.g., from deep link)
   useEffect(() => {
@@ -434,94 +479,130 @@ const BookingDetailDrawer = ({
             <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
               Service Details
             </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex items-start gap-3">
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 w-full">
                 <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
                   <Car
                     size={16}
                     className="text-primary-600 dark:text-primary-400"
                   />
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Service
+                <div className="flex-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide opacity-70">
+                    Selected Services & Glass
                   </p>
-                  <p className="font-medium text-slate-900 dark:text-white">
-                    {booking.service}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {booking.vehicle}
-                  </p>
-                  {(booking.vehicleData?.hasAdasCamera ||
-                    booking.vehicleData?.hasRainSensor) && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {booking.vehicleData?.hasAdasCamera && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
-                          ADAS
-                        </span>
-                      )}
-                      {booking.vehicleData?.hasRainSensor && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
-                          Rain Sensor
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    {booking.serviceSelections &&
+                    booking.serviceSelections.length > 0 ? (
+                      booking.serviceSelections.map((selection, sIdx) => (
+                        <div
+                          key={sIdx}
+                          className="flex flex-col p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/50 shadow-sm"
+                        >
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <div className="w-5 h-5 rounded bg-primary-500/10 flex items-center justify-center text-primary-600 dark:text-primary-400">
+                              <FileText size={12} />
+                            </div>
+                            <span className="font-bold text-xs text-slate-900 dark:text-slate-100 uppercase tracking-tight">
+                              {selection.serviceName}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1 ml-7">
+                            {selection.glassTypes &&
+                            selection.glassTypes.length > 0 ? (
+                              selection.glassTypes.map((gt, gIdx) => (
+                                <span
+                                  key={gIdx}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 text-slate-600 dark:text-slate-300"
+                                >
+                                  {gt}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-[10px] text-slate-400 italic ml-1">
+                                No glass selected
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-lg shadow-sm">
+                        <p className="font-medium text-slate-900 dark:text-white text-sm">
+                          {booking.serviceTypes?.join(", ") || booking.service}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          {booking.glassTypes?.join(", ") ||
+                            booking.glassType ||
+                            "-"}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/30 rounded-lg border border-slate-100 dark:border-slate-800">
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      Vehicle
+                    </p>
+                    <p className="font-medium text-slate-900 dark:text-white text-sm">
+                      {booking.vehicle}
+                    </p>
+                    {(booking.vehicleData?.hasAdasCamera ||
+                      booking.vehicleData?.hasRainSensor) && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {booking.vehicleData?.hasAdasCamera && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                            ADAS Camera
+                          </span>
+                        )}
+                        {booking.vehicleData?.hasRainSensor && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
+                            Rain Sensor
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
-                  <Clock
-                    size={16}
-                    className="text-primary-600 dark:text-primary-400"
-                  />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
+                    <Clock
+                      size={16}
+                      className="text-primary-600 dark:text-primary-400"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Date & Time
+                    </p>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      {booking.formattedScheduledDateTime ||
+                        formatDate(booking.scheduledDate, "datetime")}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Date & Time
-                  </p>
-                  <p className="font-medium text-slate-900 dark:text-white">
-                    {booking.formattedScheduledDateTime ||
-                      formatDate(booking.scheduledDate, "datetime")}
-                  </p>
-                </div>
-              </div>
 
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
-                  <Layers
-                    size={16}
-                    className="text-primary-600 dark:text-primary-400"
-                  />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Glass Type
-                  </p>
-                  <p className="font-medium text-slate-900 dark:text-white">
-                    {booking.glassType || "-"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
-                  <MapPin
-                    size={16}
-                    className="text-primary-600 dark:text-primary-400"
-                  />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Location
-                  </p>
-                  <p className="font-medium text-slate-900 dark:text-white">
-                    {booking.locationType}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {booking.address}
-                  </p>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center flex-shrink-0">
+                    <MapPin
+                      size={16}
+                      className="text-primary-600 dark:text-primary-400"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Location
+                    </p>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      {booking.locationType}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {booking.address}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -752,6 +833,37 @@ const BookingDetailDrawer = ({
                 <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
                   Price
                 </h4>
+
+                {/* Paystack Refund Notice Banner */}
+                {(currentPaymentStatus === "refunded" ||
+                  currentPaymentStatus === "partially_refunded" ||
+                  currentPaymentStatus === "partially refunded") && (
+                  <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl flex gap-3">
+                    <div className="flex-shrink-0 pt-0.5">
+                      <Clock
+                        size={18}
+                        className="text-blue-600 dark:text-blue-400"
+                      />
+                    </div>
+                    <div className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
+                      <p className="font-semibold mb-1">About your refund</p>
+                      <p>
+                        Refunds are processed immediately but may take{" "}
+                        <strong>3-12 business days</strong> to reflect in your
+                        account depending on your bank.
+                      </p>
+                      <a
+                        href="https://support.paystack.com/en/articles/2127106-initiating-and-completing-a-refund"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block mt-2 font-semibold underline hover:text-blue-600"
+                      >
+                        Learn more on Paystack
+                      </a>
+                    </div>
+                  </div>
+                )}
+
                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800 space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-slate-600 dark:text-slate-400">
@@ -765,8 +877,9 @@ const BookingDetailDrawer = ({
                   {/* Show Refund/Cancellation Breakdown */}
                   {(booking.cancellation?.refundAmount > 0 ||
                     booking.cancellation?.fee > 0 ||
-                    booking.paymentStatus === "Refunded" ||
-                    booking.paymentStatus === "Partial Refund") && (
+                    currentPaymentStatus === "refunded" ||
+                    currentPaymentStatus === "partially_refunded" ||
+                    currentPaymentStatus === "partially refunded") && (
                     <div className="pt-3 mt-3 border-t border-slate-200 dark:border-slate-700 bg-slate-100/30 dark:bg-slate-900/20 -mx-4 -mb-4 p-4 rounded-b-xl space-y-2">
                       {booking.cancellation?.fee > 0 && (
                         <div className="flex justify-between items-center">
@@ -779,11 +892,13 @@ const BookingDetailDrawer = ({
                         </div>
                       )}
                       {(booking.cancellation?.refundAmount > 0 ||
-                        booking.paymentStatus === "Refunded" ||
-                        booking.paymentStatus === "Partial Refund") && (
+                        currentPaymentStatus === "refunded" ||
+                        currentPaymentStatus === "partially_refunded" ||
+                        currentPaymentStatus === "partially refunded") && (
                         <div className="flex justify-between items-center">
                           <span className="text-sm font-medium text-purple-700 dark:text-purple-400">
-                            {booking.paymentStatus === "Partial Refund"
+                            {currentPaymentStatus === "partially_refunded" ||
+                            currentPaymentStatus === "partially refunded"
                               ? "Partial Refund Processed"
                               : "Refund Processed"}
                             {booking.cancellation?.refundStatus === "pending" &&
@@ -793,7 +908,7 @@ const BookingDetailDrawer = ({
                             -{" "}
                             {formatCurrency(
                               booking.cancellation?.refundAmount ||
-                                (booking.paymentStatus === "Refunded"
+                                (currentPaymentStatus === "refunded"
                                   ? booking.price?.total
                                   : 0),
                             )}
@@ -810,7 +925,7 @@ const BookingDetailDrawer = ({
                           {formatCurrency(
                             (booking.price?.total || 0) -
                               (booking.cancellation?.refundAmount ||
-                                (booking.paymentStatus === "Refunded"
+                                (currentPaymentStatus === "refunded"
                                   ? booking.price?.total
                                   : 0)),
                           )}

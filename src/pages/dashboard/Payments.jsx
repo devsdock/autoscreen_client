@@ -71,7 +71,7 @@ const Payments = () => {
     .filter((p) => p.status === "Paid")
     .reduce((sum, p) => sum + p.amount, 0);
   const pendingTotal = payments
-    .filter((p) => p.status === "Unpaid")
+    .filter((p) => ["Unpaid", "Pending", "Processing"].includes(p.status))
     .reduce((sum, p) => sum + p.amount, 0);
   const totalRefunded = payments
     .filter((p) => p.status === "Refunded")
@@ -178,7 +178,7 @@ const Payments = () => {
         />
         <StatCard
           icon={History}
-          value={lastPaid ? formatDate(lastPaid.date) : "N/A"}
+          value={lastPaid ? formatDate(lastPaid.date) : "0"}
           label="Last Payment"
           iconBgColor="bg-blue-50 dark:bg-blue-900/20"
           iconColor="text-blue-600 dark:text-blue-400"
@@ -268,9 +268,41 @@ const Payments = () => {
                       </Link>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-slate-900 dark:text-white">
-                        {formatServiceType(payment.service)}
-                      </span>
+                      <div className="flex flex-col text-[13px]">
+                        {payment.serviceSelections &&
+                        payment.serviceSelections.length > 0 ? (
+                          payment.serviceSelections.map((sel, idx) => (
+                            <div key={idx} className="mb-1">
+                              <span className="font-medium text-slate-900 dark:text-white block">
+                                {sel.serviceName}
+                              </span>
+                              <span className="text-slate-500 text-xs">
+                                {sel.glassTypes?.join(", ") || ""}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <>
+                            <span className="font-medium text-slate-900 dark:text-white">
+                              {payment.serviceTypes?.length > 0
+                                ? payment.serviceTypes
+                                    .map(formatServiceType)
+                                    .join(", ")
+                                : formatServiceType(payment.service)}
+                            </span>
+                            {(payment.glassTypes?.length > 0 ||
+                              payment.glassType) && (
+                              <span className="text-slate-500 text-xs block">
+                                {payment.glassTypes?.length > 0
+                                  ? payment.glassTypes
+                                      .map(formatGlassType)
+                                      .join(", ")
+                                  : formatGlassType(payment.glassType)}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm text-slate-600 dark:text-slate-400">
@@ -364,9 +396,41 @@ const Payments = () => {
                       {payment.transactionId?.slice(0, 8) ||
                         (index + 1).toString().padStart(2, "0")}
                     </span>
-                    <p className="font-semibold text-slate-900 dark:text-white mt-1">
-                      {formatServiceType(payment.service)}
-                    </p>
+                    <div className="mt-1">
+                      {payment.serviceSelections &&
+                      payment.serviceSelections.length > 0 ? (
+                        payment.serviceSelections.map((sel, idx) => (
+                          <div key={idx} className="mb-0.5">
+                            <span className="font-semibold text-slate-900 dark:text-white block">
+                              {sel.serviceName}
+                            </span>
+                            <span className="text-slate-500 text-xs">
+                              {sel.glassTypes?.join(", ") || ""}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <>
+                          <p className="font-semibold text-slate-900 dark:text-white">
+                            {payment.serviceTypes?.length > 0
+                              ? payment.serviceTypes
+                                  .map(formatServiceType)
+                                  .join(", ")
+                              : formatServiceType(payment.service)}
+                          </p>
+                          {(payment.glassTypes?.length > 0 ||
+                            payment.glassType) && (
+                            <p className="text-slate-500 text-xs">
+                              {payment.glassTypes?.length > 0
+                                ? payment.glassTypes
+                                    .map(formatGlassType)
+                                    .join(", ")
+                                : formatGlassType(payment.glassType)}
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
                       {payment.providerName}
                     </p>

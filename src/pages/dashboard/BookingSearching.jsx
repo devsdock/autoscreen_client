@@ -112,8 +112,11 @@ const BookingSearching = () => {
       vehicleYear: (
         booking.vehicle?.year || new Date().getFullYear()
       ).toString(),
-      glassType: booking.glassType || "",
-      serviceType: booking.serviceType || "",
+      glassTypes:
+        booking.glassTypes || (booking.glassType ? [booking.glassType] : []),
+      serviceTypes:
+        booking.serviceTypes ||
+        (booking.serviceType ? [booking.serviceType] : []),
       city: booking.serviceAddress?.city || "",
       postcode: booking.serviceAddress?.postalCode || "",
     };
@@ -313,6 +316,11 @@ const BookingSearching = () => {
               <div>
                 <p className="font-medium text-slate-900 dark:text-white capitalize">
                   {(() => {
+                    if (
+                      Array.isArray(booking.serviceTypes) &&
+                      booking.serviceTypes.length > 0
+                    )
+                      return booking.serviceTypes.join(", ");
                     if (booking.serviceType === "tinting")
                       return "Anti-Smash and Grab Film";
                     if (booking.serviceType === "replacement")
@@ -322,9 +330,12 @@ const BookingSearching = () => {
                   })()}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400 capitalize">
-                  {booking.glassType
-                    ? booking.glassType.replace(/_/g, " ")
-                    : ""}
+                  {Array.isArray(booking.glassTypes) &&
+                  booking.glassTypes.length > 0
+                    ? booking.glassTypes.join(", ").replace(/_/g, " ")
+                    : booking.glassType
+                      ? booking.glassType.replace(/_/g, " ")
+                      : ""}
                 </p>
               </div>
             </div>

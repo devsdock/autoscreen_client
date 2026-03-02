@@ -135,7 +135,7 @@ const ProtectedRoute = ({ children }) => {
           ) {
             localStorage.setItem("customer_redirect_after_login", intendedPath);
           }
-          window.location.href = `${AUTH_WEB_URL}/auth`;
+          window.location.href = `${AUTH_WEB_URL}/auth?redirect=${encodeURIComponent(intendedPath)}`;
           return;
         }
 
@@ -149,7 +149,7 @@ const ProtectedRoute = ({ children }) => {
           error,
         );
         // If everything fails, redirect to login
-        window.location.href = `${AUTH_WEB_URL}/auth`;
+        window.location.href = `${AUTH_WEB_URL}/auth?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
       }
     };
 
@@ -185,7 +185,7 @@ const ProtectedRoute = ({ children }) => {
     }
     // Show a small loader while the browser triggers the jump
     setTimeout(() => {
-      window.location.href = `${AUTH_WEB_URL}/auth`;
+      window.location.href = `${AUTH_WEB_URL}/auth?redirect=${encodeURIComponent(intendedPath)}`;
     }, 0);
 
     return (

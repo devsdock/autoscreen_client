@@ -320,7 +320,14 @@ export const mapBooking = (booking) => {
       hasRainSensor: booking.vehicle?.hasRainSensor || false,
     },
     service: serviceName,
+    serviceTypes:
+      booking.serviceTypes?.map(formatServiceType) ||
+      (booking.serviceType ? [formatServiceType(booking.serviceType)] : []),
     glassType: formatGlassType(booking.glassType),
+    glassTypes:
+      booking.glassTypes?.map(formatGlassType) ||
+      (booking.glassType ? [formatGlassType(booking.glassType)] : []),
+    serviceSelections: booking.serviceSelections || [],
     address: addressStr,
     damageImages: damageImages, // Processed with full URLs
     afterImages: afterImages, // Processed with full URLs
@@ -444,7 +451,14 @@ export const mapQuote = (quote) => {
       hasRainSensor: quote.vehicle?.hasRainSensor || false,
     },
     serviceType: formatServiceType(quote.serviceType),
+    serviceTypes:
+      quote.serviceTypes?.map(formatServiceType) ||
+      (quote.serviceType ? [formatServiceType(quote.serviceType)] : []),
     glassType: formatGlassType(quote.glassType),
+    glassTypes:
+      quote.glassTypes?.map(formatGlassType) ||
+      (quote.glassType ? [formatGlassType(quote.glassType)] : []),
+    serviceSelections: quote.serviceSelections || [],
     location: quote.serviceLocation?.address || { city: "N/A" },
     responsesCount: responsesCount,
     images: processImages(quote.damageImages || quote.images || []),

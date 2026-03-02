@@ -299,10 +299,16 @@ const BookingPending = () => {
                 Service & Glass
               </p>
               <p className="font-medium text-slate-900 dark:text-white capitalize">
-                {booking.serviceType}
+                {Array.isArray(booking.serviceTypes) &&
+                booking.serviceTypes.length > 0
+                  ? booking.serviceTypes.join(", ")
+                  : booking.serviceType}
               </p>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                {booking.glassType?.replace("_", " ")}
+                {Array.isArray(booking.glassTypes) &&
+                booking.glassTypes.length > 0
+                  ? booking.glassTypes.join(", ").replace(/_/g, " ")
+                  : booking.glassType?.replace(/_/g, " ")}
               </p>
             </div>
           </div>
@@ -557,7 +563,7 @@ const BookingPending = () => {
                 bookingId: booking._id || bookingId,
                 bookingRef: booking.bookingNumber,
                 amount: booking.price?.total || 0,
-                service: `${booking.serviceType} - ${booking.glassType}`,
+                service: `${Array.isArray(booking.serviceTypes) && booking.serviceTypes.length > 0 ? booking.serviceTypes.join(", ") : booking.serviceType} - ${Array.isArray(booking.glassTypes) && booking.glassTypes.length > 0 ? booking.glassTypes.join(", ") : booking.glassType}`,
                 breakdown: {
                   service: booking.price?.subtotal || 0,
                   callout: 0,

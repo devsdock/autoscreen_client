@@ -11,6 +11,20 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
   const { addToast } = useDashboardStore();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [coversFees, setCoversFees] = useState(false);
+  const [surcharge, setSurcharge] = useState(0);
+
+  // Calculate surcharge for Paystack SA (2.9% + 15% VAT on fees = 3.335% total)
+  useEffect(() => {
+    if (coversFees && payment?.amount) {
+      const variableFee = 0.029 * 1.15;
+      const calculatedSurcharge =
+        payment.amount / (1 - variableFee) - payment.amount;
+      setSurcharge(Math.round(calculatedSurcharge * 100) / 100);
+    } else {
+      setSurcharge(0);
+    }
+  }, [coversFees, payment?.amount]);
 
   if (!payment || !isOpen) return null;
 
@@ -22,7 +36,10 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
       const targetBookingId = payment.bookingId || payment.id;
 
       // 1. Initialize Paystack Transaction on backend
-      const res = await paymentService.initializePaystack(targetBookingId);
+      const res = await paymentService.initializePaystack(
+        targetBookingId,
+        coversFees,
+      );
 
       if (res.success && res.authorization_url) {
         // 2. Redirect to Paystack Checkout
@@ -77,14 +94,10 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
                 </span>
               </div>
             )}
-            {payment.breakdown.materials > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-600 dark:text-slate-400">
-                  Materials
-                </span>
-                <span className="text-slate-900 dark:text-white font-medium">
-                  {formatCurrency(payment.breakdown.materials)}
-                </span>
+            {surcharge > 0 && (
+              <div className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+                <span>Transaction Coverage</span>
+                <span>+{formatCurrency(surcharge)}</span>
               </div>
             )}
             <div className="border-t border-slate-200 dark:border-slate-700 pt-3 mt-1">
@@ -93,9 +106,45 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
                   Total Payable
                 </span>
                 <span className="font-bold text-primary-600 dark:text-primary-400 text-2xl">
-                  {formatCurrency(payment.amount)}
+                  {formatCurrency(payment.amount + surcharge)}
                 </span>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Fee Coverage Toggle */}
+        <div
+          className={`p-4 rounded-xl border transition-all cursor-pointer ${
+            coversFees
+              ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/10 dark:border-emerald-800"
+              : "bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700"
+          }`}
+          onClick={() => setCoversFees(!coversFees)}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                coversFees
+                  ? "bg-emerald-500 border-emerald-500"
+                  : "bg-white border-slate-300 dark:bg-slate-700 dark:border-slate-600"
+              }`}
+            >
+              {coversFees && (
+                <Zap size={14} className="text-white fill-current" />
+              )}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                Cover transaction fees
+              </p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                Add{" "}
+                {formatCurrency(
+                  payment.amount / (1 - 0.029 * 1.15) - payment.amount,
+                )}{" "}
+                to support our platform and avoid processing deductions.
+              </p>
             </div>
           </div>
         </div>
@@ -150,7 +199,7 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
           disabled={loading}
           className="px-8 bg-primary-600 hover:bg-primary-700 text-white"
         >
-          Proceed to Pay {formatCurrency(payment.amount)}
+          Proceed to Pay {formatCurrency(payment.amount + surcharge)}
         </Button>
       </ModalActions>
     </Modal>
@@ -158,3 +207,4 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
 };
 
 export default PaymentModal;
+

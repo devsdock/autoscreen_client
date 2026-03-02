@@ -24,8 +24,9 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
     vehicleMake: "",
     vehicleModel: "",
     vehicleYear: new Date().getFullYear().toString(),
-    serviceType: "",
-    glassType: "",
+    serviceTypes: [],
+    glassTypes: [],
+    serviceSelections: [],
     city: "",
     postcode: "",
     addressLine1: "",
@@ -139,11 +140,6 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
       setModelSearchQuery(isOther ? "Other" : "");
     }
 
-    // If service type changes, reset glass type
-    if (field === "serviceType") {
-      setFormData((prev) => ({ ...prev, glassType: "" }));
-    }
-
     if (field === "vehicleModel") {
       setModelSearchQuery(value);
       setSuggestedField(null);
@@ -158,6 +154,96 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
     if (field === "preferredTimeSlot") {
       setSuggestedField(null);
     }
+  };
+
+  const handleToggleService = (serviceName) => {
+    setFormData((prev) => {
+      const currentServices = prev.serviceTypes || [];
+      const isSelected = currentServices.includes(serviceName);
+      const newServices = isSelected
+        ? currentServices.filter((s) => s !== serviceName)
+        : [...currentServices, serviceName];
+
+      // Sync serviceSelections
+      let newServiceSelections = [...(prev.serviceSelections || [])];
+      if (isSelected) {
+        newServiceSelections = newServiceSelections.filter(
+          (s) => s.serviceName !== serviceName,
+        );
+      } else {
+        const matchingDef = adminServiceTypes.find(
+          (st) => st.name === serviceName,
+        );
+        const stType =
+          matchingDef?.id ||
+          (serviceName.toLowerCase().includes("repair")
+            ? "repair"
+            : serviceName.toLowerCase().includes("replacement")
+              ? "replacement"
+              : "tinting");
+
+        newServiceSelections.push({
+          serviceName,
+          serviceType: stType,
+          glassTypes: [],
+        });
+      }
+
+      // Filter glass types to only keep those valid for the new set of services
+      const validGlassTypes = new Set();
+      adminServiceTypes.forEach((st) => {
+        if (newServices.includes(st.name)) {
+          st.pricing?.forEach((p) => {
+            if (p.price > 0) validGlassTypes.add(p.glassType);
+          });
+        }
+      });
+
+      const newGlassTypes = (prev.glassTypes || []).filter((g) =>
+        validGlassTypes.has(g),
+      );
+
+      return {
+        ...prev,
+        serviceTypes: newServices,
+        glassTypes: newGlassTypes, // Remove invalid ones
+        serviceSelections: newServiceSelections,
+      };
+    });
+
+    if (errors.serviceType)
+      setErrors((prev) => ({ ...prev, serviceType: null }));
+    if (errors.glassType) setErrors((prev) => ({ ...prev, glassType: null }));
+  };
+
+  const handleToggleGlassForService = (serviceName, glassName) => {
+    setFormData((prev) => {
+      const newServiceSelections = prev.serviceSelections.map((s) => {
+        if (s.serviceName === serviceName) {
+          const currentGlass = s.glassTypes || [];
+          const isSelected = currentGlass.includes(glassName);
+          const newGlassList = isSelected
+            ? currentGlass.filter((g) => g !== glassName)
+            : [...currentGlass, glassName];
+          return { ...s, glassTypes: newGlassList };
+        }
+        return s;
+      });
+
+      // Update global glassTypes for backward compatibility (union of all)
+      const allSelectedGlass = new Set();
+      newServiceSelections.forEach((s) => {
+        s.glassTypes.forEach((g) => allSelectedGlass.add(g));
+      });
+
+      return {
+        ...prev,
+        serviceSelections: newServiceSelections,
+        glassTypes: Array.from(allSelectedGlass).sort(),
+      };
+    });
+
+    if (errors.glassType) setErrors((prev) => ({ ...prev, glassType: null }));
   };
 
   // Fetch models dynamic based on selected make
@@ -226,9 +312,10 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
       newErrors.vehicleModel = "Vehicle model is required";
     if (!formData.vehicleYear)
       newErrors.vehicleYear = "Vehicle year is required";
-    if (!formData.serviceType)
+    if (!formData.serviceTypes || formData.serviceTypes.length === 0)
       newErrors.serviceType = "Service type is required";
-    if (!formData.glassType) newErrors.glassType = "Glass type is required";
+    if (!formData.glassTypes || formData.glassTypes.length === 0)
+      newErrors.glassType = "Glass type is required";
     if (!formData.city) newErrors.city = "City is required";
     if (!formData.images || formData.images.length === 0)
       newErrors.images = "At least one photo is required";
@@ -281,14 +368,22 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
           hasAdasCamera: formData.hasAdasCamera,
           hasRainSensor: formData.hasRainSensor,
         },
-        serviceType: (() => {
-          const st = (formData.serviceType || "").toLowerCase();
-          if (st.includes("replacement")) return "replacement";
-          if (st.includes("repair")) return "repair";
-          if (st.includes("smash") || st.includes("tint")) return "tinting";
-          return "other";
+        serviceTypes: (() => {
+          const mappedServices = new Set();
+          formData.serviceTypes.forEach((service) => {
+            const st = service.toLowerCase();
+            if (st.includes("replacement")) mappedServices.add("replacement");
+            else if (st.includes("repair")) mappedServices.add("repair");
+            else if (st.includes("smash") || st.includes("tint"))
+              mappedServices.add("tinting");
+            else mappedServices.add("other");
+          });
+          return Array.from(mappedServices);
         })(),
-        glassType: formData.glassType,
+        glassTypes: formData.glassTypes.map((g) =>
+          g.toLowerCase().trim().replace(/\s+/g, "-").replace(/[()]/g, ""),
+        ),
+        serviceSelections: formData.serviceSelections,
         serviceLocation: {
           type: "mobile",
           address: {
@@ -329,8 +424,9 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
         vehicleMake: "",
         vehicleModel: "",
         vehicleYear: new Date().getFullYear().toString(),
-        serviceType: "",
-        glassType: "",
+        serviceTypes: [],
+        glassTypes: [],
+        serviceSelections: [],
         city: "",
         postcode: "",
         addressLine1: "",
@@ -514,63 +610,132 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                 <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
                   Service Required
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <PremiumSelect
-                    label="Service Type"
-                    required
-                    value={formData.serviceType}
-                    options={adminServiceTypes.map((st) => st.name)}
-                    onChange={(val) => handleChange("serviceType", val)}
-                    placeholder="Select type"
-                    error={errors.serviceType}
-                  />
+                <div className="space-y-4">
+                  {/* Service Type - FIRST */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 mt-4">
+                      Service Type
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {adminServiceTypes.map((st) => {
+                        const isSelected = formData.serviceTypes?.includes(
+                          st.name,
+                        );
+                        return (
+                          <button
+                            key={st.name}
+                            type="button"
+                            onClick={() => handleToggleService(st.name)}
+                            className={`relative p-4 rounded-xl border text-left transition-all ${
+                              isSelected
+                                ? "border-primary-500 bg-primary-50 ring-1 ring-primary-500 dark:bg-primary-900/20 dark:border-primary-600"
+                                : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700"
+                            }`}
+                          >
+                            {isSelected && (
+                              <div className="absolute top-3 right-3 w-4 h-4 bg-primary-600 text-white rounded-full flex items-center justify-center">
+                                <Check size={10} strokeWidth={3} />
+                              </div>
+                            )}
+                            <div className="font-semibold text-sm text-slate-900 dark:text-white pr-6">
+                              {st.name}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {errors.serviceType && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.serviceType}
+                      </p>
+                    )}
+                  </div>
 
-                  <PremiumSelect
-                    label="Glass Type"
-                    required
-                    value={formData.glassType}
-                    options={(() => {
-                      if (!formData.serviceType) return [];
-
-                      // Find the selected service type object
-                      const selectedService = adminServiceTypes.find(
-                        (st) => st.name === formData.serviceType,
-                      );
-
-                      if (!selectedService || !selectedService.pricing)
-                        return [];
-
-                      // Filter glass types that have pricing for selected service
-                      const availableGlassTypes = glassTypes.filter(
-                        (glassType) => {
-                          const pricingEntry = selectedService.pricing.find(
-                            (p) => p.glassType === glassType,
+                  {/* Glass Type - SECOND (filtered by service) */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 mt-4 flex items-center gap-1.5">
+                      Select Glass for Each Service{" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    {!formData.serviceSelections ||
+                    formData.serviceSelections.length === 0 ? (
+                      <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                          ℹ️ Please select a service type above first
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {formData.serviceSelections.map((selection) => {
+                          const serviceDef = adminServiceTypes.find(
+                            (s) => s.name === selection.serviceName,
                           );
-                          return pricingEntry && pricingEntry.price > 0;
-                        },
-                      );
+                          const validGlassForThisService =
+                            serviceDef?.pricing
+                              ?.filter((p) => p.price > 0)
+                              .map((p) => p.glassType)
+                              .sort() || [];
 
-                      return availableGlassTypes;
-                    })()}
-                    onChange={(val) => handleChange("glassType", val)}
-                    placeholder={
-                      !formData.serviceType
-                        ? "Select service first"
-                        : "Select glass"
-                    }
-                    error={errors.glassType}
-                    searchable
-                    disabled={!formData.serviceType}
-                    emptyMessage={
-                      !formData.serviceType
-                        ? "Please select a service type first"
-                        : "No glass types available for this service"
-                    }
-                  />
+                          return (
+                            <div
+                              key={selection.serviceName}
+                              className="p-4 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30"
+                            >
+                              <div className="flex items-center gap-2 mb-3">
+                                <h4 className="font-semibold text-sm text-slate-900 dark:text-white">
+                                  {selection.serviceName}
+                                </h4>
+                              </div>
+
+                              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                                {validGlassForThisService.map((glassName) => {
+                                  const isSelected =
+                                    selection.glassTypes.includes(glassName);
+                                  return (
+                                    <button
+                                      key={glassName}
+                                      type="button"
+                                      onClick={() =>
+                                        handleToggleGlassForService(
+                                          selection.serviceName,
+                                          glassName,
+                                        )
+                                      }
+                                      className={`relative p-3 rounded-xl border text-[11px] font-medium transition-all text-left ${
+                                        isSelected
+                                          ? "border-primary-500 bg-primary-50 text-primary-700 ring-1 ring-primary-500 dark:bg-primary-900/20 dark:border-primary-600 dark:text-primary-300"
+                                          : "border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-300 hover:border-primary-300"
+                                      }`}
+                                    >
+                                      {isSelected && (
+                                        <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-primary-600 text-white rounded-full flex items-center justify-center">
+                                          <Check size={8} strokeWidth={3} />
+                                        </div>
+                                      )}
+                                      <span
+                                        className={`block ${isSelected ? "pr-4" : ""}`}
+                                      >
+                                        {glassName}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {errors.glassType && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.glassType}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Vehicle Features - Only for Windscreen */}
-                {formData.glassType === "Windscreen" && (
+                {formData.glassTypes.includes("Windscreen") && (
                   <div className="mt-4">
                     <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
                       Vehicle Features

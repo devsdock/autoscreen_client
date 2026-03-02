@@ -74,6 +74,7 @@ export const getPublicSettings = async () => {
         "Side Window (Rear Left)",
         "Side Window (Rear Right)",
         "Rear Window",
+        "Door Glass",
         "Quarter Glass",
         "Sunroof",
       ],
@@ -88,6 +89,7 @@ export const getPublicSettings = async () => {
             { glassType: "Side Window (Rear Left)", price: 850 },
             { glassType: "Side Window (Rear Right)", price: 850 },
             { glassType: "Rear Window", price: 1450 },
+            { glassType: "Door Glass", price: 850 },
             { glassType: "Quarter Glass", price: 650 },
             { glassType: "Sunroof", price: 2200 },
           ],
@@ -102,6 +104,7 @@ export const getPublicSettings = async () => {
             { glassType: "Side Window (Rear Left)", price: 450 },
             { glassType: "Side Window (Rear Right)", price: 450 },
             { glassType: "Rear Window", price: 450 },
+            { glassType: "Door Glass", price: 450 },
             { glassType: "Quarter Glass", price: 450 },
             { glassType: "Sunroof", price: 450 },
           ],
@@ -121,8 +124,8 @@ export const getPublicSettings = async () => {
         },
       ],
       supportEmail: "support@autoscreen.co.za",
-      supportPhone: "+27 71 046 1517",
-      supportWhatsApp: "+27 71 046 1517",
+      supportPhone: "078 965 9317",
+      supportWhatsApp: "078 965 9317",
     };
   }
 };
