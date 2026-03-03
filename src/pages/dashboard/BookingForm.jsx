@@ -438,20 +438,62 @@ const BookingForm = () => {
     fetchMakes();
   }, []);
 
-  // Pre-fill service from searchCriteria after admin service types are loaded
+  // Pre-fill and normalize service selections from searchCriteria after admin service types are loaded
   useEffect(() => {
-    if (
-      adminServiceTypes.length > 0 &&
-      searchCriteria?.serviceTypes &&
-      formData.serviceTypes.length === 0
-    ) {
+    if (adminServiceTypes.length === 0 || glassTypes.length === 0) return;
+
+    let hasChanges = false;
+    let newServices = formData.serviceTypes || [];
+    let newGlass = formData.glassTypes || [];
+    let newServiceSelections = [...(formData.serviceSelections || [])];
+
+    // Build service selections if missing but we have service types
+    const currentNames = newServiceSelections.map((s) => s.serviceName);
+    const missing = newServices.filter((s) => !currentNames.includes(s));
+    const extra = currentNames.filter((s) => !newServices.includes(s));
+
+    if (missing.length > 0 || extra.length > 0) {
+      hasChanges = true;
+      newServiceSelections = newServiceSelections.filter((s) =>
+        newServices.includes(s.serviceName),
+      );
+
+      missing.forEach((serviceName) => {
+        const stType = serviceName.toLowerCase().includes("repair")
+          ? "repair"
+          : serviceName.toLowerCase().includes("replacement")
+            ? "replacement"
+            : serviceName.toLowerCase().includes("tint")
+              ? "tinting"
+              : "other";
+
+        const def = adminServiceTypes.find((st) => st.name === serviceName);
+        const validGlass =
+          def?.pricing?.filter((p) => p.price > 0).map((p) => p.glassType) ||
+          [];
+        const matchingGlass = newGlass.filter((g) => validGlass.includes(g));
+
+        newServiceSelections.push({
+          serviceName,
+          serviceType: stType,
+          glassTypes: matchingGlass,
+        });
+      });
+    }
+
+    if (hasChanges) {
       setFormData((prev) => ({
         ...prev,
-        serviceTypes: searchCriteria.serviceTypes,
-        serviceSelections: searchCriteria.serviceSelections || [],
+        serviceSelections: newServiceSelections,
       }));
     }
-  }, [adminServiceTypes, searchCriteria, formData.serviceTypes]);
+  }, [
+    adminServiceTypes,
+    glassTypes,
+    formData.serviceTypes,
+    formData.glassTypes,
+    formData.serviceSelections,
+  ]);
 
   // Pre-fill from saved details (Uber Style)
   useEffect(() => {

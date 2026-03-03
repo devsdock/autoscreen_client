@@ -51,7 +51,9 @@ The customer portal never shows Platform Fee or Provider Earnings — those are 
 > [!CAUTION]
 > The `paymentStatus` comparison MUST be case-insensitive. The backend returns lowercase (`"refunded"`, `"paid"`, `"partially_refunded"`), but older check strings in the UI use title-case (`"Refunded"`, `"Paid"`). This causes silent display failures for refunded bookings.
 
-_Portal: **autoscreen_client** | Last updated: 03 March 2026_
+| CLI-MULT | 🟢 `FIXED` | Multiple Portals — Service Arrays | **Multi-selection fields not resolving in lists/details** | **Fixed:** Updated dataMapping and lists across Provider Earnings/Jobs, Customer Payments, Admin Bookings/Quotes to iterate over serviceSelections arrays and render dynamically. |
+| GLB-MEM | 🟢 `FIXED` | Backend Node — Sorting Limits | **Sort exceeded memory limit of 33554432 bytes** | **Fixed:** Addressed `allowDiskUse:true` to all pagination and document fetching Mongoose.find().sort() pipelines to stop out of memory errors. |
+| CLI-SVCUI | 🟢 `FIXED` | Multiple Portals | **Service UI Refinement.** Tables showing service combinations were using a "View" button for everything. | **Fixed:** Removed the "View" button and modal entirely. Now renders services as a clean list directly in rows/cards (matching Payments style). |
+| CLI-STAT | 🟢 `FIXED` | `StatusBadge.jsx` | **Status Color Discrepancy.** Some statuses (e.g. "Awaiting Provider") showed different colors on Dashboard vs Bookings pages. | **Fixed:** Updated `StatusBadge.jsx` config keys to include display labels (e.g., "Awaiting Provider", "Action Required") to ensure consistency when raw status is mapped. |
 
-| CLI-MULT | 🟢 FIXED | Multiple Portals — Service Arrays | **Multi-selection fields not resolving in lists/details** | **Fixed:** Updated dataMapping and lists across Provider Earnings/Jobs, Customer Payments, Admin Bookings/Quotes to iterate over serviceSelections arrays and render dynamically. |
-| GLB-MEM | 🟢 FIXED | Backend Node — Sorting Limits | **Sort exceeded memory limit of 33554432 bytes** | **Fixed:** Addressed `allowDiskUse:true` to all pagination and document fetching Mongoose.find().sort() pipelines to stop out of memory errors. |
+_Portal: **autoscreen_client** | Last updated: 04 March 2026_

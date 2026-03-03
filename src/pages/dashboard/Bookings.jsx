@@ -23,6 +23,7 @@ import Button from "../../components/ui/Button";
 import Tabs from "../../components/ui/Tabs";
 import Input from "../../components/ui/Input";
 import EmptyState from "../../components/ui/EmptyState";
+import ServiceInfoCell from "../../components/ui/ServiceInfoCell";
 import BookingDetailDrawer from "../../components/dashboard/BookingDetailDrawer";
 import { downloadInvoice } from "../../utils/invoiceUtils";
 import Tooltip from "../../components/ui/Tooltip";
@@ -525,20 +526,7 @@ const Bookings = () => {
                   </div>
 
                   <div className="flex flex-col gap-1 items-start">
-                    {booking.serviceSelections?.length > 0 ? (
-                      booking.serviceSelections.map((sel, idx) => (
-                        <h3
-                          key={idx}
-                          className="font-semibold text-slate-900 dark:text-white"
-                        >
-                          {sel.serviceName}
-                        </h3>
-                      ))
-                    ) : (
-                      <h3 className="font-semibold text-slate-900 dark:text-white">
-                        {booking.service}
-                      </h3>
-                    )}
+                    <ServiceInfoCell row={booking} />
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                       {booking.vehicle}
                     </p>

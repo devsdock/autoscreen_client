@@ -53,7 +53,7 @@ const formatBookingStatus = (status) => {
   }
 };
 
-const formatGlassType = (glassType) => {
+export const formatGlassType = (glassType) => {
   if (!glassType) return "-";
   if (Array.isArray(glassType)) {
     return glassType.map((gt) => formatGlassType(gt)).join(", ");

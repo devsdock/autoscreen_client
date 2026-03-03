@@ -28,6 +28,12 @@ const bookingStatusConfig = {
     icon: AlertCircle,
     label: "Action Required",
   },
+  "Action Required": {
+    color:
+      "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800",
+    icon: AlertCircle,
+    label: "Action Required",
+  },
   Pending: {
     color:
       "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800",
@@ -112,6 +118,18 @@ const bookingStatusConfig = {
     icon: X,
     label: "Cancelled",
   },
+  Rejected: {
+    color:
+      "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800",
+    icon: X,
+    label: "Rejected",
+  },
+  rejected: {
+    color:
+      "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800",
+    icon: X,
+    label: "Rejected",
+  },
   Expired: {
     color:
       "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700",
@@ -119,6 +137,12 @@ const bookingStatusConfig = {
     label: "Expired",
   },
   "awaiting-provider-acceptance": {
+    color:
+      "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800",
+    icon: Clock,
+    label: "Awaiting Provider",
+  },
+  "Awaiting Provider": {
     color:
       "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800",
     icon: Clock,
@@ -181,17 +205,23 @@ const paymentStatusConfig = {
     icon: CreditCard,
     label: "Refunded",
   },
-  "Partially Refunded": {
-    color:
-      "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800",
-    icon: CreditCard,
-    label: "Partially Refunded",
-  },
   partially_refunded: {
     color:
       "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800",
     icon: CreditCard,
-    label: "Partially Refunded",
+    label: "Partial Refund",
+  },
+  "Partial Refund": {
+    color:
+      "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800",
+    icon: CreditCard,
+    label: "Partial Refund",
+  },
+  "Partially Refunded": {
+    color:
+      "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800",
+    icon: CreditCard,
+    label: "Partial Refund",
   },
 };
 

@@ -53,7 +53,16 @@ export const client = axios.create({
  */
 client.interceptors.request.use(
   (config) => {
-    const authToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    let authToken = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+
+    if (!authToken) {
+      try {
+        const authData = localStorage.getItem("autoscreen-auth");
+        if (authData) {
+          authToken = JSON.parse(authData)?.state?.token;
+        }
+      } catch (e) {}
+    }
 
     if (authToken) {
       // Add Bearer prefix if not already present
@@ -66,7 +75,7 @@ client.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 /**
@@ -112,9 +121,9 @@ client.interceptors.response.use(
     }
 
     return Promise.reject(
-      error.response?.data || error.response || error.message
+      error.response?.data || error.response || error.message,
     );
-  }
+  },
 );
 
 /**

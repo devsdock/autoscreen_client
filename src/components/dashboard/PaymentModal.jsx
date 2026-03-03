@@ -74,12 +74,35 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
     >
       <div className="space-y-6">
         {/* Amount Summary */}
-        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6 border border-slate-100 dark:border-slate-700/50">
-          <div className="flex justify-between items-center">
-            <span className="text-slate-600 dark:text-slate-400 font-medium">
-              Service Amount
+        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6 border border-slate-100 dark:border-slate-700/50 space-y-3">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-slate-600 dark:text-slate-400">Subtotal</span>
+            <span className="text-slate-900 dark:text-white font-medium">
+              {formatCurrency(
+                (payment.breakdown?.vatPercentage || 0) > 0
+                  ? payment.breakdown?.subtotal || payment.amount
+                  : payment.amount,
+              )}
             </span>
-            <span className="text-primary-600 dark:text-primary-400 font-bold text-3xl">
+          </div>
+
+          {payment.breakdown?.vat > 0 &&
+            (payment.breakdown?.vatPercentage || 0) > 0 && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-slate-600 dark:text-slate-400">
+                  VAT ({payment.breakdown?.vatPercentage || 0}%)
+                </span>
+                <span className="text-slate-900 dark:text-white font-medium">
+                  {formatCurrency(payment.breakdown.vat)}
+                </span>
+              </div>
+            )}
+
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+            <span className="text-slate-900 dark:text-white font-bold">
+              Total Amount
+            </span>
+            <span className="text-primary-600 dark:text-primary-400 font-bold text-2xl">
               {formatCurrency(payment.amount)}
             </span>
           </div>

@@ -312,14 +312,18 @@ const BookSearch = () => {
     fetchSettings();
   }, []);
 
-  // Normalize form data against loaded options (fix for lowercase/legacy persisted data)
+  // Normalize form data against loaded options and rebuild serviceSelections
   useEffect(() => {
-    if (
-      serviceTypes.length > 0 &&
-      formData.serviceTypes &&
-      formData.serviceTypes.length > 0
-    ) {
-      const newServices = formData.serviceTypes.map((service) => {
+    if (serviceTypes.length === 0 || glassTypes.length === 0) return;
+
+    let hasChanges = false;
+    let newServices = formData.serviceTypes || [];
+    let newGlass = formData.glassTypes || [];
+    let newServiceSelections = [...(formData.serviceSelections || [])];
+
+    // Normalize Service Types
+    if (newServices.length > 0) {
+      const normalized = newServices.map((service) => {
         const exactMatch = serviceTypes.find((st) => st.name === service);
         if (exactMatch) return service;
 
@@ -335,31 +339,75 @@ const BookSearch = () => {
         );
         return match ? match.name : service;
       });
-
-      if (
-        JSON.stringify(newServices) !== JSON.stringify(formData.serviceTypes)
-      ) {
-        setFormData((prev) => ({ ...prev, serviceTypes: newServices }));
+      if (JSON.stringify(normalized) !== JSON.stringify(newServices)) {
+        newServices = normalized;
+        hasChanges = true;
       }
     }
 
-    if (
-      glassTypes.length > 0 &&
-      formData.glassTypes &&
-      formData.glassTypes.length > 0
-    ) {
-      const newGlass = formData.glassTypes.map((glass) => {
-        const glassMatch = glassTypes.find(
+    // Normalize Glass Types
+    if (newGlass.length > 0) {
+      const normalized = newGlass.map((glass) => {
+        const match = glassTypes.find(
           (gt) => gt.toLowerCase() === glass.toLowerCase(),
         );
-        return glassMatch || glass;
+        return match || glass;
       });
-
-      if (JSON.stringify(newGlass) !== JSON.stringify(formData.glassTypes)) {
-        setFormData((prev) => ({ ...prev, glassTypes: newGlass }));
+      if (JSON.stringify(normalized) !== JSON.stringify(newGlass)) {
+        newGlass = normalized;
+        hasChanges = true;
       }
     }
-  }, [serviceTypes, glassTypes, formData.serviceTypes, formData.glassTypes]);
+
+    // Synchronize serviceSelections
+    const currentNames = newServiceSelections.map((s) => s.serviceName);
+    const missing = newServices.filter((s) => !currentNames.includes(s));
+    const extra = currentNames.filter((s) => !newServices.includes(s));
+
+    if (missing.length > 0 || extra.length > 0) {
+      hasChanges = true;
+      newServiceSelections = newServiceSelections.filter((s) =>
+        newServices.includes(s.serviceName),
+      );
+
+      missing.forEach((serviceName) => {
+        const stType = serviceName.toLowerCase().includes("repair")
+          ? "repair"
+          : serviceName.toLowerCase().includes("replacement")
+            ? "replacement"
+            : serviceName.toLowerCase().includes("tint")
+              ? "tinting"
+              : "other";
+
+        const def = serviceTypes.find((st) => st.name === serviceName);
+        const validGlass =
+          def?.pricing?.filter((p) => p.price > 0).map((p) => p.glassType) ||
+          [];
+        const matchingGlass = newGlass.filter((g) => validGlass.includes(g));
+
+        newServiceSelections.push({
+          serviceName,
+          serviceType: stType,
+          glassTypes: matchingGlass,
+        });
+      });
+    }
+
+    if (hasChanges) {
+      setFormData((prev) => ({
+        ...prev,
+        serviceTypes: newServices,
+        glassTypes: newGlass,
+        serviceSelections: newServiceSelections,
+      }));
+    }
+  }, [
+    serviceTypes,
+    glassTypes,
+    formData.serviceTypes,
+    formData.glassTypes,
+    formData.serviceSelections,
+  ]);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 20 }, (_, i) => currentYear - i);

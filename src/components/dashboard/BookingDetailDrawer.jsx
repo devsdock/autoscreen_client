@@ -865,13 +865,42 @@ const BookingDetailDrawer = ({
                 )}
 
                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-slate-600 dark:text-slate-400 font-medium">
-                      Service Amount
-                    </span>
-                    <span className="font-bold text-slate-900 dark:text-white text-lg">
-                      {formatCurrency(booking.price?.total || 0)}
-                    </span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-600 dark:text-slate-400">
+                        Subtotal
+                      </span>
+                      <span className="font-medium text-slate-700 dark:text-slate-200">
+                        {formatCurrency(
+                          (booking.price?.vatPercentage || 0) > 0
+                            ? booking.price?.subtotal ||
+                                booking.price?.total ||
+                                0
+                            : booking.price?.total || 0,
+                        )}
+                      </span>
+                    </div>
+
+                    {booking.price?.vat > 0 &&
+                      (booking.price?.vatPercentage || 0) > 0 && (
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-600 dark:text-slate-400">
+                            VAT ({booking.price?.vatPercentage || 0}%)
+                          </span>
+                          <span className="font-medium text-slate-700 dark:text-slate-200">
+                            {formatCurrency(booking.price.vat)}
+                          </span>
+                        </div>
+                      )}
+
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-700">
+                      <span className="text-sm font-bold text-slate-900 dark:text-white">
+                        Total Amount
+                      </span>
+                      <span className="font-bold text-primary-600 dark:text-primary-400 text-lg">
+                        {formatCurrency(booking.price?.total || 0)}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Show Refund/Cancellation Breakdown */}
@@ -1126,9 +1155,9 @@ const BookingDetailDrawer = ({
           amount: pendingPaymentAmount || booking.price?.total || 0,
           service: booking.service,
           breakdown: {
-            service: booking.price?.service || 0,
-            callout: booking.price?.callout || 0,
-            materials: booking.price?.materials || 0,
+            subtotal: booking.price?.subtotal || 0,
+            vat: booking.price?.vat || 0,
+            vatPercentage: booking.price?.vatPercentage || 0,
           },
         }}
         isOpen={isPaymentModalOpen}

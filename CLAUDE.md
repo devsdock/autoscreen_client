@@ -808,6 +808,7 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 - **Financial Fallbacks**: Implemented robust fallback logic for earnings and fees to handle legacy bookings.
 - **Critical Fix**: Resolved a null pointer exception in `PaymentModal.jsx` where `payment.amount` was accessed before validation.
 - **UI Consistency**: Standardized currency formatting and status-based overrides (e.g., zeroing earnings for refunded jobs).
+- **Service UI Refinement**: Implemented `ServiceInfoCell` component to display multiple services and glass types as a clean list directly in table rows/cards (matching the Payments list style). This replaces the previous "View" button/modal for better direct visibility.
 
 ### v1.0.0 — February 2026
 

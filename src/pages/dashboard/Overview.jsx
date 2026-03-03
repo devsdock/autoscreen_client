@@ -32,6 +32,7 @@ import Button from "../../components/ui/Button";
 import Modal from "../../components/ui/Modal";
 import RequestQuoteModal from "../../components/dashboard/RequestQuoteModal";
 import BookingDetailDrawer from "../../components/dashboard/BookingDetailDrawer";
+import ServiceInfoCell from "../../components/ui/ServiceInfoCell";
 
 const Overview = () => {
   const navigate = useNavigate();
@@ -705,11 +706,7 @@ const Overview = () => {
                     </span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">
-                      {typeof booking.service === "object" && booking.service
-                        ? booking.service.name
-                        : booking.service || "General Service"}
-                    </span>
+                    <ServiceInfoCell row={booking} />
                   </td>
                   <td className="py-4 px-4">
                     <span className="text-sm text-slate-600 dark:text-slate-400">

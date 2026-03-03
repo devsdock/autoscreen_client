@@ -19,6 +19,7 @@ import useDashboardStore, {
 } from "../../store/useDashboardStore";
 import Button from "../../components/ui/Button";
 import StatusBadge from "../../components/ui/StatusBadge";
+import ServiceInfoCell from "../../components/ui/ServiceInfoCell";
 import RequestQuoteModal from "../../components/dashboard/RequestQuoteModal";
 import QuoteDetailPanel from "../../components/dashboard/QuoteDetailPanel";
 
@@ -387,29 +388,8 @@ const Quotes = () => {
                       </div>
 
                       {/* Service Type */}
-                      <div className="flex flex-col gap-1 mt-1.5 mb-1.5">
-                        {quote.serviceSelections &&
-                        quote.serviceSelections.length > 0 ? (
-                          quote.serviceSelections.map((sel, idx) => (
-                            <p
-                              key={idx}
-                              className="text-sm font-medium text-slate-700 dark:text-slate-300"
-                            >
-                              {sel.serviceName}
-                            </p>
-                          ))
-                        ) : (
-                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                            {Array.isArray(quote.glassTypes) &&
-                            quote.glassTypes.length > 0
-                              ? quote.glassTypes.join(", ")
-                              : quote.glassType}{" "}
-                            {Array.isArray(quote.serviceTypes) &&
-                            quote.serviceTypes.length > 0
-                              ? quote.serviceTypes.join(", ")
-                              : quote.serviceType}
-                          </p>
-                        )}
+                      <div className="flex flex-col gap-1 mt-1.5 mb-1.5 grayscale-[0.3]">
+                        <ServiceInfoCell row={quote} />
                       </div>
 
                       {/* Vehicle */}
