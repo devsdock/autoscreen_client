@@ -51,7 +51,7 @@ The customer portal never shows Platform Fee or Provider Earnings — those are 
 > [!CAUTION]
 > The `paymentStatus` comparison MUST be case-insensitive. The backend returns lowercase (`"refunded"`, `"paid"`, `"partially_refunded"`), but older check strings in the UI use title-case (`"Refunded"`, `"Paid"`). This causes silent display failures for refunded bookings.
 
-_Portal: **autoscreen_client** | Last updated: 2 March 2026_
+_Portal: **autoscreen_client** | Last updated: 03 March 2026_
 
-| CLI-MULT | 🟢 FIXED | Multiple Portals — Service Arrays | **Multi-selection fields not resolving in lists/details** | **Fixed:** Updated dataMapping and lists across Provider Earnings/Jobs, Customer Payments, Admin Bookings/Quotes to iterate over serviceSelections arrays and render dynamically.\n
-| GLB-MEM | �� FIXED | Backend Node — Sorting Limits | **Sort exceeded memory limit of 33554432 bytes** | **Fixed:** Addressed llowDiskUse:true to all pagination and document fetching Mongoose.find().sort() pipelines to stop out of memory errors.\n
+| CLI-MULT | 🟢 FIXED | Multiple Portals — Service Arrays | **Multi-selection fields not resolving in lists/details** | **Fixed:** Updated dataMapping and lists across Provider Earnings/Jobs, Customer Payments, Admin Bookings/Quotes to iterate over serviceSelections arrays and render dynamically. |
+| GLB-MEM | 🟢 FIXED | Backend Node — Sorting Limits | **Sort exceeded memory limit of 33554432 bytes** | **Fixed:** Addressed `allowDiskUse:true` to all pagination and document fetching Mongoose.find().sort() pipelines to stop out of memory errors. |
