@@ -42,33 +42,50 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
     hasRainSensor: false,
   });
 
-  // Pre-fill logic
+  // Pre-fill logic (Split into Vehicle and Address)
   useEffect(() => {
     if (isOpen && user && !formData.vehicleMake) {
       const defaultVehicle = vehicles.find((v) => v.isDefault) || vehicles[0];
-      const defaultAddress = addresses.find((a) => a.isDefault) || addresses[0];
-
-      if (defaultVehicle || defaultAddress) {
+      if (defaultVehicle) {
         setFormData((prev) => ({
           ...prev,
-          vehicleMake: defaultVehicle?.make || prev.vehicleMake,
-          vehicleModel: defaultVehicle?.model || prev.vehicleModel,
-          vehicleYear: defaultVehicle?.year?.toString() || prev.vehicleYear,
-          city: defaultAddress?.city || prev.city,
-          suburb: defaultAddress?.suburb || prev.suburb,
-          postcode:
-            defaultAddress?.postcode ||
-            defaultAddress?.postalCode ||
-            prev.postcode,
-          addressLine1:
-            defaultAddress?.line1 ||
-            defaultAddress?.addressLine1 ||
-            prev.addressLine1,
-          coordinates: defaultAddress?.coordinates || prev.coordinates,
+          vehicleMake: defaultVehicle.make || prev.vehicleMake,
+          vehicleModel: defaultVehicle.model || prev.vehicleModel,
+          vehicleYear: defaultVehicle.year?.toString() || prev.vehicleYear,
         }));
       }
     }
-  }, [isOpen, user, vehicles, addresses]);
+  }, [isOpen, user, vehicles]);
+
+  useEffect(() => {
+    // Only pre-fill address if modal is open, user exists, city isn't set,
+    // and cities coverage data has been loaded from the backend
+    if (isOpen && user && !formData.city && cities.length > 0) {
+      const defaultAddress = addresses.find((a) => a.isDefault) || addresses[0];
+      if (defaultAddress) {
+        // Verify if this city has active providers
+        const cityInfo = cities.find((c) => c.value === defaultAddress.city);
+        const isServiceable = cityInfo && !cityInfo.disabled;
+
+        if (isServiceable) {
+          setFormData((prev) => ({
+            ...prev,
+            city: defaultAddress.city || prev.city,
+            suburb: defaultAddress.suburb || prev.suburb,
+            postcode:
+              defaultAddress.postcode ||
+              defaultAddress.postalCode ||
+              prev.postcode,
+            addressLine1:
+              defaultAddress.line1 ||
+              defaultAddress.addressLine1 ||
+              prev.addressLine1,
+            coordinates: defaultAddress.coordinates || prev.coordinates,
+          }));
+        }
+      }
+    }
+  }, [isOpen, user, addresses, cities, formData.city]);
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -80,7 +97,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
   const [suggestedField, setSuggestedField] = useState(null);
 
   // Dynamic data from admin settings
-  const [cities, setCities] = useState(CITIES);
+  const [cities, setCities] = useState([]);
   const [glassTypes, setGlassTypes] = useState([]);
   const [adminServiceTypes, setAdminServiceTypes] = useState([]); // Store service types with pricing
 
@@ -110,7 +127,25 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
     const fetchSettings = async () => {
       try {
         const settings = await publicSettingsService.getPublicSettings();
-        setCities(CITIES);
+
+        // Dynamic city coverage logic
+        const supportedCities = settings.serviceAreas || [];
+        const citiesWithProviders = settings.citiesWithProviders || [];
+        const uniqueCityNames = Array.from(
+          new Set([...CITIES, ...supportedCities]),
+        ).sort();
+
+        const transformedCities = uniqueCityNames.map((cityName) => {
+          const hasProvider = citiesWithProviders.includes(cityName);
+          return {
+            value: cityName,
+            label: cityName,
+            subtitle: hasProvider ? null : "More providers coming soon",
+            disabled: !hasProvider,
+          };
+        });
+
+        setCities(transformedCities);
         setGlassTypes(settings.glassTypes || []);
         // Store full service type objects with pricing
         setAdminServiceTypes(settings.serviceTypes || []);
@@ -819,7 +854,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                     onChange={(val) => handleChange("city", val)}
                     placeholder="Select city"
                     error={errors.city}
-                    searchable
+                    isSearchable
                   />
 
                   <div>
@@ -891,20 +926,6 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* Notes */}
-              <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                  Additional Notes
-                </label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => handleChange("notes", e.target.value)}
-                  placeholder="Describe the damage or any special requirements..."
-                  rows={3}
-                  className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 resize-none text-slate-700 dark:text-slate-200"
-                />
-              </div>
-
               {/* Image Upload */}
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
@@ -962,6 +983,20 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                 {errors.images && (
                   <p className="text-sm text-red-500 mt-2">{errors.images}</p>
                 )}
+              </div>
+
+              {/* Notes - Moved after images */}
+              <div>
+                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                  Additional Notes
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => handleChange("notes", e.target.value)}
+                  placeholder="Describe the damage or any special requirements..."
+                  rows={3}
+                  className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 resize-none text-slate-700 dark:text-slate-200"
+                />
               </div>
             </form>
 

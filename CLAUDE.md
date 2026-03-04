@@ -3,7 +3,7 @@
 > **Project:** AutoScreen Customer Dashboard  
 > **Stack:** React + Vite, Zustand, React Router v6, Axios, Socket.IO  
 > **Version:** 1.0.0  
-> **Last Updated:** 02 March 2026
+> **Last Updated:** 04 March 2026 (Updated Quote Modal Flow & City Coverage)
 
 ---
 
