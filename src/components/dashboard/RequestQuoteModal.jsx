@@ -559,7 +559,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                     onChange={(val) => handleChange("vehicleMake", val)}
                     placeholder="Select make"
                     error={errors.vehicleMake}
-                    searchable
+                    isSearchable
                     loading={isFetchingMakes}
                   />
 
@@ -575,7 +575,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                         : "Search model"
                     }
                     error={errors.vehicleModel}
-                    searchable
+                    isSearchable
                     disabled={!formData.vehicleMake}
                     loading={isFetchingModels}
                     emptyMessage={
@@ -593,6 +593,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                     options={years.map(String)}
                     onChange={(val) => handleChange("vehicleYear", val)}
                     placeholder="Select year"
+                    isSearchable
                   />
                 </div>
 
