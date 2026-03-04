@@ -42,6 +42,20 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
     hasRainSensor: false,
   });
 
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [availableModels, setAvailableModels] = useState([]);
+  const [availableMakes, setAvailableMakes] = useState(vehicleMakes); // Initialize with static list as fallback
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [isFetchingMakes, setIsFetchingMakes] = useState(false);
+  const [modelSearchQuery, setModelSearchQuery] = useState("");
+  const [suggestedField, setSuggestedField] = useState(null);
+
+  // Dynamic data from admin settings
+  const [cities, setCities] = useState([]);
+  const [glassTypes, setGlassTypes] = useState([]);
+  const [adminServiceTypes, setAdminServiceTypes] = useState([]); // Store service types with pricing
+
   // Pre-fill logic (Split into Vehicle and Address)
   useEffect(() => {
     if (isOpen && user && !formData.vehicleMake) {
@@ -86,20 +100,6 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
       }
     }
   }, [isOpen, user, addresses, cities, formData.city]);
-
-  const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [availableModels, setAvailableModels] = useState([]);
-  const [availableMakes, setAvailableMakes] = useState(vehicleMakes); // Initialize with static list as fallback
-  const [isFetchingModels, setIsFetchingModels] = useState(false);
-  const [isFetchingMakes, setIsFetchingMakes] = useState(false);
-  const [modelSearchQuery, setModelSearchQuery] = useState("");
-  const [suggestedField, setSuggestedField] = useState(null);
-
-  // Dynamic data from admin settings
-  const [cities, setCities] = useState([]);
-  const [glassTypes, setGlassTypes] = useState([]);
-  const [adminServiceTypes, setAdminServiceTypes] = useState([]); // Store service types with pricing
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 20 }, (_, i) => currentYear - i);

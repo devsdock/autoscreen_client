@@ -20,6 +20,7 @@ const PremiumSelect = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(-1);
   const dropdownRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -77,8 +78,14 @@ const PremiumSelect = ({
   const handleToggle = () => {
     if (!disabled && !loading) {
       setIsOpen((prev) => {
-        if (prev) setSearchQuery("");
-        return !prev;
+        const next = !prev;
+        if (next && isSearchable) {
+          setSearchQuery(displayValue);
+          setActiveIndex(-1);
+        } else if (!next) {
+          setSearchQuery("");
+        }
+        return next;
       });
     }
   };
@@ -86,7 +93,58 @@ const PremiumSelect = ({
   const handleClose = () => {
     setIsOpen(false);
     setSearchQuery("");
+    setActiveIndex(-1);
   };
+
+  const handleKeyDown = (e) => {
+    if (!isOpen) {
+      if (e.key === "Enter" || e.key === "ArrowDown") {
+        handleToggle();
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setActiveIndex((prev) =>
+          prev < filteredOptions.length - 1 ? prev + 1 : prev,
+        );
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setActiveIndex((prev) => (prev > 0 ? prev - 1 : 0));
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (activeIndex >= 0 && activeIndex < filteredOptions.length) {
+          const opt = filteredOptions[activeIndex];
+          const isOptDisabled = typeof opt === "object" ? opt.disabled : false;
+          if (!isOptDisabled) {
+            onChange(getOptValue(opt));
+            handleClose();
+          }
+        } else if (filteredOptions.length === 1) {
+          // If only one result, select it on enter
+          const opt = filteredOptions[0];
+          const isOptDisabled = typeof opt === "object" ? opt.disabled : false;
+          if (!isOptDisabled) {
+            onChange(getOptValue(opt));
+            handleClose();
+          }
+        }
+        break;
+      case "Escape":
+        handleClose();
+        break;
+      default:
+        break;
+    }
+  };
+
+  useEffect(() => {
+    setActiveIndex(-1);
+  }, [searchQuery]);
 
   const filteredOptions = useMemo(() => {
     const search = searchQuery.toLowerCase().trim();
@@ -141,7 +199,13 @@ const PremiumSelect = ({
                 setSearchQuery(e.target.value);
                 if (!isOpen) setIsOpen(true);
               }}
-              onFocus={() => setIsOpen(true)}
+              onFocus={() => {
+                if (!isOpen) {
+                  setIsOpen(true);
+                  setSearchQuery(displayValue);
+                }
+              }}
+              onKeyDown={handleKeyDown}
               placeholder={placeholder || "Search..."}
               className="w-full bg-transparent border-none outline-none focus:ring-0 focus:outline-none text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 p-0 caret-primary-500"
             />
@@ -155,6 +219,7 @@ const PremiumSelect = ({
           <button
             type="button"
             onClick={handleToggle}
+            onKeyDown={handleKeyDown}
             className={`w-full flex items-center justify-between px-4 py-3 bg-slate-50/50 dark:bg-slate-800 border rounded-xl text-sm transition-all text-left ${
               isOpen
                 ? "ring-2 ring-primary-500/20 border-primary-500 bg-white dark:bg-slate-800"
@@ -231,9 +296,11 @@ const PremiumSelect = ({
                       className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between transition-colors ${
                         value === optValue
                           ? "text-primary-600 dark:text-primary-400 font-semibold bg-primary-50/50 dark:bg-primary-900/5"
-                          : isOptDisabled
-                            ? "opacity-50 cursor-not-allowed bg-slate-50/50 dark:bg-slate-900/20"
-                            : "text-slate-700 dark:text-slate-300 hover:bg-primary-50 dark:hover:bg-primary-900/10"
+                          : idx === activeIndex
+                            ? "bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                            : isOptDisabled
+                              ? "opacity-50 cursor-not-allowed bg-slate-50/50 dark:bg-slate-900/20"
+                              : "text-slate-700 dark:text-slate-300 hover:bg-primary-50 dark:hover:bg-primary-900/10"
                       }`}
                     >
                       <div className="flex flex-col">
