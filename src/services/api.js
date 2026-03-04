@@ -92,11 +92,18 @@ const handleSessionExpiration = () => {
 /**
  * Response interceptor to handle data unwrapping and global errors
  */
+// Flag to prevent multiple simultaneous 401-triggered logouts.
+let isHandling401 = false;
+
 client.interceptors.response.use(
   (response) => {
     // Check if session has expired (custom status code)
     if (response?.data?.status === SESSION_STATUS.EXPIRED) {
-      handleSessionExpiration();
+      if (!isHandling401) {
+        isHandling401 = true;
+        handleSessionExpiration();
+        setTimeout(() => (isHandling401 = false), 3000);
+      }
       return Promise.reject("Session expired");
     }
     return response.data;
@@ -114,7 +121,11 @@ client.interceptors.response.use(
         (error.response.status === 401 && !isAuthEndpoint) ||
         isUserNotFound
       ) {
-        handleSessionExpiration();
+        if (!isHandling401) {
+          isHandling401 = true;
+          handleSessionExpiration();
+          setTimeout(() => (isHandling401 = false), 3000);
+        }
       }
     } else if (error.request) {
     } else {
