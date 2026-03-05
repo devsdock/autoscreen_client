@@ -31,7 +31,7 @@ import geocodingService from "../../services/geocodingService";
 import publicSettingsService from "../../services/publicSettingsService";
 import Button from "../../components/ui/Button";
 import Modal, { ModalActions } from "../../components/ui/Modal";
-import { vehicleMakes } from "../../data/quotes";
+// vehicleMakes static import removed — now sourced from database via vehicleService
 import { CITIES } from "../../data/cities";
 import PremiumSelect from "../../components/ui/PremiumSelect";
 import PremiumDatePicker from "../../components/ui/PremiumDatePicker";
@@ -205,9 +205,10 @@ const BookingForm = () => {
 
   const [errors, setErrors] = useState({});
   const [availableModels, setAvailableModels] = useState([]);
-  const [availableMakes, setAvailableMakes] = useState(vehicleMakes);
+  const [availableMakes, setAvailableMakes] = useState([]);
+  const [makeLookup, setMakeLookup] = useState({}); // name → _id
   const [isFetchingModels, setIsFetchingModels] = useState(false);
-  const [isFetchingMakes, setIsFetchingMakes] = useState(false); // Add loading state
+  const [isFetchingMakes, setIsFetchingMakes] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState("");
   const [suggestedField, setSuggestedField] = useState(null);
   const [providerCount, setProviderCount] = useState(null);
@@ -418,14 +419,18 @@ const BookingForm = () => {
     formData.timeSlot,
   ]);
 
-  // Fetch makes on mount
+  // Fetch makes on mount — map to name strings and build lookup
   useEffect(() => {
     const fetchMakes = async () => {
       setIsFetchingMakes(true);
       try {
         const makes = await vehicleService.getAllMakes();
         if (makes && makes.length > 0) {
-          setAvailableMakes(makes);
+          const nameStrings = makes.map((m) => m.name);
+          const lookup = {};
+          makes.forEach((m) => { lookup[m.name] = m._id; });
+          setAvailableMakes(nameStrings);
+          setMakeLookup(lookup);
         }
       } catch (err) {
         console.error("Failed to fetch makes", err);
@@ -708,21 +713,44 @@ const BookingForm = () => {
       }));
       setAvailableModels([]);
       setSuggestedField("model");
+
+      // If not in the existing makes list it is a user-created entry
+      if (value && !availableMakes.includes(value)) {
+        vehicleService.createMake(value).then((created) => {
+          if (created?._id) {
+            setAvailableMakes((prev) =>
+              prev.includes(value) ? prev : [...prev, value],
+            );
+            setMakeLookup((prev) => ({ ...prev, [value]: created._id }));
+          }
+        }).catch(() => {});
+      }
     }
 
     if (field === "model") {
       setSuggestedField(null);
+
+      // If not in the existing models list it is a user-created entry
+      if (value && !availableModels.includes(value) && formData.vehicle.make) {
+        const makeIdOrName = makeLookup[formData.vehicle.make] || formData.vehicle.make;
+        vehicleService.createModel(makeIdOrName, value).then(() => {
+          setAvailableModels((prev) =>
+            prev.includes(value) ? prev : [...prev, value],
+          );
+        }).catch(() => {});
+      }
     }
   };
 
-  // Fetch models dynamically
+  // Fetch models dynamically — use _id from lookup when available, fall back to name
   useEffect(() => {
     const fetchModels = async () => {
+      if (!formData.vehicle.make) return;
+      setIsFetchingModels(true);
       try {
-        const models = await vehicleService.getModelsByMake(
-          formData.vehicle.make,
-        );
-        setAvailableModels(models);
+        const makeIdOrName = makeLookup[formData.vehicle.make] || formData.vehicle.make;
+        const models = await vehicleService.getModelsByMake(makeIdOrName);
+        setAvailableModels(models.map((m) => m.name));
       } catch (err) {
         setAvailableModels([]);
       } finally {
@@ -731,7 +759,7 @@ const BookingForm = () => {
     };
 
     fetchModels();
-  }, [formData.vehicle.make]);
+  }, [formData.vehicle.make, makeLookup]);
 
   const validateStep = (step) => {
     const newErrors = {};

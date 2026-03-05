@@ -203,12 +203,28 @@ const DashboardTopBar = () => {
                         if (!notif.isRead) markAsRead(notif._id);
 
                         const type = notif.type || "";
-                        const bookingId =
-                          notif.data?.bookingId || notif.data?.quoteId || "";
+                        const quoteId = notif.data?.quoteId || "";
+                        const bookingId = notif.data?.bookingId || "";
 
+                        // Quote-related notifications → quotes page
                         if (
-                          type.includes("quote") ||
-                          type.includes("booking")
+                          quoteId &&
+                          (type === "quote_accepted" ||
+                            type === "slot_change_proposed" ||
+                            type === "slot_proposed" ||
+                            type === "quote_response" ||
+                            type === "new_quote_response")
+                        ) {
+                          navigate(`/dashboard/quotes/${quoteId}`);
+                        } else if (
+                          type.includes("quote") &&
+                          !type.includes("booking") &&
+                          quoteId
+                        ) {
+                          navigate(`/dashboard/quotes/${quoteId}`);
+                        } else if (
+                          type.includes("booking") ||
+                          bookingId
                         ) {
                           useDashboardStore
                             .getState()

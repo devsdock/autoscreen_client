@@ -39,6 +39,7 @@ const useDashboardStore = create(
       // Quotes
       quotes: [],
       quoteResponses: [],
+      _failedQuoteIds: {},
 
       // Bookings
       bookings: [],
@@ -139,6 +140,7 @@ const useDashboardStore = create(
           addresses: [],
           quotes: [],
           quoteResponses: [],
+          _failedQuoteIds: {},
           bookings: [],
           payments: [],
           activities: [],
@@ -257,6 +259,12 @@ const useDashboardStore = create(
       },
 
       fetchQuoteDetails: async (quoteId) => {
+        // Skip if this quote already returned 404 recently (5-min cooldown)
+        const failedAt = get()._failedQuoteIds?.[quoteId];
+        if (failedAt && Date.now() - failedAt < 5 * 60 * 1000) {
+          return null;
+        }
+
         try {
           const quoteService = (await import("../services/quoteService"))
             .default;
@@ -302,7 +310,19 @@ const useDashboardStore = create(
 
             return mappedQuote;
           }
-        } catch (error) {}
+          return null;
+        } catch (error) {
+          // Track 404s to prevent repeated retries for inaccessible quotes
+          if (error?.response?.status === 404) {
+            set((state) => ({
+              _failedQuoteIds: {
+                ...(state._failedQuoteIds || {}),
+                [quoteId]: Date.now(),
+              },
+            }));
+          }
+          return null;
+        }
       },
       createQuote: (quoteData) => {
         const id = generateId("QT");
@@ -387,19 +407,18 @@ const useDashboardStore = create(
         }
       },
 
-      acceptQuote: async (quoteId, responseId) => {
+      acceptQuote: async (quoteId, responseId, data = {}) => {
         try {
           const quoteService = (await import("../services/quoteService"))
             .default;
-          // Optimistically update local state if needed, or just wait for backend
 
           const result = await quoteService.acceptQuoteResponse(
             quoteId,
             responseId,
+            data,
           );
 
           if (result.success) {
-            // refresh data to reflect changes
             await get().fetchQuotes();
             await get().fetchBookings();
 
@@ -409,12 +428,6 @@ const useDashboardStore = create(
               relatedId: quoteId,
             });
 
-            get().addToast({
-              type: "success",
-              message: "Quote accepted! Booking created.",
-            });
-
-            // Return the booking ID if available in response
             return result.data?.bookingId || result.data?._id;
           } else {
             get().addToast({
@@ -426,9 +439,82 @@ const useDashboardStore = create(
         } catch (error) {
           get().addToast({
             type: "error",
-            message: "An error occurred while accepting the quote",
+            message:
+              error?.response?.data?.error ||
+              "An error occurred while accepting the quote",
           });
           return null;
+        }
+      },
+
+      acceptProposedSlot: async (bookingId) => {
+        try {
+          const bookingService = (await import("../services/bookingService"))
+            .default;
+          const result = await bookingService.acceptProposedSlot(bookingId);
+          if (result.success) {
+            await get().fetchBookings();
+            return true;
+          }
+          get().addToast({
+            type: "error",
+            message: result.message || "Failed to accept time slot",
+          });
+          return false;
+        } catch (error) {
+          get().addToast({
+            type: "error",
+            message: "An error occurred",
+          });
+          return false;
+        }
+      },
+
+      rejectProposedSlot: async (bookingId) => {
+        try {
+          const bookingService = (await import("../services/bookingService"))
+            .default;
+          const result = await bookingService.rejectProposedSlot(bookingId);
+          if (result.success) {
+            await get().fetchBookings();
+            return true;
+          }
+          get().addToast({
+            type: "error",
+            message: result.message || "Failed to reject time slot",
+          });
+          return false;
+        } catch (error) {
+          get().addToast({
+            type: "error",
+            message: "An error occurred",
+          });
+          return false;
+        }
+      },
+
+      counterProposeSlot: async (bookingId, data) => {
+        try {
+          const bookingService = (await import("../services/bookingService"))
+            .default;
+          const result = await bookingService.counterProposeSlot(
+            bookingId,
+            data,
+          );
+          if (result.success) {
+            return true;
+          }
+          get().addToast({
+            type: "error",
+            message: result.message || "Failed to send time proposal",
+          });
+          return false;
+        } catch (error) {
+          get().addToast({
+            type: "error",
+            message: "An error occurred",
+          });
+          return false;
         }
       },
 

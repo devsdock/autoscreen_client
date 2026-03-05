@@ -146,25 +146,7 @@ export const timeSlots = [
   "Any time",
 ];
 
-export const vehicleMakes = [
-  "Audi",
-  "BMW",
-  "Chevrolet",
-  "Ford",
-  "Honda",
-  "Hyundai",
-  "Isuzu",
-  "Jeep",
-  "Kia",
-  "Mazda",
-  "Mercedes-Benz",
-  "Nissan",
-  "Opel",
-  "Renault",
-  "Suzuki",
-  "Toyota",
-  "Volkswagen",
-  "Volvo",
-];
+// vehicleMakes removed — now sourced from backend database
+// via vehicleService.js (GET /api/public/vehicles)
 
 export const cities = CITIES;

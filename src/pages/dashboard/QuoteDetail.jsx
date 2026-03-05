@@ -23,8 +23,8 @@ import Card, {
 import StatusBadge from "../../components/ui/StatusBadge";
 import Button from "../../components/ui/Button";
 import Rating from "../../components/ui/Rating";
-import ConfirmModal from "../../components/ui/ConfirmModal";
 import EmptyState from "../../components/ui/EmptyState";
+import SelectSlotModal from "../../components/dashboard/SelectSlotModal";
 
 const QuoteDetail = () => {
   const { id } = useParams();
@@ -35,7 +35,7 @@ const QuoteDetail = () => {
   const quote = quotes.find((q) => q.id === id);
   const responses = getQuoteResponses(id);
 
-  const [acceptingResponse, setAcceptingResponse] = useState(null);
+  const [slotModal, setSlotModal] = useState({ open: false, response: null });
   const [loading, setLoading] = useState(false);
 
   if (!quote) {
@@ -54,18 +54,25 @@ const QuoteDetail = () => {
     );
   }
 
-  const handleAcceptQuote = async () => {
-    if (!acceptingResponse) return;
+  const handleAcceptQuote = async (slotData) => {
+    if (!slotModal.response) return;
 
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    const bookingId = acceptQuote(quote.id, acceptingResponse.id);
+    const bookingId = await acceptQuote(
+      quote.id,
+      slotModal.response.id,
+      slotData,
+    );
     setLoading(false);
-    setAcceptingResponse(null);
+    setSlotModal({ open: false, response: null });
 
     if (bookingId) {
-      navigate(`/dashboard/bookings/${bookingId}`);
+      addToast({
+        type: "success",
+        message:
+          "Quote accepted! Waiting for the provider to confirm your time slot.",
+      });
+      // Stay on quote page — booking is awaiting provider confirmation
     }
   };
 
@@ -223,7 +230,11 @@ const QuoteDetail = () => {
                       </div>
                     ) : canAcceptQuotes ? (
                       <>
-                        <Button onClick={() => setAcceptingResponse(response)}>
+                        <Button
+                          onClick={() =>
+                            setSlotModal({ open: true, response })
+                          }
+                        >
                           Accept Quote
                         </Button>
                         <Button
@@ -249,20 +260,21 @@ const QuoteDetail = () => {
         )}
       </div>
 
-      {/* Accept Quote Confirmation Modal */}
-      <ConfirmModal
-        isOpen={!!acceptingResponse}
-        onClose={() => setAcceptingResponse(null)}
+      {/* Select Slot Modal */}
+      <SelectSlotModal
+        isOpen={slotModal.open}
+        onClose={() => setSlotModal({ open: false, response: null })}
         onConfirm={handleAcceptQuote}
-        title="Accept this quote?"
-        message={
-          acceptingResponse
-            ? `Accept quote from ${acceptingResponse.providerName} for ${formatCurrency(acceptingResponse.price)}? This will create a booking.`
-            : ""
+        provider={
+          slotModal.response
+            ? {
+                id: slotModal.response.providerId,
+                name: slotModal.response.providerName,
+                price: slotModal.response.price,
+              }
+            : null
         }
-        confirmLabel="Accept Quote"
-        type="info"
-        loading={loading}
+        isLoading={loading}
       />
     </div>
   );

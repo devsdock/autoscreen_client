@@ -169,6 +169,7 @@ const BookSearch = () => {
   const [errors, setErrors] = useState({});
   const [availableModels, setAvailableModels] = useState([]);
   const [availableMakes, setAvailableMakes] = useState([]);
+  const [makeLookup, setMakeLookup] = useState({}); // name → _id
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [isFetchingMakes, setIsFetchingMakes] = useState(false);
   const [suggestedField, setSuggestedField] = useState(null);
@@ -178,13 +179,19 @@ const BookSearch = () => {
   const [glassTypes, setGlassTypes] = useState([]);
   const [serviceTypes, setServiceTypes] = useState([]);
 
-  // Fetch makes on mount
+  // Fetch makes on mount — map to name strings and build lookup
   useEffect(() => {
     const fetchMakes = async () => {
       setIsFetchingMakes(true);
       try {
         const makes = await vehicleService.getAllMakes();
-        if (makes && makes.length > 0) setAvailableMakes(makes);
+        if (makes && makes.length > 0) {
+          const nameStrings = makes.map((m) => m.name);
+          const lookup = {};
+          makes.forEach((m) => { lookup[m.name] = m._id; });
+          setAvailableMakes(nameStrings);
+          setMakeLookup(lookup);
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -427,10 +434,32 @@ const BookSearch = () => {
       setAvailableModels([]);
       setSuggestedField("vehicleModel");
       setSelectedSavedVehicle(""); // Clear saved vehicle selection on manual change
+
+      // If the value is not in the existing makes list it is a user-created entry
+      if (value && !availableMakes.includes(value)) {
+        vehicleService.createMake(value).then((created) => {
+          if (created?._id) {
+            setAvailableMakes((prev) =>
+              prev.includes(value) ? prev : [...prev, value],
+            );
+            setMakeLookup((prev) => ({ ...prev, [value]: created._id }));
+          }
+        }).catch(() => {});
+      }
     }
 
     if (field === "vehicleModel") {
       setSuggestedField(null);
+
+      // If the value is not in the existing models list it is a user-created entry
+      if (value && !availableModels.includes(value) && formData.vehicleMake) {
+        const makeIdOrName = makeLookup[formData.vehicleMake] || formData.vehicleMake;
+        vehicleService.createModel(makeIdOrName, value).then(() => {
+          setAvailableModels((prev) =>
+            prev.includes(value) ? prev : [...prev, value],
+          );
+        }).catch(() => {});
+      }
     }
   };
 
@@ -536,25 +565,25 @@ const BookSearch = () => {
     if (errors.glassType) setErrors((prev) => ({ ...prev, glassType: null }));
   };
 
-  // Fetch models dynamically
+  // Fetch models dynamically — use _id from lookup when available, fall back to name
   useEffect(() => {
     const fetchModels = async () => {
       if (!formData.vehicleMake) return;
 
       setIsFetchingModels(true);
       try {
-        const models = await vehicleService.getModelsByMake(
-          formData.vehicleMake,
-        );
-        setAvailableModels(models);
+        const makeIdOrName = makeLookup[formData.vehicleMake] || formData.vehicleMake;
+        const models = await vehicleService.getModelsByMake(makeIdOrName);
+        setAvailableModels(models.map((m) => m.name));
       } catch (err) {
+        setAvailableModels([]);
       } finally {
         setIsFetchingModels(false);
       }
     };
 
     fetchModels();
-  }, [formData.vehicleMake]);
+  }, [formData.vehicleMake, makeLookup]);
 
   const validate = () => {
     const newErrors = {};

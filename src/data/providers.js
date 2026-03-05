@@ -1040,26 +1040,8 @@ export const providersData = [
 ];
 
 // Vehicle makes for search
-export const vehicleMakes = [
-  "Audi",
-  "BMW",
-  "Chevrolet",
-  "Ford",
-  "Honda",
-  "Hyundai",
-  "Isuzu",
-  "Kia",
-  "Mazda",
-  "Mercedes-Benz",
-  "Nissan",
-  "Opel",
-  "Renault",
-  "Suzuki",
-  "Toyota",
-  "Volkswagen",
-  "Volvo",
-  "Other",
-];
+// vehicleMakes removed — now sourced from backend database
+// via vehicleService.js (GET /api/public/vehicles)
 
 // Import centralized constants for consistency
 import {

@@ -13,6 +13,8 @@ import {
   CheckCircle2,
   ArrowRight,
   Loader2,
+  RefreshCw,
+  XCircle,
 } from "lucide-react";
 import useDashboardStore, {
   formatDate,
@@ -23,6 +25,7 @@ import StatusBadge from "../ui/StatusBadge";
 import Button from "../ui/Button";
 import ProviderResponseCard from "./ProviderResponseCard";
 import Modal from "../ui/Modal";
+import SelectSlotModal from "./SelectSlotModal";
 
 const QuoteDetailPanel = ({ quote, onClose }) => {
   const navigate = useNavigate();
@@ -32,15 +35,20 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     closeQuoteRequest,
     addToast,
     fetchQuoteDetails,
+    acceptProposedSlot,
+    rejectProposedSlot,
+    counterProposeSlot,
   } = useDashboardStore();
   const [selectedImage, setSelectedImage] = useState(null);
-  const [acceptModal, setAcceptModal] = useState({
+  const [slotModal, setSlotModal] = useState({
     open: false,
     response: null,
   });
+  const [counterSlotModal, setCounterSlotModal] = useState(false);
   const [closeModal, setCloseModal] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [isSlotAction, setIsSlotAction] = useState(false);
 
   // Fetch latest details to ensure we have responses
   useEffect(() => {
@@ -72,34 +80,98 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     quote.status === "Closed" ||
     ["closed", "expired", "cancelled"].includes(quote.status?.toLowerCase());
 
-  const handleAcceptQuote = async () => {
-    if (!acceptModal.response) return;
+  const handleAcceptQuote = async (slotData) => {
+    if (!slotModal.response) return;
 
     setIsAccepting(true);
 
     try {
-      const bookingId = await acceptQuote(quote.id, acceptModal.response.id);
+      const bookingId = await acceptQuote(
+        quote.id,
+        slotModal.response.id,
+        slotData,
+      );
 
       setIsAccepting(false);
-      setAcceptModal({ open: false, response: null });
+      setSlotModal({ open: false, response: null });
 
-      if (bookingId) {
-        addToast({
-          type: "success",
-          message: "Quote accepted! Redirecting to booking details...",
-        });
-        // Navigate to the specific booking pending page for smooth flow
-        navigate(`/dashboard/booking/pending/${bookingId}`);
-      } else {
-        addToast({
-          type: "success",
-          message: "Quote accepted! Booking created successfully.",
-        });
+      addToast({
+        type: "success",
+        message:
+          "Quote accepted! Waiting for the provider to confirm your time slot.",
+      });
+      // Stay on quotes page — booking is awaiting-provider-acceptance
+      // Refresh quote details to show the updated status
+      if (quote?.id) {
+        fetchQuoteDetails(quote.id);
       }
     } catch (error) {
       console.error("Accept quote error:", error);
       setIsAccepting(false);
-      setAcceptModal({ open: false, response: null });
+      setSlotModal({ open: false, response: null });
+    }
+  };
+
+  // Slot negotiation handlers
+  const booking = quote?.booking;
+  const negotiation = booking?.slotNegotiation;
+  const isProviderProposed = negotiation?.status === "provider-proposed";
+
+  const handleAcceptSlot = async () => {
+    if (!booking?._id) return;
+    setIsSlotAction(true);
+    try {
+      const result = await acceptProposedSlot(booking._id);
+      if (result) {
+        addToast({
+          type: "success",
+          message: "Time slot accepted! Booking confirmed.",
+        });
+        fetchQuoteDetails(quote.id);
+      }
+    } catch (err) {
+      console.error("Accept slot error:", err);
+    } finally {
+      setIsSlotAction(false);
+    }
+  };
+
+  const handleRejectSlot = async () => {
+    if (!booking?._id) return;
+    setIsSlotAction(true);
+    try {
+      const result = await rejectProposedSlot(booking._id);
+      if (result) {
+        addToast({
+          type: "info",
+          message: "Booking cancelled.",
+        });
+        fetchQuoteDetails(quote.id);
+      }
+    } catch (err) {
+      console.error("Reject slot error:", err);
+    } finally {
+      setIsSlotAction(false);
+    }
+  };
+
+  const handleCounterSlot = async (slotData) => {
+    if (!booking?._id) return;
+    setIsSlotAction(true);
+    try {
+      const result = await counterProposeSlot(booking._id, slotData);
+      if (result) {
+        addToast({
+          type: "success",
+          message: "Your preferred time has been sent to the provider.",
+        });
+        setCounterSlotModal(false);
+        fetchQuoteDetails(quote.id);
+      }
+    } catch (err) {
+      console.error("Counter slot error:", err);
+    } finally {
+      setIsSlotAction(false);
     }
   };
 
@@ -131,7 +203,10 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
       return "Providers have responded! Review the offers below and accept one to proceed.";
     }
     if (status === "accepted") {
-      return "You've accepted a quote. A booking has been created for you.";
+      if (booking?.status === "awaiting-provider-acceptance") {
+        return "You've accepted a quote. Waiting for the provider to confirm your time slot.";
+      }
+      return "You've accepted a quote. Your booking has been confirmed.";
     }
     if (status === "closed") {
       return "This quote request has been closed.";
@@ -228,23 +303,134 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           </p>
         </div>
 
-        {/* Next Step Banner for Accepted */}
-        {isAccepted && (
-          <div className="p-4 bg-primary-600 dark:bg-primary-700 rounded-xl">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-white/80">Next Step</p>
-                <p className="text-white font-semibold">
-                  Complete your booking
+        {/* Next Step Banner for Accepted — only show once provider confirms slot */}
+        {isAccepted &&
+          !isProviderProposed &&
+          booking?.status &&
+          booking.status !== "awaiting-provider-acceptance" && (
+            <div className="p-4 bg-primary-600 dark:bg-primary-700 rounded-xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-white/80">
+                    Next Step
+                  </p>
+                  <p className="text-white font-semibold">
+                    Complete your booking
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  className="bg-white hover:bg-slate-100 text-primary-600"
+                  onClick={() => navigate("/dashboard/bookings")}
+                >
+                  View Booking
+                  <ArrowRight size={16} />
+                </Button>
+              </div>
+            </div>
+          )}
+
+        {/* Awaiting Provider Confirmation Banner */}
+        {isAccepted &&
+          !isProviderProposed &&
+          booking?.status === "awaiting-provider-acceptance" && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+              <div className="flex items-center gap-3">
+                <Clock
+                  size={20}
+                  className="text-amber-600 dark:text-amber-400 flex-shrink-0"
+                />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                    Waiting for Provider Confirmation
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                    The provider is reviewing your selected time slot. You'll be
+                    notified once they confirm.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+        {/* Provider Proposed Slot Banner */}
+        {isAccepted && isProviderProposed && (
+          <div className="p-4 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-xl space-y-3">
+            <div className="flex items-center gap-2">
+              <RefreshCw
+                size={18}
+                className="text-warning-600 dark:text-warning-400"
+              />
+              <h4 className="font-semibold text-warning-800 dark:text-warning-200">
+                Provider Suggested a Different Time
+              </h4>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="p-2.5 bg-white dark:bg-slate-800 rounded-lg">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">
+                  Your selected time
+                </p>
+                <p className="font-medium text-slate-800 dark:text-slate-200">
+                  {booking?.scheduledDate
+                    ? formatDate(booking.scheduledDate)
+                    : "-"}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {typeof booking?.scheduledTimeSlot === "object"
+                    ? `${booking.scheduledTimeSlot.start} - ${booking.scheduledTimeSlot.end}`
+                    : booking?.scheduledTimeSlot || "-"}
                 </p>
               </div>
+              <div className="p-2.5 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
+                <p className="text-xs text-primary-600 dark:text-primary-400 mb-1">
+                  Provider's preferred time
+                </p>
+                <p className="font-semibold text-primary-800 dark:text-primary-200">
+                  {negotiation?.proposedDate
+                    ? formatDate(negotiation.proposedDate)
+                    : "-"}
+                </p>
+                <p className="text-xs text-primary-600 dark:text-primary-400">
+                  {typeof negotiation?.proposedTimeSlot === "object"
+                    ? `${negotiation.proposedTimeSlot.start} - ${negotiation.proposedTimeSlot.end}`
+                    : negotiation?.proposedTimeSlot || "-"}
+                </p>
+              </div>
+            </div>
+            {negotiation?.note && (
+              <p className="text-sm text-slate-600 dark:text-slate-400 italic">
+                "{negotiation.note}"
+              </p>
+            )}
+            <div className="flex items-center gap-2 pt-1">
               <Button
-                variant="secondary"
-                className="bg-white hover:bg-slate-100 text-primary-600"
-                onClick={() => navigate("/dashboard/bookings")}
+                size="sm"
+                onClick={handleAcceptSlot}
+                loading={isSlotAction}
+                className="flex-1"
               >
-                View Booking
-                <ArrowRight size={16} />
+                <CheckCircle2 size={14} className="mr-1" />
+                Accept
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setCounterSlotModal(true)}
+                disabled={isSlotAction}
+                className="flex-1"
+              >
+                <RefreshCw size={14} className="mr-1" />
+                Change Time
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={handleRejectSlot}
+                loading={isSlotAction}
+                className="flex-1"
+              >
+                <XCircle size={14} className="mr-1" />
+                Reject
               </Button>
             </div>
           </div>
@@ -473,7 +659,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                   isAccepted={response.status === "Accepted"}
                   isRejected={response.status === "Rejected"}
                   disabled={isAccepted || isClosed}
-                  onAccept={() => setAcceptModal({ open: true, response })}
+                  onAccept={() => setSlotModal({ open: true, response })}
                   onMessage={handleMessageProvider}
                 />
               ))}
@@ -510,56 +696,45 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
         </p>
       </div>
 
-      <Modal
-        isOpen={acceptModal.open}
-        onClose={() => setAcceptModal({ open: false, response: null })}
-        title="Accept this quote?"
-        size="md"
-      >
-        {acceptModal.response && (
-          <div className="space-y-4">
-            <p className="text-slate-600 dark:text-slate-400">
-              You're about to accept the quote from{" "}
-              <strong className="text-slate-900 dark:text-white">
-                {acceptModal.response.provider.name}
-              </strong>{" "}
-              for{" "}
-              <strong className="text-slate-900 dark:text-white">
-                {formatCurrency(acceptModal.response.price)}
-              </strong>
-              .
-            </p>
+      {/* Select Slot Modal (replaces simple accept confirm) */}
+      <SelectSlotModal
+        isOpen={slotModal.open}
+        onClose={() => setSlotModal({ open: false, response: null })}
+        onConfirm={handleAcceptQuote}
+        provider={
+          slotModal.response
+            ? {
+                id:
+                  typeof slotModal.response.provider === "string"
+                    ? slotModal.response.provider
+                    : slotModal.response.provider?._id ||
+                      slotModal.response.provider?.id,
+                name:
+                  slotModal.response.provider?.businessName ||
+                  slotModal.response.provider?.name,
+                price: slotModal.response.price,
+                turnaround: slotModal.response.turnaround,
+              }
+            : null
+        }
+        isLoading={isAccepting}
+      />
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                After accepting:
-              </p>
-              <ul className="text-sm text-slate-600 dark:text-slate-400 mt-2 space-y-1">
-                <li>• A booking will be created for you</li>
-                <li>• Other provider offers will be declined</li>
-                <li>• You can proceed to confirm and pay</li>
-              </ul>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <Button
-                variant="secondary"
-                className="flex-1"
-                onClick={() => setAcceptModal({ open: false, response: null })}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="flex-1 whitespace-nowrap"
-                onClick={handleAcceptQuote}
-                loading={isAccepting}
-              >
-                Accept & Book
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+      {/* Counter-propose Slot Modal */}
+      <SelectSlotModal
+        isOpen={counterSlotModal}
+        onClose={() => setCounterSlotModal(false)}
+        onConfirm={handleCounterSlot}
+        provider={
+          booking?.provider
+            ? {
+                id: booking.provider,
+                name: "Provider",
+              }
+            : null
+        }
+        isLoading={isSlotAction}
+      />
 
       {/* Close Confirmation Modal */}
       <Modal

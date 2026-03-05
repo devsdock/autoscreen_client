@@ -17,6 +17,7 @@ import useDashboardStore, {
   formatDate,
   getRelativeTime,
 } from "../../store/useDashboardStore";
+import useAuthStore from "../../store/useAuthStore";
 import Button from "../../components/ui/Button";
 import StatusBadge from "../../components/ui/StatusBadge";
 import ServiceInfoCell from "../../components/ui/ServiceInfoCell";
@@ -34,7 +35,7 @@ const statusFilters = [
 const Quotes = () => {
   const { id: routeId } = useParams();
   const navigate = useNavigate();
-  const { quotes, fetchQuotes, fetchQuoteDetails } = useDashboardStore();
+  const { quotes, fetchQuotes, fetchQuoteDetails, addToast } = useDashboardStore();
   const [isLoading, setIsLoading] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -108,6 +109,10 @@ const Quotes = () => {
             if (window.innerWidth < 1024) {
               setShowMobileDetail(true);
             }
+          } else {
+            // Quote not found or not accessible — redirect to quotes list
+            addToast("Quote not found or belongs to a different account.", "error");
+            navigate("/dashboard/quotes", { replace: true });
           }
           setIsLoading(false);
         }

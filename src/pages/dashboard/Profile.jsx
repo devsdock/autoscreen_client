@@ -43,7 +43,7 @@ import Input from "../../components/ui/Input";
 import PremiumSelect from "../../components/ui/PremiumSelect";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 import Modal, { ModalActions } from "../../components/ui/Modal";
-import { vehicleMakes, bodyTypes, yearOptions } from "../../data/vehicles";
+import { bodyTypes, yearOptions } from "../../data/vehicles";
 import { addressLabels } from "../../data/addresses";
 import { CITIES as cities } from "../../data/cities";
 
@@ -91,17 +91,25 @@ const Profile = () => {
     hasRainSensor: false,
   });
   const [availableModels, setAvailableModels] = useState([]);
-  const [availableMakes, setAvailableMakes] = useState(vehicleMakes);
+  const [availableMakes, setAvailableMakes] = useState([]);
+  const [makeLookup, setMakeLookup] = useState({}); // name → _id
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [isFetchingMakes, setIsFetchingMakes] = useState(false);
   const [deleteVehicleId, setDeleteVehicleId] = useState(null);
 
+  // Fetch makes on mount — map to name strings and build lookup
   useEffect(() => {
     const fetchMakes = async () => {
       setIsFetchingMakes(true);
       try {
         const makes = await vehicleService.getAllMakes();
-        if (makes && makes.length > 0) setAvailableMakes(makes);
+        if (makes && makes.length > 0) {
+          const nameStrings = makes.map((m) => m.name);
+          const lookup = {};
+          makes.forEach((m) => { lookup[m.name] = m._id; });
+          setAvailableMakes(nameStrings);
+          setMakeLookup(lookup);
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -217,13 +225,15 @@ const Profile = () => {
     fetchProfileData();
   }, []);
 
-  // Fetch models dynamically for vehicle form
+  // Fetch models dynamically for vehicle form — use _id from lookup when available
   useEffect(() => {
     const fetchModels = async () => {
+      if (!vehicleForm.make) return;
       setIsFetchingModels(true);
       try {
-        const models = await vehicleService.getModelsByMake(vehicleForm.make);
-        setAvailableModels(models);
+        const makeIdOrName = makeLookup[vehicleForm.make] || vehicleForm.make;
+        const models = await vehicleService.getModelsByMake(makeIdOrName);
+        setAvailableModels(models.map((m) => m.name));
       } catch (err) {
         setAvailableModels([]);
       } finally {
@@ -232,7 +242,7 @@ const Profile = () => {
     };
 
     fetchModels();
-  }, [vehicleForm.make]);
+  }, [vehicleForm.make, makeLookup]);
 
   const totalBookings = bookings.length;
 
@@ -1152,6 +1162,18 @@ const Profile = () => {
                 make: val,
                 model: "",
               }));
+              setAvailableModels([]);
+              // If not in existing makes list it is a user-created entry
+              if (val && !availableMakes.includes(val)) {
+                vehicleService.createMake(val).then((created) => {
+                  if (created?._id) {
+                    setAvailableMakes((prev) =>
+                      prev.includes(val) ? prev : [...prev, val],
+                    );
+                    setMakeLookup((prev) => ({ ...prev, [val]: created._id }));
+                  }
+                }).catch(() => {});
+              }
             }}
             required
             isSearchable
@@ -1164,9 +1186,18 @@ const Profile = () => {
             label="Model"
             options={availableModels}
             value={vehicleForm.model}
-            onChange={(val) =>
-              setVehicleForm((prev) => ({ ...prev, model: val }))
-            }
+            onChange={(val) => {
+              setVehicleForm((prev) => ({ ...prev, model: val }));
+              // If not in existing models list it is a user-created entry
+              if (val && !availableModels.includes(val) && vehicleForm.make) {
+                const makeIdOrName = makeLookup[vehicleForm.make] || vehicleForm.make;
+                vehicleService.createModel(makeIdOrName, val).then(() => {
+                  setAvailableModels((prev) =>
+                    prev.includes(val) ? prev : [...prev, val],
+                  );
+                }).catch(() => {});
+              }
+            }}
             required
             isSearchable
             isCreatable

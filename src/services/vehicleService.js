@@ -1,80 +1,65 @@
-import axios from "axios";
-import { vehicleMakes, commonSAModels } from "../data/vehicles";
+import { request } from "./api";
 
 /**
- * Vehicle Service using NHTSA Public API
- * https://vpic.nhtsa.dot.gov/api/
+ * Vehicle Service — Database-backed vehicle make/model lookup
+ * Endpoints: /public/vehicles/...
  */
 const vehicleService = {
   /**
-   * Get all models for a specific make
-   * @param {string} make - Vehicle make (e.g., 'Toyota', 'BMW')
+   * Get all active vehicle makes, sorted A-Z
+   * @param {string} [search] - Optional search filter
+   * @returns {Promise<Array>} Array of { _id, name, isCustom }
    */
-  getModelsByMake: async (make) => {
-    if (!make) return [];
-
-    // Check local common models first (for SA brands not in US API)
-    if (commonSAModels[make]) {
-      return [...commonSAModels[make].sort()];
-    }
-
-    try {
-      const response = await axios.get(
-        `https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMake/${make}?format=json`,
-      );
-
-      if (
-        response.data &&
-        response.data.Results &&
-        response.data.Results.length > 0
-      ) {
-        // Map and sort models
-        const models = response.data.Results.map((item) => item.Model_Name)
-          .filter(
-            (value, index, self) => value && self.indexOf(value) === index,
-          ) // Unique
-          .sort();
-        return models;
-      }
-      return [];
-    } catch (error) {
-      return [];
-    }
+  getAllMakes: async (search) => {
+    const params = search ? `?search=${encodeURIComponent(search)}` : "";
+    const response = await request({
+      method: "GET",
+      url: `/public/vehicles${params}`,
+    });
+    return response.data?.data || response.data || [];
   },
 
   /**
-   * Get all vehicle makes (optional, if we want to dynamic makes too)
+   * Get all active models for a make
+   * @param {string} makeIdOrName - Make ObjectId or name
+   * @returns {Promise<Array>} Array of { _id, name, isCustom }
    */
-  getAllMakes: async () => {
-    // Start with our comprehensive local list
-    let makes = [...vehicleMakes];
+  getModelsByMake: async (makeIdOrName) => {
+    if (!makeIdOrName) return [];
+    const response = await request({
+      method: "GET",
+      url: `/public/vehicles/${encodeURIComponent(makeIdOrName)}/models`,
+    });
+    return response.data?.data || response.data || [];
+  },
 
-    try {
-      const response = await axios.get(
-        "https://vpic.nhtsa.dot.gov/api/vehicles/GetMakesForVehicleType/car?format=json",
-      );
+  /**
+   * Create a custom vehicle make (idempotent)
+   * @param {string} name - Make name
+   * @returns {Promise<Object>} Created or existing make { _id, name }
+   */
+  createMake: async (name) => {
+    const response = await request({
+      method: "POST",
+      url: "/public/vehicles",
+      data: { name },
+    });
+    return response.data?.data || response.data;
+  },
 
-      if (response.data && response.data.Results) {
-        const apiMakes = response.data.Results.map((item) => {
-          // Convert generic UPPERCASE to Title Case
-          return item.MakeName.toLowerCase().replace(/\b\w/g, (s) =>
-            s.toUpperCase(),
-          );
-        });
-
-        // Merge and deduplicate
-        const uniqueMakes = new Set([...makes, ...apiMakes]);
-        makes = Array.from(uniqueMakes).sort();
-      }
-    } catch (error) {
-      console.error(
-        "Failed to fetch makes, falling back to local list:",
-        error,
-      );
-      // Fallback is already set to local list
-    }
-
-    return makes;
+  /**
+   * Create a custom vehicle model under a make (idempotent)
+   * @param {string} makeId - Make ObjectId or name
+   * @param {string} name - Model name
+   * @returns {Promise<Object>} Created or existing model { _id, name }
+   */
+  createModel: async (makeId, name) => {
+    const response = await request({
+      method: "POST",
+      url: `/public/vehicles/${encodeURIComponent(makeId)}/models`,
+      data: { name },
+    });
+    return response.data?.data || response.data;
   },
 };
 

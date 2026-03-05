@@ -1,14 +1,14 @@
 import { X, Upload, Trash2, Clock, Check } from "lucide-react";
 import useDashboardStore from "../../store/useDashboardStore";
 import Button from "../ui/Button";
-import { vehicleMakes, serviceTypes, timeSlots } from "../../data/quotes";
+import { serviceTypes } from "../../data/quotes";
 import vehicleService from "../../services/vehicleService";
 import geocodingService from "../../services/geocodingService";
 import publicSettingsService from "../../services/publicSettingsService";
 import { useState, useRef, useEffect, useMemo } from "react";
 import PremiumSelect from "../ui/PremiumSelect";
-import PremiumDatePicker from "../ui/PremiumDatePicker";
-import { getTodayString } from "../../utils/dateUtils";
+
+
 import { CITIES } from "../../data/cities";
 
 const RequestQuoteModal = ({ isOpen, onClose }) => {
@@ -31,8 +31,8 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
     postcode: "",
     addressLine1: "",
     coordinates: null,
-    preferredDate: "",
-    preferredTimeSlot: "",
+    preferredDate: null,
+    preferredTimeSlot: null,
     notes: "",
     images: [],
     suburb: "",
@@ -43,9 +43,10 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableModels, setAvailableModels] = useState([]);
-  const [availableMakes, setAvailableMakes] = useState(vehicleMakes); // Initialize with static list as fallback
+  const [availableMakes, setAvailableMakes] = useState([]);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [isFetchingMakes, setIsFetchingMakes] = useState(false);
+  const [makeLookup, setMakeLookup] = useState({});
   const [modelSearchQuery, setModelSearchQuery] = useState("");
   const [suggestedField, setSuggestedField] = useState(null);
 
@@ -109,7 +110,13 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
       try {
         const makes = await vehicleService.getAllMakes();
         if (makes && makes.length > 0) {
-          setAvailableMakes(makes);
+          const lookup = {};
+          const names = makes.map((m) => {
+            lookup[m.name] = m._id;
+            return m.name;
+          });
+          setAvailableMakes(names);
+          setMakeLookup(lookup);
         }
       } catch (err) {
         console.error("Failed to fetch makes", err);
@@ -170,22 +177,35 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
       }));
       setAvailableModels([]);
       setModelSearchQuery("");
+
+      // Create custom make if not in list
+      if (value && !availableMakes.includes(value)) {
+        vehicleService.createMake(value).then((make) => {
+          if (make) {
+            setAvailableMakes((prev) => [...new Set([...prev, make.name])].sort());
+            setMakeLookup((prev) => ({ ...prev, [make.name]: make._id }));
+          }
+        }).catch(() => {});
+      }
     }
 
     if (field === "vehicleModel") {
       setModelSearchQuery(value);
       setSuggestedField(null);
-    }
 
-    if (field === "preferredDate") {
-      if (!formData.preferredTimeSlot) {
-        setSuggestedField("preferredTimeSlot");
+      // Create custom model if not in list
+      if (value && !availableModels.includes(value)) {
+        const makeIdOrName = makeLookup[formData.vehicleMake] || formData.vehicleMake;
+        if (makeIdOrName) {
+          vehicleService.createModel(makeIdOrName, value).then((model) => {
+            if (model) {
+              setAvailableModels((prev) => [...new Set([...prev, model.name])].sort());
+            }
+          }).catch(() => {});
+        }
       }
     }
 
-    if (field === "preferredTimeSlot") {
-      setSuggestedField(null);
-    }
   };
 
   const handleToggleService = (serviceName) => {
@@ -285,10 +305,9 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
 
       setIsFetchingModels(true);
       try {
-        const models = await vehicleService.getModelsByMake(
-          formData.vehicleMake,
-        );
-        setAvailableModels(models);
+        const makeIdOrName = makeLookup[formData.vehicleMake] || formData.vehicleMake;
+        const models = await vehicleService.getModelsByMake(makeIdOrName);
+        setAvailableModels(models.map((m) => m.name));
       } catch (err) {
         console.error("Failed to fetch models", err);
       } finally {
@@ -420,8 +439,8 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
             coordinates: finalCoordinates,
           },
         },
-        preferredDate: formData.preferredDate || null,
-        preferredTimeSlot: formData.preferredTimeSlot || "Any time",
+        preferredDate: null,
+        preferredTimeSlot: null,
         customerNotes: formData.notes,
         damageImages: formData.images.map((img) => img.data),
       };
@@ -457,8 +476,8 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
         postcode: "",
         addressLine1: "",
         coordinates: null,
-        preferredDate: "",
-        preferredTimeSlot: "",
+        preferredDate: null,
+        preferredTimeSlot: null,
         notes: "",
         images: [],
       });
@@ -854,31 +873,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* Schedule Section */}
-              <div>
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-                  Preferred Schedule (Optional)
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <PremiumDatePicker
-                    label="Preferred Date"
-                    value={formData.preferredDate}
-                    onChange={(val) => handleChange("preferredDate", val)}
-                    placeholder="Select a date"
-                    minDate={getTodayString()}
-                  />
-
-                  <PremiumSelect
-                    label="Preferred Time"
-                    icon={Clock}
-                    value={formData.preferredTimeSlot}
-                    options={timeSlots}
-                    onChange={(val) => handleChange("preferredTimeSlot", val)}
-                    placeholder="Select time slot"
-                    autoOpen={suggestedField === "preferredTimeSlot"}
-                  />
-                </div>
-              </div>
+              {/* Preferred Schedule removed — scheduling happens at quote acceptance time */}
 
               {/* Image Upload */}
               <div>

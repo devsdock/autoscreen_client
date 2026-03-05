@@ -86,6 +86,16 @@ const quoteService = {
       url: `/customer/quotes/${quoteId}/cancel`,
     });
   },
+
+  /**
+   * Get provider availability for a specific date
+   */
+  getProviderAvailability: (providerId, date) => {
+    return request({
+      method: "GET",
+      url: `/customer/quotes/providers/${providerId}/availability?date=${date}`,
+    });
+  },
 };
 
 export default quoteService;

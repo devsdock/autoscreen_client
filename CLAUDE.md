@@ -810,6 +810,29 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 - **UI Consistency**: Standardized currency formatting and status-based overrides (e.g., zeroing earnings for refunded jobs).
 - **Service UI Refinement**: Implemented `ServiceInfoCell` component to display multiple services and glass types as a clean list directly in table rows/cards (matching the Payments list style). This replaces the previous "View" button/modal for better direct visibility.
 
+### 6 March 2026 (Vehicle Database System)
+
+- **Database-backed Vehicle Makes/Models**: Replaced NHTSA API and static `vehicleMakes`/`commonSAModels` with backend API (`/api/public/vehicles`). `vehicleService.js` now calls the database instead of external APIs.
+- **Creatable Vehicle Entries**: BookSearch, BookingForm, Profile, and RequestQuoteModal now support custom make/model creation via PremiumSelect `isCreatable` + `vehicleService.createMake()`/`createModel()`.
+- **No More NHTSA**: Removed all references to `vpic.nhtsa.dot.gov` API. Vehicle data is fully self-hosted.
+
+### 6 March 2026 (Slot Selection & Negotiation)
+
+- **SelectSlotModal Component**: New `components/dashboard/SelectSlotModal.jsx` — date picker + provider availability API integration with slot grid selector. Used when accepting a quote to select a preferred time slot.
+- **Quote Acceptance Flow**: Accepting a quote now opens `SelectSlotModal` instead of a simple confirm dialog. Customer must select a date and time slot from the provider's availability. Both `QuoteDetailPanel.jsx` and `QuoteDetail.jsx` updated.
+- **Slot Negotiation UI**: `QuoteDetailPanel.jsx` shows a "Provider Suggested a Different Time" banner when provider proposes a different slot. Customer can Accept, Change Time (counter-propose), or Reject.
+- **New Store Actions**: `acceptProposedSlot`, `rejectProposedSlot`, `counterProposeSlot` added to `useDashboardStore.js`
+- **New API Methods**: `bookingService.js` — `acceptProposedSlot`, `rejectProposedSlot`, `counterProposeSlot`; `quoteService.js` — `getProviderAvailability`
+- **Upcoming Bookings Fix**: `awaiting-provider-acceptance` status now included in the "upcoming" tab filter in `Bookings.jsx`
+- **Quote 404 Loop Fix**: `fetchQuoteDetails` now tracks failed (404) quote IDs with a 5-minute cooldown to prevent repeated API spam. `Quotes.jsx` shows error toast and redirects to quote list when a deep-linked quote is inaccessible
+- **SelectSlotModal Header**: Changed title to "Schedule Booking" with "Select a date & time" subtitle
+- **Empty Slots Fix**: `QuoteDetailPanel.jsx` — `getQuotes` doesn't nest-populate `responses.provider`, so provider was a raw ObjectId string. Added `typeof` check to use string directly as provider ID
+- **Duplicate Toast Fix**: Removed store-level success toast from `acceptQuote` action; component handles specific messaging
+- **RequestQuoteModal Schedule Removal**: Removed "Preferred Schedule" section (PremiumDatePicker + time slot). Scheduling now happens only at quote acceptance time via SelectSlotModal
+- **Slot Format Normalization**: Backend normalizes provider-stored slots (e.g., "08:00-10:00") to spaced format ("08:00 - 10:00")
+- **Quote Acceptance Redirect Fix**: Customer now stays on quotes page after accepting a quote (instead of redirecting to bookings page where the booking is hidden due to `awaiting-provider-acceptance` filter). Shows success toast and refreshes quote details
+- **Notification Routing Fix**: Quote-related notifications (`quote_accepted`, `slot_change_proposed`, `slot_proposed`, `quote_response`, `new_quote_response`) now route to `/dashboard/quotes/:quoteId` instead of `/dashboard/bookings/:bookingId`. Generic quote-type notifications with `quoteId` also route correctly. Direct booking notifications unchanged
+
 ### v1.0.0 — February 2026
 
 - Complete customer portal with booking, quotes, payments flows

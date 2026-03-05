@@ -13,6 +13,7 @@ import useDashboardStore, {
   formatDate,
   formatCurrency,
 } from "../../store/useDashboardStore";
+import useAuthStore from "../../store/useAuthStore";
 import bookingService from "../../services/bookingService";
 import paymentService from "../../services/paymentService";
 import { mapBooking } from "../../utils/dataMappers";
@@ -73,7 +74,12 @@ const Bookings = () => {
       const res = await bookingService.getBookings();
       if (res.success) {
         // Use data mappers to format backend data for components
-        const mappedBookings = res.data.map(mapBooking);
+        const mappedBookings = res.data
+          .map(mapBooking)
+          .filter(
+            (b) =>
+              b.status?.toLowerCase() !== "awaiting-provider-acceptance",
+          );
         setBookings(mappedBookings);
 
         // If there's an ID in URL, select that booking
