@@ -185,8 +185,6 @@ const BookingForm = () => {
       year: searchCriteria?.vehicleYear || new Date().getFullYear().toString(),
       hasAdasCamera: false,
       hasRainSensor: false,
-      otherMake: "",
-      otherModel: "",
     },
     glassTypes:
       searchCriteria?.glassTypes ||
@@ -700,17 +698,16 @@ const BookingForm = () => {
     }));
 
     if (field === "make") {
-      const isOther = value === "Other";
       setFormData((prev) => ({
         ...prev,
         vehicle: {
           ...prev.vehicle,
           make: value,
-          model: isOther ? "Other" : "",
+          model: "",
         },
       }));
-      setAvailableModels(isOther ? ["Other"] : []);
-      setSuggestedField(isOther ? null : "model");
+      setAvailableModels([]);
+      setSuggestedField("model");
     }
 
     if (field === "model") {
@@ -721,19 +718,13 @@ const BookingForm = () => {
   // Fetch models dynamically
   useEffect(() => {
     const fetchModels = async () => {
-      if (formData.vehicle.make === "Other") {
-        setAvailableModels(["Other"]);
-        setIsFetchingModels(false);
-        return;
-      }
-
       try {
         const models = await vehicleService.getModelsByMake(
           formData.vehicle.make,
         );
         setAvailableModels(models);
       } catch (err) {
-        setAvailableModels(["Other"]);
+        setAvailableModels([]);
       } finally {
         setIsFetchingModels(false);
       }
@@ -756,16 +747,6 @@ const BookingForm = () => {
           newErrors.vehicleMake = "Vehicle make is required";
         if (!formData.vehicle.model)
           newErrors.vehicleModel = "Vehicle model is required";
-        if (
-          formData.vehicle.make === "Other" &&
-          !formData.vehicle.otherMake?.trim()
-        )
-          newErrors.vehicleOtherMake = "Please specify vehicle make";
-        if (
-          formData.vehicle.model === "Other" &&
-          !formData.vehicle.otherModel?.trim()
-        )
-          newErrors.vehicleOtherModel = "Please specify vehicle model";
         break;
       case 2:
         if (!formData.scheduledDate)
@@ -1048,14 +1029,8 @@ const BookingForm = () => {
           g.toLowerCase().trim().replace(/\s+/g, "-").replace(/[()]/g, ""),
         ),
         vehicle: {
-          make:
-            formData.vehicle.make === "Other"
-              ? formData.vehicle.otherMake
-              : formData.vehicle.make,
-          model:
-            formData.vehicle.model === "Other"
-              ? formData.vehicle.otherModel
-              : formData.vehicle.model,
+          make: formData.vehicle.make,
+          model: formData.vehicle.model,
           year: parseInt(formData.vehicle.year) || new Date().getFullYear(),
           hasAdasCamera: formData.vehicle.hasAdasCamera,
           hasRainSensor: formData.vehicle.hasRainSensor,
@@ -1416,7 +1391,9 @@ const BookingForm = () => {
                   onChange={(val) => updateVehicle("make", val)}
                   placeholder="Select make"
                   error={errors.vehicleMake}
-                  searchable
+                  isSearchable
+                  isCreatable
+                  isClearable
                   loading={isFetchingMakes}
                 />
 
@@ -1432,7 +1409,9 @@ const BookingForm = () => {
                       : "Search model"
                   }
                   error={errors.vehicleModel}
-                  searchable
+                  isSearchable
+                  isCreatable
+                  isClearable
                   disabled={!formData.vehicle.make}
                   loading={isFetchingModels}
                   emptyMessage={
@@ -1450,50 +1429,6 @@ const BookingForm = () => {
                   onChange={(val) => updateVehicle("year", val)}
                   placeholder="Select year"
                 />
-
-                {formData.vehicle.make === "Other" && (
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      Specify Make <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.vehicle.otherMake}
-                      onChange={(e) =>
-                        updateVehicle("otherMake", e.target.value)
-                      }
-                      placeholder="Enter vehicle make"
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                    />
-                    {errors.vehicleOtherMake && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.vehicleOtherMake}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {formData.vehicle.model === "Other" && (
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      Specify Model <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.vehicle.otherModel}
-                      onChange={(e) =>
-                        updateVehicle("otherModel", e.target.value)
-                      }
-                      placeholder="Enter vehicle model"
-                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                    />
-                    {errors.vehicleOtherModel && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.vehicleOtherModel}
-                      </p>
-                    )}
-                  </div>
-                )}
               </div>
 
               {/* ADAS & Rain Sensor Options - ONLY for Windscreen */}

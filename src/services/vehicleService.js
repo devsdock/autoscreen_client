@@ -12,11 +12,10 @@ const vehicleService = {
    */
   getModelsByMake: async (make) => {
     if (!make) return [];
-    if (make === "Other") return ["Other"];
 
     // Check local common models first (for SA brands not in US API)
     if (commonSAModels[make]) {
-      return [...commonSAModels[make].sort(), "Other"];
+      return [...commonSAModels[make].sort()];
     }
 
     try {
@@ -35,11 +34,11 @@ const vehicleService = {
             (value, index, self) => value && self.indexOf(value) === index,
           ) // Unique
           .sort();
-        return [...models, "Other"];
+        return models;
       }
-      return ["Other"];
+      return [];
     } catch (error) {
-      return ["Other"];
+      return [];
     }
   },
 
@@ -74,13 +73,6 @@ const vehicleService = {
       );
       // Fallback is already set to local list
     }
-
-    // Ensure 'Other' is always at the end
-    const otherIndex = makes.indexOf("Other");
-    if (otherIndex > -1) {
-      makes.splice(otherIndex, 1);
-    }
-    makes.push("Other");
 
     return makes;
   },

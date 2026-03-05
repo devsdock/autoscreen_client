@@ -70,7 +70,6 @@ export const vehicleMakes = [
   "Toyota",
   "Volkswagen",
   "Volvo",
-  "Other",
 ];
 
 export const commonSAModels = {

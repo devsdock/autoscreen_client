@@ -641,7 +641,9 @@ const BookSearch = () => {
                 onChange={(val) => handleChange("vehicleMake", val)}
                 placeholder="Select make"
                 error={errors.vehicleMake}
-                searchable
+                isSearchable
+                isCreatable
+                isClearable
                 loading={isFetchingMakes}
               />
 
@@ -655,7 +657,9 @@ const BookSearch = () => {
                   !formData.vehicleMake ? "Select make first" : "Search model"
                 }
                 error={errors.vehicleModel}
-                searchable
+                isSearchable
+                isCreatable
+                isClearable
                 disabled={!formData.vehicleMake}
                 loading={isFetchingModels}
                 emptyMessage={

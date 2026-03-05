@@ -89,8 +89,6 @@ const Profile = () => {
     registration: "",
     hasAdasCamera: false,
     hasRainSensor: false,
-    otherMake: "",
-    otherModel: "",
   });
   const [availableModels, setAvailableModels] = useState([]);
   const [availableMakes, setAvailableMakes] = useState(vehicleMakes);
@@ -222,18 +220,12 @@ const Profile = () => {
   // Fetch models dynamically for vehicle form
   useEffect(() => {
     const fetchModels = async () => {
-      if (vehicleForm.make === "Other") {
-        setAvailableModels(["Other"]);
-        setIsFetchingModels(false);
-        return;
-      }
-
       setIsFetchingModels(true);
       try {
         const models = await vehicleService.getModelsByMake(vehicleForm.make);
         setAvailableModels(models);
       } catch (err) {
-        setAvailableModels(["Other"]);
+        setAvailableModels([]);
       } finally {
         setIsFetchingModels(false);
       }
@@ -380,8 +372,6 @@ const Profile = () => {
         registration: "",
         hasAdasCamera: false,
         hasRainSensor: false,
-        otherMake: "",
-        otherModel: "",
       });
     }
     setVehicleModal({ open: true, vehicle });
@@ -391,14 +381,8 @@ const Profile = () => {
     setIsSaving(true);
     try {
       const vehicleData = {
-        make:
-          vehicleForm.make === "Other"
-            ? vehicleForm.otherMake
-            : vehicleForm.make,
-        model:
-          vehicleForm.model === "Other"
-            ? vehicleForm.otherModel
-            : vehicleForm.model,
+        make: vehicleForm.make,
+        model: vehicleForm.model,
         year: parseInt(vehicleForm.year),
         bodyType: vehicleForm.bodyType,
         registrationNumber: vehicleForm.registration,
@@ -1163,16 +1147,16 @@ const Profile = () => {
             options={availableMakes}
             value={vehicleForm.make}
             onChange={(val) => {
-              const isOther = val === "Other";
               setVehicleForm((prev) => ({
                 ...prev,
                 make: val,
-                model: isOther ? "Other" : "",
+                model: "",
               }));
-              if (isOther) setAvailableModels(["Other"]);
             }}
             required
-            searchable
+            isSearchable
+            isCreatable
+            isClearable
             loading={isFetchingMakes}
             placeholder="Select make"
           />
@@ -1184,7 +1168,9 @@ const Profile = () => {
               setVehicleForm((prev) => ({ ...prev, model: val }))
             }
             required
-            searchable
+            isSearchable
+            isCreatable
+            isClearable
             disabled={!vehicleForm.make}
             loading={isFetchingModels}
             placeholder={
@@ -1196,44 +1182,6 @@ const Profile = () => {
                 : "No models found"
             }
           />
-
-          {(vehicleForm.make === "Other" || vehicleForm.model === "Other") && (
-            <div className="grid grid-cols-2 gap-4">
-              {vehicleForm.make === "Other" ? (
-                <Input
-                  label="Specify Make"
-                  placeholder="Enter vehicle make"
-                  value={vehicleForm.otherMake}
-                  onChange={(e) =>
-                    setVehicleForm((prev) => ({
-                      ...prev,
-                      otherMake: e.target.value,
-                    }))
-                  }
-                  required
-                />
-              ) : (
-                <div />
-              )}
-
-              {vehicleForm.model === "Other" ? (
-                <Input
-                  label="Specify Model"
-                  placeholder="Enter vehicle model"
-                  value={vehicleForm.otherModel}
-                  onChange={(e) =>
-                    setVehicleForm((prev) => ({
-                      ...prev,
-                      otherModel: e.target.value,
-                    }))
-                  }
-                  required
-                />
-              ) : (
-                <div />
-              )}
-            </div>
-          )}
           <div className="grid grid-cols-2 gap-4">
             <PremiumSelect
               label="Year"

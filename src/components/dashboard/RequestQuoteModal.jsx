@@ -35,8 +35,6 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
     preferredTimeSlot: "",
     notes: "",
     images: [],
-    otherMake: "",
-    otherModel: "",
     suburb: "",
     hasAdasCamera: false,
     hasRainSensor: false,
@@ -164,15 +162,14 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
 
     // If make changes, reset model and fetch new ones
     if (field === "vehicleMake") {
-      const isOther = value === "Other";
       setFormData((prev) => ({
         ...prev,
         vehicleMake: value,
-        vehicleModel: isOther ? "Other" : "",
+        vehicleModel: "",
         vehicleYear: new Date().getFullYear().toString(),
       }));
-      setAvailableModels(isOther ? ["Other"] : []);
-      setModelSearchQuery(isOther ? "Other" : "");
+      setAvailableModels([]);
+      setModelSearchQuery("");
     }
 
     if (field === "vehicleModel") {
@@ -284,7 +281,7 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
   // Fetch models dynamic based on selected make
   useEffect(() => {
     const fetchModels = async () => {
-      if (!formData.vehicleMake || formData.vehicleMake === "Other") return;
+      if (!formData.vehicleMake) return;
 
       setIsFetchingModels(true);
       try {
@@ -391,14 +388,8 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
       // Prepare API payload
       const quotePayload = {
         vehicle: {
-          make:
-            formData.vehicleMake === "Other"
-              ? formData.otherMake
-              : formData.vehicleMake,
-          model:
-            formData.vehicleModel === "Other"
-              ? formData.otherModel
-              : formData.vehicleModel,
+          make: formData.vehicleMake,
+          model: formData.vehicleModel,
           year: parseInt(formData.vehicleYear) || new Date().getFullYear(),
           hasAdasCamera: formData.hasAdasCamera,
           hasRainSensor: formData.hasRainSensor,
@@ -560,6 +551,8 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                     placeholder="Select make"
                     error={errors.vehicleMake}
                     isSearchable
+                    isCreatable
+                    isClearable
                     loading={isFetchingMakes}
                   />
 
@@ -576,6 +569,8 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                     }
                     error={errors.vehicleModel}
                     isSearchable
+                    isCreatable
+                    isClearable
                     disabled={!formData.vehicleMake}
                     loading={isFetchingModels}
                     emptyMessage={
@@ -597,48 +592,6 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
                   />
                 </div>
 
-                {(formData.vehicleMake === "Other" ||
-                  formData.vehicleModel === "Other") && (
-                  <div className="grid grid-cols-2 gap-4 mt-4">
-                    {formData.vehicleMake === "Other" ? (
-                      <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                          Specify Make <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.otherMake}
-                          onChange={(e) =>
-                            handleChange("otherMake", e.target.value)
-                          }
-                          placeholder="Enter vehicle make"
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-slate-700 dark:text-slate-200"
-                        />
-                      </div>
-                    ) : (
-                      <div />
-                    )}
-
-                    {formData.vehicleModel === "Other" ? (
-                      <div>
-                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                          Specify Model <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.otherModel}
-                          onChange={(e) =>
-                            handleChange("otherModel", e.target.value)
-                          }
-                          placeholder="Enter vehicle model"
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-slate-700 dark:text-slate-200"
-                        />
-                      </div>
-                    ) : (
-                      <div />
-                    )}
-                  </div>
-                )}
               </div>
 
               {/* Service Section */}

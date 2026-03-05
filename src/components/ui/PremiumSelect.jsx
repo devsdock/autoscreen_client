@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronDown, Search, Check, Loader2 } from "lucide-react";
+import { ChevronDown, Search, Check, Loader2, X } from "lucide-react";
 
 const PremiumSelect = ({
   label,
@@ -17,6 +17,8 @@ const PremiumSelect = ({
   required = false,
   autoOpen = false,
   className = "",
+  isCreatable = false,
+  isClearable = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -96,6 +98,13 @@ const PremiumSelect = ({
     setActiveIndex(-1);
   };
 
+  const handleClear = (e) => {
+    e.stopPropagation();
+    onChange("");
+    setSearchQuery("");
+    setActiveIndex(-1);
+  };
+
   const handleKeyDown = (e) => {
     if (!isOpen) {
       if (e.key === "Enter" || e.key === "ArrowDown") {
@@ -132,6 +141,9 @@ const PremiumSelect = ({
             onChange(getOptValue(opt));
             handleClose();
           }
+        } else if (filteredOptions.length > 0 && filteredOptions[0]._isCreatable) {
+          onChange(filteredOptions[0].value);
+          handleClose();
         }
         break;
       case "Escape":
@@ -149,21 +161,32 @@ const PremiumSelect = ({
   const filteredOptions = useMemo(() => {
     const search = searchQuery.toLowerCase().trim();
     if (!search) return options;
-    return options.filter((opt) => {
+    const filtered = options.filter((opt) => {
       const optLabel = getOptLabel(opt).toLowerCase();
       const optSubtitle = (
         typeof opt === "object" ? opt.subtitle || "" : ""
       ).toLowerCase();
       return optLabel.includes(search) || optSubtitle.includes(search);
     });
-  }, [options, searchQuery]);
+    if (isCreatable && search) {
+      const hasExactMatch = options.some((opt) => {
+        const val = getOptValue(opt).toLowerCase();
+        const label = getOptLabel(opt).toLowerCase();
+        return val === search || label === search;
+      });
+      if (!hasExactMatch) {
+        filtered.unshift({ value: searchQuery.trim(), label: "+ " + searchQuery.trim(), _isCreatable: true });
+      }
+    }
+    return filtered;
+  }, [options, searchQuery, isCreatable]);
 
   // Determine what to display in a robust way
   const selectedOption = useMemo(() => {
     return options.find((opt) => getOptValue(opt) === value);
   }, [value, options]);
 
-  const displayValue = selectedOption ? getOptLabel(selectedOption) : "";
+  const displayValue = selectedOption ? getOptLabel(selectedOption) : (value || "");
 
   return (
     <div className={`flex flex-col gap-1.5 ${className}`} ref={dropdownRef}>
@@ -209,10 +232,17 @@ const PremiumSelect = ({
               placeholder={placeholder || "Search..."}
               className="w-full bg-transparent border-none outline-none focus:ring-0 focus:outline-none text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 p-0 caret-primary-500"
             />
+            {isClearable && value && !isOpen && (
+              <X
+                size={16}
+                onClick={handleClear}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer flex-shrink-0 ml-1"
+              />
+            )}
             <ChevronDown
               size={18}
               onClick={handleToggle}
-              className={`text-slate-400 transition-transform duration-200 cursor-pointer flex-shrink-0 ml-2 ${isOpen ? "rotate-180 text-primary-500" : ""}`}
+              className={`text-slate-400 transition-transform duration-200 cursor-pointer flex-shrink-0 ml-1 ${isOpen ? "rotate-180 text-primary-500" : ""}`}
             />
           </div>
         ) : (
@@ -245,10 +275,20 @@ const PremiumSelect = ({
                 {displayValue || placeholder}
               </span>
             </div>
-            <ChevronDown
-              size={18}
-              className={`text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180 text-primary-500" : ""}`}
-            />
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {isClearable && value && (
+                <span
+                  onClick={handleClear}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer flex items-center justify-center"
+                >
+                  <X size={14} />
+                </span>
+              )}
+              <ChevronDown
+                size={18}
+                className={`text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180 text-primary-500" : ""}`}
+              />
+            </div>
           </button>
         )}
 
@@ -294,13 +334,15 @@ const PremiumSelect = ({
                         handleClose();
                       }}
                       className={`w-full text-left px-4 py-2.5 text-sm flex items-center justify-between transition-colors ${
-                        value === optValue
-                          ? "text-primary-600 dark:text-primary-400 font-semibold bg-primary-50/50 dark:bg-primary-900/5"
-                          : idx === activeIndex
-                            ? "bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-                            : isOptDisabled
-                              ? "opacity-50 cursor-not-allowed bg-slate-50/50 dark:bg-slate-900/20"
-                              : "text-slate-700 dark:text-slate-300 hover:bg-primary-50 dark:hover:bg-primary-900/10"
+                        opt._isCreatable
+                          ? "text-blue-600 dark:text-blue-400 font-semibold bg-blue-50/50 dark:bg-blue-900/10 border-b border-slate-100 dark:border-slate-700"
+                          : value === optValue
+                            ? "text-primary-600 dark:text-primary-400 font-semibold bg-primary-50/50 dark:bg-primary-900/5"
+                            : idx === activeIndex
+                              ? "bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                              : isOptDisabled
+                                ? "opacity-50 cursor-not-allowed bg-slate-50/50 dark:bg-slate-900/20"
+                                : "text-slate-700 dark:text-slate-300 hover:bg-primary-50 dark:hover:bg-primary-900/10"
                       }`}
                     >
                       <div className="flex flex-col">
