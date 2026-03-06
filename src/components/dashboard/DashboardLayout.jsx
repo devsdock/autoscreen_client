@@ -65,7 +65,7 @@ const DashboardLayout = () => {
   // Socket & Notifications Init
   const { user } = useAuthStore();
   const { fetchNotifications } = useNotificationStore();
-  const { fetchBookings, fetchQuotes } = useDashboardStore();
+  const { fetchBookings, fetchQuotes, fetchProfileData } = useDashboardStore();
 
   useEffect(() => {
     if (user?._id) {
@@ -73,6 +73,7 @@ const DashboardLayout = () => {
       fetchNotifications();
       fetchBookings();
       fetchQuotes();
+      fetchProfileData();
     }
 
     return () => {

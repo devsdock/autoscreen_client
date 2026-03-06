@@ -133,6 +133,60 @@ const useDashboardStore = create(
           user: { ...state.user, ...updates },
         })),
 
+      fetchProfileData: async () => {
+        try {
+          const profileService = (await import("../services/profileService"))
+            .default;
+          const { mapUser } = await import("../utils/dataMappers");
+
+          const [profileRes, vehiclesRes, addressesRes] = await Promise.all([
+            profileService.getProfile(),
+            profileService.getVehicles(),
+            profileService.getAddresses(),
+          ]);
+
+          if (profileRes.success && profileRes.data) {
+            const mappedUser = mapUser(profileRes.data);
+
+            // Map vehicles from dedicated endpoint if successful
+            const vehicles = vehiclesRes.success
+              ? (vehiclesRes.data || []).map((v, index) => ({
+                  id: v._id || v.id || `VEH-${index}`,
+                  make: v.make,
+                  model: v.model,
+                  year: v.year,
+                  registrationNumber: v.registrationNumber || "",
+                  hasAdasCamera: v.hasAdasCamera || false,
+                  hasRainSensor: v.hasRainSensor || false,
+                  isDefault: v.isDefault || index === 0,
+                }))
+              : mappedUser.vehicles;
+
+            // Map addresses from dedicated endpoint if successful
+            const addresses = addressesRes.success
+              ? (addressesRes.data || []).map((a, index) => ({
+                  id: a._id || a.id || `ADDR-${index}`,
+                  label: a.label || "Home",
+                  line1: a.addressLine1 || a.line1 || "",
+                  suburb: a.suburb || "",
+                  city: a.city || "",
+                  postcode: a.postalCode || a.postcode || "",
+                  coordinates: a.coordinates || null,
+                  isDefault: a.isDefault || index === 0,
+                }))
+              : mappedUser.addresses;
+
+            set({
+              user: mappedUser,
+              vehicles,
+              addresses,
+            });
+          }
+        } catch (error) {
+          console.error("Failed to fetch profile data:", error);
+        }
+      },
+
       clearData: () =>
         set({
           user: null,
@@ -1125,6 +1179,8 @@ const useDashboardStore = create(
       name: "autoscreen-dashboard-v4",
       partialize: (state) => ({
         user: state.user,
+        vehicles: state.vehicles,
+        addresses: state.addresses,
         theme: state.theme,
         sidebarCollapsed: state.sidebarCollapsed,
         searchCriteria: state.searchCriteria,

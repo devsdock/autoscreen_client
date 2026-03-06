@@ -50,9 +50,35 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
   const [glassTypes, setGlassTypes] = useState([]);
   const [adminServiceTypes, setAdminServiceTypes] = useState([]); // Store service types with pricing
 
-  // Pre-fill logic (Split into Vehicle and Address)
+  // Initialize form when opening
   useEffect(() => {
-    if (isOpen && user && !formData.vehicleMake) {
+    if (isOpen) {
+      setFormData({
+        vehicleMake: "",
+        vehicleModel: "",
+        vehicleYear: new Date().getFullYear().toString(),
+        serviceTypes: [],
+        glassTypes: [],
+        serviceSelections: [],
+        city: "",
+        postcode: "",
+        addressLine1: "",
+        coordinates: null,
+        preferredDate: null,
+        preferredTimeSlot: null,
+        notes: "",
+        images: [],
+        suburb: "",
+        hasAdasCamera: false,
+        hasRainSensor: false,
+      });
+      setErrors({});
+    }
+  }, [isOpen]);
+
+  // Pre-fill Logic (Wait for isOpen AND user AND data to be available)
+  useEffect(() => {
+    if (isOpen && user && vehicles.length > 0 && !formData.vehicleMake) {
       const defaultVehicle = vehicles.find((v) => v.isDefault) || vehicles[0];
       if (defaultVehicle) {
         setFormData((prev) => ({
@@ -60,15 +86,23 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
           vehicleMake: defaultVehicle.make || prev.vehicleMake,
           vehicleModel: defaultVehicle.model || prev.vehicleModel,
           vehicleYear: defaultVehicle.year?.toString() || prev.vehicleYear,
+          hasAdasCamera: defaultVehicle.hasAdasCamera || prev.hasAdasCamera,
+          hasRainSensor: defaultVehicle.hasRainSensor || prev.hasRainSensor,
         }));
       }
     }
-  }, [isOpen, user, vehicles]);
+  }, [isOpen, user, vehicles, formData.vehicleMake]);
 
   useEffect(() => {
     // Only pre-fill address if modal is open, user exists, city isn't set,
     // and cities coverage data has been loaded from the backend
-    if (isOpen && user && !formData.city && cities.length > 0) {
+    if (
+      isOpen &&
+      user &&
+      addresses.length > 0 &&
+      !formData.city &&
+      cities.length > 0
+    ) {
       const defaultAddress = addresses.find((a) => a.isDefault) || addresses[0];
       if (defaultAddress) {
         // Verify if this city has active providers
