@@ -130,9 +130,10 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   const bookingIsConfirmed =
     isAccepted &&
     booking &&
-    ["confirmed", "in-progress", "completed", "completed-by-fitter"].includes(
+    (["confirmed", "in-progress", "completed", "completed-by-fitter"].includes(
       bookingStatus,
-    );
+    ) ||
+      bookingPaymentStatus === "paid");
 
   const handleCloseRequest = async () => {
     setIsClosing(true);
@@ -306,7 +307,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                 <Button
                   variant="secondary"
                   className="bg-white hover:bg-slate-100 text-primary-600"
-                  onClick={() => navigate("/dashboard/bookings")}
+                  onClick={() => navigate(`/dashboard/bookings/${booking._id || booking.id}`)}
                 >
                   View Booking
                   <ArrowRight size={16} />
@@ -538,6 +539,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                   isAccepted={response.status === "Accepted"}
                   isRejected={response.status === "Rejected"}
                   disabled={isAccepted || isClosed || hasAccepted}
+                  bookingConfirmed={bookingIsConfirmed}
                   onAccept={() => setSlotModal({ open: true, response })}
                   onMessage={handleMessageProvider}
                 />

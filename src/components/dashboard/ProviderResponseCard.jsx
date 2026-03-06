@@ -5,6 +5,7 @@ import {
   User,
   MessageSquare,
   ExternalLink,
+  Phone,
 } from "lucide-react";
 import { formatCurrency } from "../../store/useDashboardStore";
 import Button from "../ui/Button";
@@ -16,6 +17,7 @@ const ProviderResponseCard = ({
   isAccepted = false,
   isRejected = false,
   disabled = false,
+  bookingConfirmed = false,
 }) => {
   const { provider, responseType, price, etaText, message, status } = response;
 
@@ -53,24 +55,8 @@ const ProviderResponseCard = ({
                   provider.businessType || provider.type,
                 )
                   ? provider.businessName || provider.name
-                  : (provider.name || "Provider").split(" ")[0]}
+                  : provider.name || "Provider"}
               </h4>
-              {["company", "franchise", "Business"].includes(
-                provider.businessType || provider.type,
-              ) && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-xs font-medium rounded-full">
-                  <Building2 size={10} />
-                  Business
-                </span>
-              )}
-              {["individual", "Individual"].includes(
-                provider.businessType || provider.type,
-              ) && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 text-xs font-medium rounded-full">
-                  <User size={10} />
-                  Individual
-                </span>
-              )}
             </div>
 
             {/* Rating */}
@@ -150,30 +136,30 @@ const ProviderResponseCard = ({
         </p>
       )}
 
+      {/* Provider Phone — only shown when accepted & payment confirmed */}
+      {isAccepted && bookingConfirmed && provider.phone && (
+        <div className="mb-4 pt-3 border-t border-slate-100 dark:border-slate-700">
+          <a
+            href={`tel:${provider.phone}`}
+            className="inline-flex items-center gap-2 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium"
+          >
+            <Phone size={14} />
+            {provider.phone}
+          </a>
+        </div>
+      )}
+
       {/* Actions */}
       {!isAccepted && !isRejected && !disabled && (
         <div className="flex items-center gap-3">
           <Button onClick={onAccept} className="flex-1">
             Accept Quote
           </Button>
-          <Button
-            variant="secondary"
-            onClick={onMessage}
-            className="flex-shrink-0"
-          >
-            <MessageSquare size={16} />
-          </Button>
+          {/* Message button hidden — enable when messaging feature is ready */}
         </div>
       )}
 
-      {isAccepted && (
-        <div className="flex items-center gap-3">
-          <Button variant="secondary" onClick={onMessage} className="flex-1">
-            <MessageSquare size={16} />
-            Message Provider
-          </Button>
-        </div>
-      )}
+      {/* Message Provider button hidden — enable when messaging feature is ready */}
     </div>
   );
 };

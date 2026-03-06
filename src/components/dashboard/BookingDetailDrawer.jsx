@@ -947,7 +947,7 @@ const BookingDetailDrawer = ({
                 <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
                   Provider
                 </h4>
-                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
                       {booking.providerName.charAt(0)}
@@ -964,6 +964,19 @@ const BookingDetailDrawer = ({
                       />
                     </div>
                   </div>
+                  {booking.providerPhone &&
+                    (booking.paymentStatus === "paid" ||
+                      ["confirmed", "in-progress", "in_progress", "completed"].includes(currentStatus)) && (
+                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                      <a
+                        href={`tel:${booking.providerPhone}`}
+                        className="inline-flex items-center gap-2 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium"
+                      >
+                        <Phone size={14} />
+                        {booking.providerPhone}
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
