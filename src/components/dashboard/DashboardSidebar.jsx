@@ -25,7 +25,7 @@ import logoIconWhite from "../../assets/logo_icon_white.png";
 
 const mainMenuItems = [
   { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", end: true },
-  { path: "/dashboard/book", icon: Search, label: "Book Now" },
+  // { path: "/dashboard/book", icon: Search, label: "Book Now" },
   { path: "/dashboard/quotes", icon: FileText, label: "Request Quotes" },
   { path: "/dashboard/bookings", icon: Calendar, label: "My Bookings" },
   { path: "/dashboard/payments", icon: CreditCard, label: "Payments" },
@@ -58,7 +58,14 @@ const DashboardSidebar = () => {
   const getBadgeCount = (label) => {
     switch (label) {
       case "Request Quotes":
-        return quotes?.filter((q) => q.status === "Responses")?.length || 0;
+        return (
+          quotes?.filter(
+            (q) =>
+              q.status === "Responses" ||
+              (q.status === "Accepted" &&
+                q.booking?.status === "awaiting-payment"),
+          )?.length || 0
+        );
       case "My Bookings":
         return (
           bookings?.filter((b) => {

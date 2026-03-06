@@ -18,7 +18,7 @@ const generateId = (prefix) =>
 
 // Helper to format currency
 export const formatCurrency = (amount) => {
-  return `R ${amount.toLocaleString("en-ZA")}`;
+  return `R ${(+amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })}`;
 };
 
 // Helper to format date
@@ -473,8 +473,11 @@ const useDashboardStore = create(
           );
 
           if (result.success) {
-            await get().fetchQuotes();
-            await get().fetchBookings();
+            const bookingData = result.data || null;
+
+            // Refresh in background — failures must not mask a successful acceptance
+            get().fetchQuotes().catch(() => {});
+            get().fetchBookings().catch(() => {});
 
             get().addActivity({
               type: "quote_accepted",
@@ -482,7 +485,7 @@ const useDashboardStore = create(
               relatedId: quoteId,
             });
 
-            return result.data?.bookingId || result.data?._id;
+            return bookingData;
           } else {
             get().addToast({
               type: "error",
@@ -583,7 +586,15 @@ const useDashboardStore = create(
           const response = await bookingService.getBookings();
           if (response.success) {
             const { mapBooking } = await import("../utils/dataMappers");
-            const mappedBookings = response.data.map(mapBooking);
+            const mappedBookings = response.data
+              .map(mapBooking)
+              .filter((b) => {
+                const s = b.status?.toLowerCase();
+                return (
+                  s !== "awaiting-payment" &&
+                  s !== "awaiting-provider-acceptance"
+                );
+              });
             set({ bookings: mappedBookings });
           }
         } catch (error) {}

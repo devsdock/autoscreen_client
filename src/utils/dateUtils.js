@@ -3,6 +3,22 @@
  * These utilities ensure dates are formatted correctly without UTC timezone shifts
  */
 
+// Internal helper — returns "DD/MM/YYYY"
+const toDDMMYYYY = (date) => {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+// Internal helper — returns "HH:MM" (24h)
+const toHHMM = (date) =>
+  date.toLocaleTimeString("en-ZA", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
 /**
  * Format a Date object as YYYY-MM-DD string in local timezone
  * @param {Date} date - Date object to format
@@ -42,15 +58,11 @@ export const parseLocalDate = (dateStr) => {
  * @param {object} options - Intl.DateTimeFormat options
  * @returns {string} Formatted date string
  */
-export const formatDateDisplay = (dateStr, options = {}) => {
+export const formatDateDisplay = (dateStr) => {
   if (!dateStr) return "";
   const date = parseLocalDate(dateStr);
-  return date.toLocaleDateString("en-ZA", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    ...options,
-  });
+  if (!date) return "";
+  return toDDMMYYYY(date);
 };
 
 /**
@@ -83,35 +95,19 @@ export const formatDate = (dateString, format = "short") => {
 
   if (isNaN(date.getTime())) return "-";
 
-  if (format === "short") {
-    return date.toLocaleDateString("en-ZA", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  }
-  if (format === "long") {
-    return date.toLocaleDateString("en-ZA", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+  if (format === "short" || format === "long") {
+    return toDDMMYYYY(date);
   }
   if (format === "time") {
-    return date.toLocaleTimeString("en-ZA", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
+    return toHHMM(date);
   }
   if (format === "datetime") {
-    const dPart = formatDate(dateString, "short");
-    const tPart = formatDate(dateString, "time");
+    const dPart = toDDMMYYYY(date);
+    const tPart = toHHMM(date);
     if (tPart === "00:00") return dPart;
-    return `${dPart} at ${tPart}`;
+    return `${dPart} - ${tPart}`;
   }
-  return date.toLocaleDateString("en-ZA");
+  return toDDMMYYYY(date);
 };
 
 /**
@@ -160,14 +156,14 @@ export const formatDateTime = (date, slot) => {
   const timeSlot = formatTimeSlot(slot);
 
   if (timeSlot) {
-    return `${datePart} at ${timeSlot}`;
+    return `${datePart} - ${timeSlot}`;
   }
 
   const timePart = formatDate(date, "time");
   // If time is 00:00 (likely unspecified) and no slot, just show date
   if (timePart === "00:00") return datePart;
 
-  return `${datePart} at ${timePart}`;
+  return `${datePart} - ${timePart}`;
 };
 
 export default {

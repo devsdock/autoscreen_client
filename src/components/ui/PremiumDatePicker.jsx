@@ -89,14 +89,8 @@ const PremiumDatePicker = ({ label, value, onChange, placeholder, minDate, error
 
   const formatDateLabel = (dateStr) => {
     if (!dateStr) return null;
-    // Parse YYYY-MM-DD string safely without timezone shift
     const [year, month, day] = dateStr.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString('en-GB', { 
-      day: 'numeric', 
-      month: 'short', 
-      year: 'numeric' 
-    });
+    return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
   };
 
   const dayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];

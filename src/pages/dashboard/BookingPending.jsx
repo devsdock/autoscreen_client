@@ -244,7 +244,7 @@ const BookingPending = () => {
                 </p>
                 {step.timestamp && (
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    {new Date(step.timestamp).toLocaleString()}
+                    {formatDate(step.timestamp, "datetime")}
                   </p>
                 )}
                 {step.note && (

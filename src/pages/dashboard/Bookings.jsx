@@ -33,7 +33,7 @@ import { CardSkeleton } from "../../components/skeletons/CardSkeleton";
 const Bookings = () => {
   const navigate = useNavigate();
   const { id, action } = useParams();
-  const { addToast } = useDashboardStore();
+  const { addToast, fetchQuotes } = useDashboardStore();
 
   const [bookings, setBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,10 +76,10 @@ const Bookings = () => {
         // Use data mappers to format backend data for components
         const mappedBookings = res.data
           .map(mapBooking)
-          .filter(
-            (b) =>
-              b.status?.toLowerCase() !== "awaiting-provider-acceptance",
-          );
+          .filter((b) => {
+            const s = b.status?.toLowerCase();
+            return s !== "awaiting-payment" && s !== "awaiting-provider-acceptance";
+          });
         setBookings(mappedBookings);
 
         // If there's an ID in URL, select that booking
@@ -91,13 +91,7 @@ const Bookings = () => {
         }
 
         // Default to Action Required if any exist, otherwise All
-        const hasActionRequired = mappedBookings.some((b) => {
-          const s = b.status?.toLowerCase();
-          return (
-            s === "awaiting-customer-approval" ||
-            (s === "searching" && b.quotes?.length > 0)
-          );
-        });
+        const hasActionRequired = mappedBookings.some(isActionRequired);
         if (!tabsInitialized && !id) {
           if (hasActionRequired) {
             setActiveTab("action-required");
@@ -125,7 +119,9 @@ const Bookings = () => {
           type: "success",
           message: "Payment confirmed! Your booking is now scheduled.",
         });
+        // Refresh both bookings (to show confirmed booking) and quotes (to clear Payment Due badge)
         fetchBookings();
+        fetchQuotes().catch(() => {});
       }
     } catch (err) {
       addToast({
@@ -166,12 +162,25 @@ const Bookings = () => {
           setIsLoading(true);
           const fetchedBooking = await fetchBookingDetails(id);
           if (fetchedBooking) {
-            setSelectedBooking(fetchedBooking);
-            // Also add to local bookings if not already there to show in list if needed
-            setBookings((prev) => {
-              if (prev.find((p) => p.id === fetchedBooking.id)) return prev;
-              return [fetchedBooking, ...prev];
-            });
+            const s = fetchedBooking.status?.toLowerCase();
+            const isPrePayment =
+              s === "awaiting-payment" || s === "awaiting-provider-acceptance";
+            if (isPrePayment) {
+              // Pre-payment bookings belong to Quotes — redirect there
+              const quoteId =
+                fetchedBooking.quote?._id || fetchedBooking.quote;
+              if (quoteId) {
+                navigate(`/dashboard/quotes/${quoteId}`, { replace: true });
+              } else {
+                navigate("/dashboard/quotes", { replace: true });
+              }
+            } else {
+              setSelectedBooking(fetchedBooking);
+              setBookings((prev) => {
+                if (prev.find((p) => p.id === fetchedBooking.id)) return prev;
+                return [fetchedBooking, ...prev];
+              });
+            }
           }
           setIsLoading(false);
         }
@@ -185,13 +194,16 @@ const Bookings = () => {
 
   // Filter logic
   const now = new Date();
-  const actionRequiredCount = bookings.filter((b) => {
+  const isActionRequired = (b) => {
     const s = b.status?.toLowerCase();
     return (
       s === "awaiting-customer-approval" ||
-      (s === "searching" && b.quotes?.length > 0)
+      (s === "searching" && b.quotes?.length > 0) ||
+      b.slotNegotiation?.status === "provider-proposed"
     );
-  }).length;
+  };
+
+  const actionRequiredCount = bookings.filter(isActionRequired).length;
 
   const tabs = [
     ...(actionRequiredCount > 0
@@ -208,18 +220,14 @@ const Bookings = () => {
       label: "Upcoming",
       count: bookings.filter((b) => {
         const s = b.status?.toLowerCase();
-        const isActionRequired =
-          s === "awaiting-customer-approval" ||
-          (s === "searching" && b.quotes?.length > 0);
         return (
           [
             "confirmed",
             "accepted",
             "pending payment",
-            "awaiting-payment",
             "searching",
           ].includes(s) &&
-          !isActionRequired &&
+          !isActionRequired(b) &&
           new Date(b.scheduledDate) > now
         );
       }).length,
@@ -246,16 +254,10 @@ const Bookings = () => {
     const status = booking.status?.toLowerCase();
     // Tab filter
     if (activeTab === "action-required") {
-      const isActionRequired =
-        status === "awaiting-customer-approval" ||
-        (status === "searching" && booking.quotes?.length > 0);
-      if (!isActionRequired) return false;
+      if (!isActionRequired(booking)) return false;
     }
 
     if (activeTab === "upcoming") {
-      const isActionRequired =
-        status === "awaiting-customer-approval" ||
-        (status === "searching" && booking.quotes?.length > 0);
       if (
         !(
           [
@@ -265,7 +267,7 @@ const Bookings = () => {
             "awaiting-payment",
             "searching",
           ].includes(status) &&
-          !isActionRequired &&
+          !isActionRequired(booking) &&
           new Date(booking.scheduledDate) > now
         )
       )
@@ -322,8 +324,8 @@ const Bookings = () => {
         title: "No actions required",
         description:
           "You're all caught up! No quotes to review or completed services to confirm.",
-        actionLabel: "Book New Service",
-        onAction: () => navigate("/dashboard/book"),
+        actionLabel: "Request a Quote",
+        onAction: () => navigate("/dashboard/quotes"),
       };
     }
 
@@ -331,9 +333,9 @@ const Bookings = () => {
       return {
         title: "No bookings yet",
         description:
-          "Request a quote or search for a provider to create your first booking.",
-        actionLabel: "Book Now",
-        onAction: () => navigate("/dashboard/book"),
+          "Request a quote from a provider to create your first booking.",
+        actionLabel: "Request a Quote",
+        onAction: () => navigate("/dashboard/quotes"),
       };
     }
 
@@ -341,8 +343,8 @@ const Bookings = () => {
       return {
         title: "No upcoming bookings",
         description: "You don't have any scheduled appointments coming up.",
-        actionLabel: "Book New Service",
-        onAction: () => navigate("/dashboard/book"),
+        actionLabel: "Request a Quote",
+        onAction: () => navigate("/dashboard/quotes"),
       };
     }
 
@@ -367,8 +369,8 @@ const Bookings = () => {
     return {
       title: "No bookings found",
       description: "No bookings in this category.",
-      actionLabel: "Book New Service",
-      onAction: () => navigate("/dashboard/book"),
+      actionLabel: "Request a Quote",
+      onAction: () => navigate("/dashboard/quotes"),
     };
   };
 

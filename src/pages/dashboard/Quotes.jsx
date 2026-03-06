@@ -40,6 +40,7 @@ const Quotes = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("Open");
+  const [filterInitialized, setFilterInitialized] = useState(false);
   const [selectedQuoteId, setSelectedQuoteId] = useState(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showMobileDetail, setShowMobileDetail] = useState(false);
@@ -73,6 +74,21 @@ const Quotes = () => {
     };
     loadQuotes();
   }, [fetchQuotes]);
+
+  // Auto-switch to Accepted tab when there are payment-due quotes (first load only, no routeId)
+  useEffect(() => {
+    if (filterInitialized || routeId || quotes.length === 0) return;
+    const hasPaymentDue = quotes.some(
+      (q) => q.status === "Accepted" && q.booking?.status === "awaiting-payment",
+    );
+    if (hasPaymentDue) {
+      setActiveFilter("Accepted");
+    } else {
+      const hasResponses = quotes.some((q) => q.status === "Responses");
+      if (hasResponses) setActiveFilter("Responses");
+    }
+    setFilterInitialized(true);
+  }, [quotes, filterInitialized, routeId]);
 
   // Handle URL params for quote selection
   useEffect(() => {
@@ -418,6 +434,14 @@ const Quotes = () => {
                         size={18}
                         className="text-slate-300 dark:text-slate-600 mb-2"
                       />
+
+                      {/* Payment Due pill */}
+                      {quote.status === "Accepted" &&
+                        quote.booking?.status === "awaiting-payment" && (
+                          <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium rounded-full">
+                            Payment Due
+                          </span>
+                        )}
 
                       {/* Responses Count */}
                       {quote.responsesCount > 0 &&

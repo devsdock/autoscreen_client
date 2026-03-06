@@ -810,6 +810,38 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 - **UI Consistency**: Standardized currency formatting and status-based overrides (e.g., zeroing earnings for refunded jobs).
 - **Service UI Refinement**: Implemented `ServiceInfoCell` component to display multiple services and glass types as a clean list directly in table rows/cards (matching the Payments list style). This replaces the previous "View" button/modal for better direct visibility.
 
+### 6 March 2026 (Quote-Only Flow — Payment Stays in Quotes, Bookings Shows Post-Payment Only)
+
+- **Book Now / Booking Request menus hidden**: Platform is now quote-only. No new `searching` bookings created from the client portal.
+- **`Bookings.jsx`**: Added filter to exclude `awaiting-payment` and `awaiting-provider-acceptance` from the bookings list — these statuses belong to the Quotes flow. Simplified `isActionRequired` to only flag `awaiting-customer-approval`, `searching`-with-quotes (legacy), and provider-proposed slot negotiation. Removed `awaiting-payment` from Upcoming tab status list.
+- **`BookingDetailDrawer.jsx`**: Removed `awaiting-payment` and `awaiting-provider-acceptance` from `canCancel` — cancellation for those states is handled from the Quotes page.
+- **`DashboardSidebar.jsx`**: "Request Quotes" badge now counts both `Responses` quotes AND `Accepted` quotes where the linked booking has `status === "awaiting-payment"`, prompting customer to pay.
+- **`Quotes.jsx`**: Added amber **"Payment Due"** pill on quote list cards when `status === "Accepted"` and `booking.status === "awaiting-payment"` — visible without opening detail panel.
+- **`QuoteDetailPanel.jsx`**: Replaced brittle `booking.status === "awaiting-payment"` exact-match with robust `bookingNeedsPayment` / `bookingIsConfirmed` flags. `bookingNeedsPayment` is true when: no booking yet, status is `awaiting-payment`, status is `awaiting-provider-acceptance` (legacy), or payment status is unpaid. This fixes the "View Booking" banner incorrectly showing instead of "Pay Now" for old-flow or missing-status bookings.
+
+**Flow:**
+```
+Customer accepts quote → Quotes page shows "Payment Due" + Pay Now banner (sidebar badge fires)
+Customer pays → booking: confirmed → NOW visible in Bookings page (Upcoming tab)
+```
+
+### 6 March 2026 (Remove Provider Acceptance Step from Quote Flow)
+
+- **Quote Flow Simplified**: After accepting a quote, customers now pay immediately — no more "waiting for provider" step. `PaymentModal` opens automatically right after `acceptQuote` returns.
+- **`useDashboardStore.js`**: `acceptQuote` action now returns the full `result.data` object (booking + quote) instead of just `bookingId`, so `PaymentModal` can be pre-populated.
+- **`QuoteDetailPanel.jsx`**: Replaced "Awaiting Provider Confirmation" banner and slot negotiation UI with a "Payment Required" amber banner. `PaymentModal` added and opened immediately on accept. Removed `counterProposeSlot`, `acceptProposedSlot`, `rejectProposedSlot` from store destructuring. Removed `counterSlotModal` state and all slot negotiation handlers.
+- **`BookingDetailDrawer.jsx`**: Added "Payment Required" amber banner for `booking.quote && status === "awaiting-payment"`. `canPay` updated to exclude these bookings from footer Pay button (banner handles it).
+- **`dataMappers.js`**: Removed `awaiting-provider-acceptance` override that was keeping accepted quotes in the "Responses" tab. `awaiting-payment` quotes now correctly appear in "Accepted" tab.
+
+### 6 March 2026 (Quote Booking Tab Fix)
+
+- **Unconfirmed Quotes in Responses Tab**: Quotes with `awaiting-provider-acceptance` booking status now appear in "Responses" tab instead of "Accepted" tab. `mapQuoteData` overrides computed status when booking time isn't confirmed yet. Backend `getQuotes` now populates `booking` with `status` and `slotNegotiation` fields.
+
+### 6 March 2026 (Bookings Badge & Quote Accept Fixes)
+
+- **Bookings Badge Stale Count (C-014)**: A previous session incorrectly added `awaiting-provider-acceptance` (with `slotNegotiation.status === "provider-proposed"`) to the sidebar badge count. These bookings are intentionally excluded from the Bookings page — they belong to the quote flow and are tracked via the Quotes page (QuoteDetailPanel). Removed that condition from `DashboardSidebar.jsx`. Badge now only counts `awaiting-customer-approval` and `searching` (with quotes/suggestions), matching what is actually visible and actionable on the Bookings page.
+- **Dual Toast on Quote Accept (C-015)**: Fixed two stacked bugs: (1) `handleAcceptQuote` in `QuoteDetailPanel.jsx` showed success toast even when `acceptQuote` returned null — now guarded by `if (bookingId)`. (2) `acceptQuote` in `useDashboardStore.js` wrapped `fetchQuotes`/`fetchBookings` in the same try/catch — if the refresh failed after a successful acceptance the catch block fired, showing an error toast and discarding the booking ID. Now the booking ID is captured before the refreshes, and refreshes run with `.catch(()=>{})` so their failures never mask a successful acceptance.
+
 ### 6 March 2026 (Vehicle Database System)
 
 - **Database-backed Vehicle Makes/Models**: Replaced NHTSA API and static `vehicleMakes`/`commonSAModels` with backend API (`/api/public/vehicles`). `vehicleService.js` now calls the database instead of external APIs.

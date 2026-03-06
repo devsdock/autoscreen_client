@@ -205,65 +205,130 @@ export const mapBooking = (booking) => {
     // Build timeline stages
     const stages = [];
 
-    // 1. Searching / Initial Request
-    stages.push({
-      status: "Searching",
-      date: booking.createdAt,
-      completed: currentStatusLevel >= 1,
-    });
+    if (isQuoteBased) {
+      // Quote-based booking timeline
 
-    // 2. Accepted
-    stages.push({
-      status: "Accepted",
-      date: booking.acceptance?.acceptedAt || booking.acceptedAt,
-      completed: currentStatusLevel >= 2,
-    });
-
-    // 3. Awaiting Payment
-    stages.push({
-      status: "Awaiting Payment",
-      date:
-        booking.statusHistory?.find((h) => h.status === "awaiting-payment")
-          ?.timestamp ||
-        (currentStatusLevel >= 3
-          ? booking.acceptance?.acceptedAt || booking.updatedAt
-          : null),
-      completed: currentStatusLevel >= 3 || isPaid,
-    });
-
-    // 4. Confirmed
-    stages.push({
-      status: "Confirmed",
-      date: booking.actualTimes?.confirmedAt || booking.confirmedAt,
-      completed: isPaid || currentStatusLevel >= 4,
-    });
-
-    // 5. In Progress
-    stages.push({
-      status: "In Progress",
-      date: booking.actualTimes?.startedAt || booking.startedAt,
-      completed: currentStatusLevel >= 5,
-    });
-
-    // 6. Completed
-    stages.push({
-      status: "Completed",
-      date: booking.actualTimes?.completedAt || booking.completedAt,
-      completed: currentStatusLevel >= 6,
-    });
-
-    // 7. Refund (Special Case)
-    if (
-      currentStatus === "cancelled" &&
-      (booking.cancellation?.refundAmount > 0 ||
-        booking.paymentStatus === "refunded")
-    ) {
+      // 1. Quoted — quote pre-dates booking, no timestamp available in booking doc
       stages.push({
-        status: "Refund Processed",
-        date: booking.cancellation?.refundedAt || booking.updatedAt,
+        status: "Quoted",
+        date: null,
         completed: true,
-        isRefund: true,
       });
+
+      // 2. Provider Responded — response timestamp not stored in booking
+      stages.push({
+        status: "Provider Responded",
+        date: null,
+        completed: true,
+      });
+
+      // 3. Customer Accepted — booking was created at this point
+      stages.push({
+        status: "Customer Accepted",
+        date: booking.createdAt || booking.acceptance?.acceptedAt,
+        completed: true,
+      });
+
+      // 4. Payment Confirmed
+      stages.push({
+        status: "Payment Confirmed",
+        date:
+          booking.actualTimes?.confirmedAt ||
+          booking.statusHistory?.find((h) => h.status === "confirmed")
+            ?.timestamp,
+        completed: isPaid || currentStatusLevel >= 4,
+      });
+
+      // 5. In Progress
+      stages.push({
+        status: "In Progress",
+        date: booking.actualTimes?.startedAt || booking.startedAt,
+        completed: currentStatusLevel >= 5,
+      });
+
+      // 6. Completed
+      stages.push({
+        status: "Completed",
+        date: booking.actualTimes?.completedAt || booking.completedAt,
+        completed: currentStatusLevel >= 6,
+      });
+
+      // 7. Refund (Special Case)
+      if (
+        currentStatus === "cancelled" &&
+        (booking.cancellation?.refundAmount > 0 ||
+          booking.paymentStatus === "refunded")
+      ) {
+        stages.push({
+          status: "Refund Processed",
+          date: booking.cancellation?.refundedAt || booking.updatedAt,
+          completed: true,
+          isRefund: true,
+        });
+      }
+    } else {
+      // Direct booking timeline
+
+      // 1. Searching / Initial Request
+      stages.push({
+        status: "Searching",
+        date: booking.createdAt,
+        completed: currentStatusLevel >= 1,
+      });
+
+      // 2. Accepted
+      stages.push({
+        status: "Accepted",
+        date: booking.acceptance?.acceptedAt || booking.acceptedAt,
+        completed: currentStatusLevel >= 2,
+      });
+
+      // 3. Awaiting Payment
+      stages.push({
+        status: "Awaiting Payment",
+        date:
+          booking.statusHistory?.find((h) => h.status === "awaiting-payment")
+            ?.timestamp ||
+          (currentStatusLevel >= 3
+            ? booking.acceptance?.acceptedAt || booking.updatedAt
+            : null),
+        completed: currentStatusLevel >= 3 || isPaid,
+      });
+
+      // 4. Confirmed
+      stages.push({
+        status: "Confirmed",
+        date: booking.actualTimes?.confirmedAt || booking.confirmedAt,
+        completed: isPaid || currentStatusLevel >= 4,
+      });
+
+      // 5. In Progress
+      stages.push({
+        status: "In Progress",
+        date: booking.actualTimes?.startedAt || booking.startedAt,
+        completed: currentStatusLevel >= 5,
+      });
+
+      // 6. Completed
+      stages.push({
+        status: "Completed",
+        date: booking.actualTimes?.completedAt || booking.completedAt,
+        completed: currentStatusLevel >= 6,
+      });
+
+      // 7. Refund (Special Case)
+      if (
+        currentStatus === "cancelled" &&
+        (booking.cancellation?.refundAmount > 0 ||
+          booking.paymentStatus === "refunded")
+      ) {
+        stages.push({
+          status: "Refund Processed",
+          date: booking.cancellation?.refundedAt || booking.updatedAt,
+          completed: true,
+          isRefund: true,
+        });
+      }
     }
 
     return stages;
@@ -472,7 +537,11 @@ export const mapQuote = (quote) => {
     location: quote.serviceLocation?.address || { city: "N/A" },
     responsesCount: responsesCount,
     images: processImages(quote.damageImages || quote.images || []),
-    status: normalizeStatus(quote.status, responsesCount),
+    status: (() => {
+      const computed = normalizeStatus(quote.status, responsesCount);
+      // awaiting-payment means customer accepted — show in Accepted tab
+      return computed;
+    })(),
     rawStatus: quote.status, // Keep original for debugging
   };
 };

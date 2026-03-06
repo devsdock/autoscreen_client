@@ -47,23 +47,32 @@ class SocketService {
       }
 
       // Handle Booking Updates
-      // Handle Booking Updates
       if (
         type === "booking_accepted" ||
-        type === "quote_accepted" || // Added
+        type === "quote_accepted" ||
         type === "booking_confirmed" ||
         type === "booking_status_updated" ||
-        type === "booking_quote_received" || // Added
-        type === "quote_received" || // Added
-        type === "booking_declined" || // Added
-        type === "booking_suggestion" || // Added
-        type === "booking_cancelled" || // Added
-        type === "booking_request_updated" || // Added
-        type === "booking_completed_by_fitter" || // Added
-        type === "booking_completed" // Added
+        type === "booking_quote_received" ||
+        type === "quote_received" ||
+        type === "booking_declined" ||
+        type === "booking_suggestion" ||
+        type === "booking_cancelled" ||
+        type === "booking_request_updated" ||
+        type === "booking_completed_by_fitter" ||
+        type === "booking_completed"
       ) {
         if (typeof useDashboardStore.getState().fetchBookings === "function") {
           await useDashboardStore.getState().fetchBookings();
+        }
+        // Also refresh quotes so quote detail panel reflects updated booking status
+        if (
+          type === "booking_confirmed" ||
+          type === "quote_accepted" ||
+          type === "booking_cancelled"
+        ) {
+          if (typeof useDashboardStore.getState().fetchQuotes === "function") {
+            await useDashboardStore.getState().fetchQuotes();
+          }
         }
       }
     } catch (error) { }
