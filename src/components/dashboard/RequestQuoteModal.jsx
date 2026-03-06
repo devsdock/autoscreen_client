@@ -8,17 +8,12 @@ import publicSettingsService from "../../services/publicSettingsService";
 import { useState, useRef, useEffect, useMemo } from "react";
 import PremiumSelect from "../ui/PremiumSelect";
 
-
 import { CITIES } from "../../data/cities";
 
 const RequestQuoteModal = ({ isOpen, onClose }) => {
   const { createQuote, user, vehicles, addresses, quotes } =
     useDashboardStore();
   const fileInputRef = useRef(null);
-
-  const hasActiveQuote = useMemo(() => {
-    return quotes.some((q) => (q.status || "").toLowerCase() === "pending");
-  }, [quotes]);
 
   const [formData, setFormData] = useState({
     vehicleMake: "",
@@ -180,12 +175,17 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
 
       // Create custom make if not in list
       if (value && !availableMakes.includes(value)) {
-        vehicleService.createMake(value).then((make) => {
-          if (make) {
-            setAvailableMakes((prev) => [...new Set([...prev, make.name])].sort());
-            setMakeLookup((prev) => ({ ...prev, [make.name]: make._id }));
-          }
-        }).catch(() => {});
+        vehicleService
+          .createMake(value)
+          .then((make) => {
+            if (make) {
+              setAvailableMakes((prev) =>
+                [...new Set([...prev, make.name])].sort(),
+              );
+              setMakeLookup((prev) => ({ ...prev, [make.name]: make._id }));
+            }
+          })
+          .catch(() => {});
       }
     }
 
@@ -195,17 +195,22 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
 
       // Create custom model if not in list
       if (value && !availableModels.includes(value)) {
-        const makeIdOrName = makeLookup[formData.vehicleMake] || formData.vehicleMake;
+        const makeIdOrName =
+          makeLookup[formData.vehicleMake] || formData.vehicleMake;
         if (makeIdOrName) {
-          vehicleService.createModel(makeIdOrName, value).then((model) => {
-            if (model) {
-              setAvailableModels((prev) => [...new Set([...prev, model.name])].sort());
-            }
-          }).catch(() => {});
+          vehicleService
+            .createModel(makeIdOrName, value)
+            .then((model) => {
+              if (model) {
+                setAvailableModels((prev) =>
+                  [...new Set([...prev, model.name])].sort(),
+                );
+              }
+            })
+            .catch(() => {});
         }
       }
     }
-
   };
 
   const handleToggleService = (serviceName) => {
@@ -305,7 +310,8 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
 
       setIsFetchingModels(true);
       try {
-        const makeIdOrName = makeLookup[formData.vehicleMake] || formData.vehicleMake;
+        const makeIdOrName =
+          makeLookup[formData.vehicleMake] || formData.vehicleMake;
         const models = await vehicleService.getModelsByMake(makeIdOrName);
         setAvailableModels(models.map((m) => m.name));
       } catch (err) {
@@ -528,438 +534,406 @@ const RequestQuoteModal = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Active Quote Alert */}
-        {hasActiveQuote ? (
-          <div className="flex-1 p-8 flex flex-col items-center justify-center text-center space-y-4">
-            <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center">
-              <Clock size={32} />
+        {/* Form */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex-1 overflow-y-auto p-6 space-y-6"
+        >
+          {/* Vehicle Section */}
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+              Vehicle Details
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <PremiumSelect
+                label="Make"
+                required
+                value={formData.vehicleMake}
+                options={availableMakes}
+                onChange={(val) => handleChange("vehicleMake", val)}
+                placeholder="Select make"
+                error={errors.vehicleMake}
+                isSearchable
+                isCreatable
+                isClearable
+                loading={isFetchingMakes}
+              />
+
+              <PremiumSelect
+                label="Model"
+                required
+                value={formData.vehicleModel}
+                options={availableModels}
+                onChange={(val) => handleChange("vehicleModel", val)}
+                placeholder={
+                  !formData.vehicleMake ? "Select make first" : "Search model"
+                }
+                error={errors.vehicleModel}
+                isSearchable
+                isCreatable
+                isClearable
+                disabled={!formData.vehicleMake}
+                loading={isFetchingModels}
+                emptyMessage={
+                  !formData.vehicleMake
+                    ? "Please select a make first"
+                    : "No models found"
+                }
+                autoOpen={suggestedField === "vehicleModel"}
+              />
+
+              <PremiumSelect
+                label="Year"
+                required
+                value={formData.vehicleYear}
+                options={years.map(String)}
+                onChange={(val) => handleChange("vehicleYear", val)}
+                placeholder="Select year"
+                isSearchable
+              />
             </div>
-            <div className="max-w-xs">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                Request In Progress
-              </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
-                You already have an active quote request. Please wait for
-                providers to respond or cancel your current request before
-                creating a new one.
+          </div>
+
+          {/* Service Section */}
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+              Service Required
+            </h3>
+            <div className="space-y-4">
+              {/* Service Type - FIRST */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 mt-4">
+                  Service Type
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {adminServiceTypes.map((st) => {
+                    const isSelected = formData.serviceTypes?.includes(st.name);
+                    return (
+                      <button
+                        key={st.name}
+                        type="button"
+                        onClick={() => handleToggleService(st.name)}
+                        className={`relative p-4 rounded-xl border text-left transition-all ${
+                          isSelected
+                            ? "border-primary-500 bg-primary-50 ring-1 ring-primary-500 dark:bg-primary-900/20 dark:border-primary-600"
+                            : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700"
+                        }`}
+                      >
+                        {isSelected && (
+                          <div className="absolute top-3 right-3 w-4 h-4 bg-primary-600 text-white rounded-full flex items-center justify-center">
+                            <Check size={10} strokeWidth={3} />
+                          </div>
+                        )}
+                        <div className="font-semibold text-sm text-slate-900 dark:text-white pr-6">
+                          {st.name}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {errors.serviceType && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.serviceType}
+                  </p>
+                )}
+              </div>
+
+              {/* Glass Type - SECOND (filtered by service) */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 mt-4 flex items-center gap-1.5">
+                  Select Glass for Each Service{" "}
+                  <span className="text-red-500">*</span>
+                </label>
+                {!formData.serviceSelections ||
+                formData.serviceSelections.length === 0 ? (
+                  <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      ℹ️ Please select a service type above first
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {formData.serviceSelections.map((selection) => {
+                      const serviceDef = adminServiceTypes.find(
+                        (s) => s.name === selection.serviceName,
+                      );
+                      const validGlassForThisService =
+                        serviceDef?.pricing
+                          ?.filter((p) => p.price > 0)
+                          .map((p) => p.glassType)
+                          .sort() || [];
+
+                      return (
+                        <div
+                          key={selection.serviceName}
+                          className="p-4 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30"
+                        >
+                          <div className="flex items-center gap-2 mb-3">
+                            <h4 className="font-semibold text-sm text-slate-900 dark:text-white">
+                              {selection.serviceName}
+                            </h4>
+                          </div>
+
+                          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                            {validGlassForThisService.map((glassName) => {
+                              const isSelected =
+                                selection.glassTypes.includes(glassName);
+                              return (
+                                <button
+                                  key={glassName}
+                                  type="button"
+                                  onClick={() =>
+                                    handleToggleGlassForService(
+                                      selection.serviceName,
+                                      glassName,
+                                    )
+                                  }
+                                  className={`relative p-3 rounded-xl border text-[11px] font-medium transition-all text-left ${
+                                    isSelected
+                                      ? "border-primary-500 bg-primary-50 text-primary-700 ring-1 ring-primary-500 dark:bg-primary-900/20 dark:border-primary-600 dark:text-primary-300"
+                                      : "border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-300 hover:border-primary-300"
+                                  }`}
+                                >
+                                  {isSelected && (
+                                    <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-primary-600 text-white rounded-full flex items-center justify-center">
+                                      <Check size={8} strokeWidth={3} />
+                                    </div>
+                                  )}
+                                  <span
+                                    className={`block ${isSelected ? "pr-4" : ""}`}
+                                  >
+                                    {glassName}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {errors.glassType && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.glassType}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Vehicle Features - Only for Windscreen */}
+            {formData.glassTypes.includes("Windscreen") && (
+              <div className="mt-4">
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+                  Vehicle Features
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleChange("hasAdasCamera", !formData.hasAdasCamera)
+                    }
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                      formData.hasAdasCamera
+                        ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-1 ring-primary-500"
+                        : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
+                        formData.hasAdasCamera
+                          ? "bg-primary-500 border-primary-500 text-white"
+                          : "border-slate-300 dark:border-slate-600"
+                      }`}
+                    >
+                      {formData.hasAdasCamera && <Check size={12} />}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-slate-900 dark:text-white text-sm">
+                        ADAS Camera
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        Advanced Driver Assistance System
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleChange("hasRainSensor", !formData.hasRainSensor)
+                    }
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                      formData.hasRainSensor
+                        ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-1 ring-primary-500"
+                        : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
+                        formData.hasRainSensor
+                          ? "bg-primary-500 border-primary-500 text-white"
+                          : "border-slate-300 dark:border-slate-600"
+                      }`}
+                    >
+                      {formData.hasRainSensor && <Check size={12} />}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-slate-900 dark:text-white text-sm">
+                        Rain / Light Sensor
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        Automatic wipers and lights
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Location Section */}
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+              Service Location
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <PremiumSelect
+                label="City"
+                required
+                value={formData.city}
+                options={cities}
+                onChange={(val) => handleChange("city", val)}
+                placeholder="Select city"
+                error={errors.city}
+                isSearchable
+              />
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                  Suburb (optional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.suburb}
+                  onChange={(e) => handleChange("suburb", e.target.value)}
+                  placeholder="e.g. Sandton"
+                  className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-700 dark:text-slate-200 shadow-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                  Postcode
+                </label>
+                <input
+                  type="text"
+                  value={formData.postcode}
+                  onChange={(e) => handleChange("postcode", e.target.value)}
+                  placeholder="e.g. 2196"
+                  className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-700 dark:text-slate-200 shadow-sm"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                Address (optional)
+              </label>
+              <input
+                type="text"
+                value={formData.addressLine1}
+                onChange={(e) => handleChange("addressLine1", e.target.value)}
+                placeholder="Street address for mobile service"
+                className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-700 dark:text-slate-200"
+              />
+            </div>
+          </div>
+
+          {/* Preferred Schedule removed — scheduling happens at quote acceptance time */}
+
+          {/* Image Upload */}
+          <div>
+            <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+              Upload Photos <span className="text-red-500">*</span>
+            </label>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              Add photos of the damage to help providers give accurate quotes
+            </p>
+
+            {/* Upload Button */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-6 text-center cursor-pointer hover:border-primary-400 dark:hover:border-primary-500 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-colors"
+            >
+              <Upload size={24} className="mx-auto text-slate-400 mb-2" />
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Click to upload photos
+              </p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                PNG, JPG up to 5MB each
               </p>
             </div>
-            <Button variant="secondary" onClick={() => onClose()}>
-              Got it
-            </Button>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+
+            {/* Image Previews */}
+            {formData.images.length > 0 && (
+              <div className="flex flex-wrap gap-3 mt-4">
+                {formData.images.map((img) => (
+                  <div key={img.id} className="relative group">
+                    <img
+                      src={img.data}
+                      alt={img.name}
+                      className="w-20 h-20 object-cover rounded-lg border border-slate-200 dark:border-slate-700"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(img.id)}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-danger-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {errors.images && (
+              <p className="text-sm text-red-500 mt-2">{errors.images}</p>
+            )}
           </div>
-        ) : (
-          <>
-            {/* Form */}
-            <form
-              onSubmit={handleSubmit}
-              className="flex-1 overflow-y-auto p-6 space-y-6"
-            >
-              {/* Vehicle Section */}
-              <div>
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-                  Vehicle Details
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <PremiumSelect
-                    label="Make"
-                    required
-                    value={formData.vehicleMake}
-                    options={availableMakes}
-                    onChange={(val) => handleChange("vehicleMake", val)}
-                    placeholder="Select make"
-                    error={errors.vehicleMake}
-                    isSearchable
-                    isCreatable
-                    isClearable
-                    loading={isFetchingMakes}
-                  />
 
-                  <PremiumSelect
-                    label="Model"
-                    required
-                    value={formData.vehicleModel}
-                    options={availableModels}
-                    onChange={(val) => handleChange("vehicleModel", val)}
-                    placeholder={
-                      !formData.vehicleMake
-                        ? "Select make first"
-                        : "Search model"
-                    }
-                    error={errors.vehicleModel}
-                    isSearchable
-                    isCreatable
-                    isClearable
-                    disabled={!formData.vehicleMake}
-                    loading={isFetchingModels}
-                    emptyMessage={
-                      !formData.vehicleMake
-                        ? "Please select a make first"
-                        : "No models found"
-                    }
-                    autoOpen={suggestedField === "vehicleModel"}
-                  />
+          {/* Notes - Moved after images */}
+          <div>
+            <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+              Additional Notes
+            </label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => handleChange("notes", e.target.value)}
+              placeholder="Describe the damage or any special requirements..."
+              rows={3}
+              className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 resize-none text-slate-700 dark:text-slate-200"
+            />
+          </div>
+        </form>
 
-                  <PremiumSelect
-                    label="Year"
-                    required
-                    value={formData.vehicleYear}
-                    options={years.map(String)}
-                    onChange={(val) => handleChange("vehicleYear", val)}
-                    placeholder="Select year"
-                    isSearchable
-                  />
-                </div>
-
-              </div>
-
-              {/* Service Section */}
-              <div>
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-                  Service Required
-                </h3>
-                <div className="space-y-4">
-                  {/* Service Type - FIRST */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 mt-4">
-                      Service Type
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {adminServiceTypes.map((st) => {
-                        const isSelected = formData.serviceTypes?.includes(
-                          st.name,
-                        );
-                        return (
-                          <button
-                            key={st.name}
-                            type="button"
-                            onClick={() => handleToggleService(st.name)}
-                            className={`relative p-4 rounded-xl border text-left transition-all ${
-                              isSelected
-                                ? "border-primary-500 bg-primary-50 ring-1 ring-primary-500 dark:bg-primary-900/20 dark:border-primary-600"
-                                : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700"
-                            }`}
-                          >
-                            {isSelected && (
-                              <div className="absolute top-3 right-3 w-4 h-4 bg-primary-600 text-white rounded-full flex items-center justify-center">
-                                <Check size={10} strokeWidth={3} />
-                              </div>
-                            )}
-                            <div className="font-semibold text-sm text-slate-900 dark:text-white pr-6">
-                              {st.name}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {errors.serviceType && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.serviceType}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Glass Type - SECOND (filtered by service) */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 mt-4 flex items-center gap-1.5">
-                      Select Glass for Each Service{" "}
-                      <span className="text-red-500">*</span>
-                    </label>
-                    {!formData.serviceSelections ||
-                    formData.serviceSelections.length === 0 ? (
-                      <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                        <p className="text-sm text-blue-700 dark:text-blue-300">
-                          ℹ️ Please select a service type above first
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {formData.serviceSelections.map((selection) => {
-                          const serviceDef = adminServiceTypes.find(
-                            (s) => s.name === selection.serviceName,
-                          );
-                          const validGlassForThisService =
-                            serviceDef?.pricing
-                              ?.filter((p) => p.price > 0)
-                              .map((p) => p.glassType)
-                              .sort() || [];
-
-                          return (
-                            <div
-                              key={selection.serviceName}
-                              className="p-4 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30"
-                            >
-                              <div className="flex items-center gap-2 mb-3">
-                                <h4 className="font-semibold text-sm text-slate-900 dark:text-white">
-                                  {selection.serviceName}
-                                </h4>
-                              </div>
-
-                              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                                {validGlassForThisService.map((glassName) => {
-                                  const isSelected =
-                                    selection.glassTypes.includes(glassName);
-                                  return (
-                                    <button
-                                      key={glassName}
-                                      type="button"
-                                      onClick={() =>
-                                        handleToggleGlassForService(
-                                          selection.serviceName,
-                                          glassName,
-                                        )
-                                      }
-                                      className={`relative p-3 rounded-xl border text-[11px] font-medium transition-all text-left ${
-                                        isSelected
-                                          ? "border-primary-500 bg-primary-50 text-primary-700 ring-1 ring-primary-500 dark:bg-primary-900/20 dark:border-primary-600 dark:text-primary-300"
-                                          : "border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-300 hover:border-primary-300"
-                                      }`}
-                                    >
-                                      {isSelected && (
-                                        <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-primary-600 text-white rounded-full flex items-center justify-center">
-                                          <Check size={8} strokeWidth={3} />
-                                        </div>
-                                      )}
-                                      <span
-                                        className={`block ${isSelected ? "pr-4" : ""}`}
-                                      >
-                                        {glassName}
-                                      </span>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {errors.glassType && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.glassType}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Vehicle Features - Only for Windscreen */}
-                {formData.glassTypes.includes("Windscreen") && (
-                  <div className="mt-4">
-                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-                      Vehicle Features
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleChange("hasAdasCamera", !formData.hasAdasCamera)
-                        }
-                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
-                          formData.hasAdasCamera
-                            ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-1 ring-primary-500"
-                            : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                        }`}
-                      >
-                        <div
-                          className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
-                            formData.hasAdasCamera
-                              ? "bg-primary-500 border-primary-500 text-white"
-                              : "border-slate-300 dark:border-slate-600"
-                          }`}
-                        >
-                          {formData.hasAdasCamera && <Check size={12} />}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-slate-900 dark:text-white text-sm">
-                            ADAS Camera
-                          </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">
-                            Advanced Driver Assistance System
-                          </div>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleChange("hasRainSensor", !formData.hasRainSensor)
-                        }
-                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
-                          formData.hasRainSensor
-                            ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-1 ring-primary-500"
-                            : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                        }`}
-                      >
-                        <div
-                          className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
-                            formData.hasRainSensor
-                              ? "bg-primary-500 border-primary-500 text-white"
-                              : "border-slate-300 dark:border-slate-600"
-                          }`}
-                        >
-                          {formData.hasRainSensor && <Check size={12} />}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-slate-900 dark:text-white text-sm">
-                            Rain / Light Sensor
-                          </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">
-                            Automatic wipers and lights
-                          </div>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Location Section */}
-              <div>
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
-                  Service Location
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <PremiumSelect
-                    label="City"
-                    required
-                    value={formData.city}
-                    options={cities}
-                    onChange={(val) => handleChange("city", val)}
-                    placeholder="Select city"
-                    error={errors.city}
-                    isSearchable
-                  />
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                      Suburb (optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.suburb}
-                      onChange={(e) => handleChange("suburb", e.target.value)}
-                      placeholder="e.g. Sandton"
-                      className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-700 dark:text-slate-200 shadow-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                      Postcode
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.postcode}
-                      onChange={(e) => handleChange("postcode", e.target.value)}
-                      placeholder="e.g. 2196"
-                      className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-700 dark:text-slate-200 shadow-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                    Address (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.addressLine1}
-                    onChange={(e) =>
-                      handleChange("addressLine1", e.target.value)
-                    }
-                    placeholder="Street address for mobile service"
-                    className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 text-slate-700 dark:text-slate-200"
-                  />
-                </div>
-              </div>
-
-              {/* Preferred Schedule removed — scheduling happens at quote acceptance time */}
-
-              {/* Image Upload */}
-              <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                  Upload Photos <span className="text-red-500">*</span>
-                </label>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                  Add photos of the damage to help providers give accurate
-                  quotes
-                </p>
-
-                {/* Upload Button */}
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-6 text-center cursor-pointer hover:border-primary-400 dark:hover:border-primary-500 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-colors"
-                >
-                  <Upload size={24} className="mx-auto text-slate-400 mb-2" />
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Click to upload photos
-                  </p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                    PNG, JPG up to 5MB each
-                  </p>
-                </div>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-
-                {/* Image Previews */}
-                {formData.images.length > 0 && (
-                  <div className="flex flex-wrap gap-3 mt-4">
-                    {formData.images.map((img) => (
-                      <div key={img.id} className="relative group">
-                        <img
-                          src={img.data}
-                          alt={img.name}
-                          className="w-20 h-20 object-cover rounded-lg border border-slate-200 dark:border-slate-700"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(img.id)}
-                          className="absolute -top-2 -right-2 w-6 h-6 bg-danger-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {errors.images && (
-                  <p className="text-sm text-red-500 mt-2">{errors.images}</p>
-                )}
-              </div>
-
-              {/* Notes - Moved after images */}
-              <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                  Additional Notes
-                </label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => handleChange("notes", e.target.value)}
-                  placeholder="Describe the damage or any special requirements..."
-                  rows={3}
-                  className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 resize-none text-slate-700 dark:text-slate-200"
-                />
-              </div>
-            </form>
-
-            {/* Footer */}
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-              <Button variant="secondary" onClick={() => onClose()}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmit} loading={isSubmitting}>
-                Submit Quote Request
-              </Button>
-            </div>
-          </>
-        )}
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+          <Button variant="secondary" onClick={() => onClose()}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} loading={isSubmitting}>
+            Submit Quote Request
+          </Button>
+        </div>
       </div>
     </div>
   );
