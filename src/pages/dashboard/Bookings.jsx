@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   Search,
@@ -110,7 +110,11 @@ const Bookings = () => {
 
   const location = useLocation();
 
+  const isVerifyingRef = useRef(false);
+
   const verifyPayment = async (reference) => {
+    if (isVerifyingRef.current) return;
+    isVerifyingRef.current = true;
     try {
       setIsVerifying(true);
       const res = await paymentService.verifyPaystack(reference);
@@ -130,6 +134,7 @@ const Bookings = () => {
       });
     } finally {
       setIsVerifying(false);
+      isVerifyingRef.current = false;
     }
   };
 

@@ -210,10 +210,6 @@ const useDashboardStore = create(
         set((state) => ({
           vehicles: [...state.vehicles, { ...vehicle, id }],
         }));
-        get().addToast({
-          type: "success",
-          message: "Vehicle added successfully",
-        });
         return id;
       },
       updateVehicle: (id, updates) => {
@@ -222,16 +218,11 @@ const useDashboardStore = create(
             v.id === id ? { ...v, ...updates } : v,
           ),
         }));
-        get().addToast({
-          type: "success",
-          message: "Vehicle updated successfully",
-        });
       },
       deleteVehicle: (id) => {
         set((state) => ({
           vehicles: state.vehicles.filter((v) => v.id !== id),
         }));
-        get().addToast({ type: "success", message: "Vehicle removed" });
       },
 
       // Address actions
@@ -266,16 +257,11 @@ const useDashboardStore = create(
             ),
           };
         });
-        get().addToast({
-          type: "success",
-          message: "Address updated successfully",
-        });
       },
       deleteAddress: (id) => {
         set((state) => ({
           addresses: state.addresses.filter((a) => a.id !== id),
         }));
-        get().addToast({ type: "success", message: "Address removed" });
       },
 
       // Quote actions
@@ -421,10 +407,6 @@ const useDashboardStore = create(
           relatedId: id,
         });
 
-        get().addToast({
-          type: "success",
-          message: "Quote request sent successfully!",
-        });
         return id;
       },
 
@@ -623,7 +605,6 @@ const useDashboardStore = create(
           message: `Booking #${bookingId} confirmed`,
           relatedId: bookingId,
         });
-        get().addToast({ type: "success", message: "Booking confirmed!" });
       },
 
       cancelBooking: (bookingId, reason) => {
@@ -667,7 +648,6 @@ const useDashboardStore = create(
           message: `Booking #${bookingId} was cancelled`,
           relatedId: bookingId,
         });
-        get().addToast({ type: "info", message: "Booking cancelled" });
       },
 
       fetchBookingDetails: async (bookingId) => {
@@ -724,7 +704,6 @@ const useDashboardStore = create(
           message: `Booking #${bookingId} marked as completed`,
           relatedId: bookingId,
         });
-        get().addToast({ type: "success", message: "Booking completed!" });
       },
 
       // Payment actions
@@ -790,7 +769,6 @@ const useDashboardStore = create(
           // In real app, we might revert.
         }
 
-        get().addToast({ type: "success", message: "Payment successful!" });
       },
 
       // Search & Booking flow actions
@@ -912,10 +890,6 @@ const useDashboardStore = create(
           relatedId: id,
         });
 
-        get().addToast({
-          type: "success",
-          message: "Booking request sent successfully!",
-        });
         return id;
       },
 
@@ -947,10 +921,6 @@ const useDashboardStore = create(
           relatedId: bookingId,
         });
 
-        get().addToast({
-          type: "success",
-          message: "Provider has accepted your booking!",
-        });
       },
 
       // Process booking payment and confirm
@@ -1011,10 +981,6 @@ const useDashboardStore = create(
           relatedId: bookingId,
         });
 
-        get().addToast({
-          type: "success",
-          message: "Payment successful! Booking confirmed.",
-        });
         return paymentId;
       },
 
