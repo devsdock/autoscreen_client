@@ -7,24 +7,42 @@ import useDashboardStore, {
 } from "../../store/useDashboardStore";
 import paymentService from "../../services/paymentService";
 
+const PAYSTACK_ALLOWED_HOSTS = [
+  "https://checkout.paystack.com/",
+  "https://standard.paystack.co/",
+];
+
+const isPaystackUrl = (url) =>
+  PAYSTACK_ALLOWED_HOSTS.some((prefix) => url.startsWith(prefix));
+
 const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
   const { addToast } = useDashboardStore();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [coversFees, setCoversFees] = useState(false);
   const [surcharge, setSurcharge] = useState(0);
+  const [variableFeeRate, setVariableFeeRate] = useState(0.029 * 1.15);
 
-  // Calculate surcharge for Paystack SA (2.9% + 15% VAT on fees = 3.335% total)
+  // Fetch fee rate from backend
+  useEffect(() => {
+    paymentService
+      .getPaystackConfig()
+      .then((res) => {
+        if (res.success && res.variableFeeRate) setVariableFeeRate(res.variableFeeRate);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Calculate surcharge using fetched fee rate
   useEffect(() => {
     if (coversFees && payment?.amount) {
-      const variableFee = 0.029 * 1.15;
       const calculatedSurcharge =
-        payment.amount / (1 - variableFee) - payment.amount;
+        payment.amount / (1 - variableFeeRate) - payment.amount;
       setSurcharge(Math.round(calculatedSurcharge * 100) / 100);
     } else {
       setSurcharge(0);
     }
-  }, [coversFees, payment?.amount]);
+  }, [coversFees, payment?.amount, variableFeeRate]);
 
   if (!payment || !isOpen) return null;
 
@@ -42,15 +60,16 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
       );
 
       if (res.success && res.authorization_url) {
-        // 2. Redirect to Paystack Checkout
-        // We use window.location.href because dynamic splits are more reliable
-        // when handled via the full checkout page.
+        // Validate redirect URL before navigating
+        if (!isPaystackUrl(res.authorization_url)) {
+          throw new Error("Invalid payment redirect URL.");
+        }
         window.location.href = res.authorization_url;
       } else {
         throw new Error(res.message || "Failed to initialize payment");
       }
     } catch (error) {
-      console.error("Payment Error:", error);
+      import.meta.env.DEV && console.error("Payment Error:", error);
       setLoading(false);
       setErrors({
         general:
