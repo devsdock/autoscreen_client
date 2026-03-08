@@ -419,7 +419,7 @@ const useDashboardStore = create(
           if (response.success) {
             set((state) => ({
               quotes: state.quotes.map((q) =>
-                q.id === quoteId ? { ...q, status: "Cancelled" } : q,
+                q.id === quoteId ? { ...q, status: "Closed" } : q,
               ),
             }));
             get().addToast({

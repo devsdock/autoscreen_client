@@ -198,7 +198,6 @@ const Bookings = () => {
   }, [id, bookings, fetchBookingDetails]);
 
   // Filter logic
-  const now = new Date();
   const isActionRequired = (b) => {
     const s = b.status?.toLowerCase();
     return (
@@ -229,11 +228,11 @@ const Bookings = () => {
           [
             "confirmed",
             "accepted",
+            "in-progress",
             "pending payment",
             "searching",
           ].includes(s) &&
-          !isActionRequired(b) &&
-          new Date(b.scheduledDate) > now
+          !isActionRequired(b)
         );
       }).length,
     },
@@ -268,12 +267,11 @@ const Bookings = () => {
           [
             "confirmed",
             "accepted",
+            "in-progress",
             "pending payment",
-            "awaiting-payment",
             "searching",
           ].includes(status) &&
-          !isActionRequired(booking) &&
-          new Date(booking.scheduledDate) > now
+          !isActionRequired(booking)
         )
       )
         return false;
