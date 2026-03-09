@@ -1,9 +1,9 @@
 # AutoScreen Customer Portal — Complete Workflow Guide (`clude.md`)
 
-> **Project:** AutoScreen Customer Dashboard  
-> **Stack:** React + Vite, Zustand, React Router v6, Axios, Socket.IO  
-> **Version:** 1.0.0  
-> **Last Updated:** 04 March 2026 (Updated Quote Modal Flow & City Coverage)
+> **Project:** AutoScreen Customer Dashboard
+> **Stack:** React + Vite, Zustand, React Router v6, Axios, Socket.IO
+> **Version:** 1.0.0
+> **Last Updated:** 09 March 2026 (Full Documentation Refresh — New Pages, Design Updates, Quote-Only Flow)
 
 ---
 
@@ -66,7 +66,8 @@ AutoScreen Customer Portal is a React-based SPA (Single Page Application) where 
 | API Communication | Axios (via custom `request` wrapper) |
 | Real-time         | Socket.IO Client                     |
 | Payments          | Paystack.js                          |
-| Styling           | CSS Variables + Custom CSS           |
+| Styling           | TailwindCSS v3 + Custom CSS              |
+| Icons             | Lucide React                              |
 
 ---
 
@@ -248,42 +249,50 @@ The `BookingSearching` page uses Socket.IO to listen for provider acceptance eve
 
 ## 4. Quotes Workflow
 
-### Overview
+### Flow (Quote-Only Platform — March 2026)
 
-Customers can request a standalone quote (without immediate booking) for a service.
-
-### Flow
+> **Note:** The platform is now quote-only. "Book Now" / "Booking Request" menus are hidden in the sidebar.
 
 ```
-[Dashboard: "Quotes" section]
+[Dashboard: "Request Quotes" section]
          │
          ▼
-[Quotes.jsx] /dashboard/quotes
-  - List of all quotes (Pending / Accepted / Expired)
-  - **Note:** Supports `routeId` query param for deep linking into specific quotes.
-         │ "Request New Quote" / New quote form
+[QuotesNew.jsx] /dashboard/quotes
+  - Tabbed list: Open / Responses / Accepted / Closed
+  - "Payment Due" amber pill on accepted quotes awaiting payment
+  - Sidebar badge counts both Responses AND payment-due accepted quotes
+         │ "Request a Quote" button
          ▼
-[/dashboard/quotes/new]
-  - Fill service & vehicle details
-  - Submit quote request
-         │
+[NewQuote.jsx] /dashboard/quotes/new
+  - Multi-service, multi-glass selection
+  - City coverage validation
+  - Photo upload (mandatory)
+         │ Quote submitted
          ▼
-[/dashboard/quotes/:id]
-  - View single quote detail
-  - Provider quote response
-  - Accept / Decline quote
-  - If accepted → trigger booking flow
+[QuoteDetailPage.jsx] /dashboard/quotes/:id
+  - View provider responses
+  - Accept provider quote → PaymentModal opens
+  - Pay via Paystack
+         │ Payment successful
+         ▼
+[BookAppointment.jsx] /dashboard/quotes/:id/book-appointment
+  - Visual calendar with availability dots
+  - Time slot selection (3-column grid)
+  - Confirm appointment → booking confirmed
+         │ Appointment confirmed
+         ▼
+[Bookings.jsx] /dashboard/bookings
+  - Booking now visible in Upcoming tab
 ```
 
 ### Quote States
 
-| Status     | Description                  |
-| ---------- | ---------------------------- |
-| `Pending`  | Awaiting provider response   |
-| `Quoted`   | Provider has sent a price    |
-| `Accepted` | Customer accepted the quote  |
-| `Declined` | Customer declined the quote  |
-| `Expired`  | Quote validity period passed |
+| Status      | Description                     |
+| ----------- | ------------------------------- |
+| `Open`      | Awaiting provider responses     |
+| `Responses` | Providers have submitted quotes |
+| `Accepted`  | Customer accepted a quote       |
+| `Closed`    | Quote cancelled or expired      |
 
 ### Quote API Calls
 
@@ -659,20 +668,23 @@ const BASE_URL = import.meta.env.VITE_API_URL;
 /impersonate                → ImpersonatePage (admin use)
 
 /dashboard                  → DashboardLayout (Protected)
-  /                         → Overview.jsx
+  /                         → OverviewNew.jsx (dashboard home)
   /book                     → BookSearch.jsx
   /book/request             → BookingForm.jsx
   /booking/searching/:id    → BookingSearching.jsx
   /booking/pending/:id      → BookingPending.jsx
   /booking/confirmation/:id → BookingConfirmation.jsx
-  /quotes                   → Quotes.jsx
-  /quotes/new               → Quotes.jsx (new quote mode)
-  /quotes/:id               → Quotes.jsx (detail mode)
+  /quotes                   → QuotesNew.jsx (tabbed list view)
+  /quotes/new               → NewQuote.jsx (request form)
+  /quotes/:id               → QuoteDetailPage.jsx (detail wrapper)
+  /quotes/:id/book-appointment → BookAppointment.jsx (post-payment scheduling)
   /bookings                 → Bookings.jsx
   /bookings/:id             → Bookings.jsx (detail mode)
   /bookings/:id/:action     → Bookings.jsx (action mode)
   /payments                 → Payments.jsx
   /payments/:id             → Payments.jsx (detail)
+  /vehicles                 → Vehicles.jsx (vehicle management)
+  /insurance                → Insurance.jsx (placeholder)
   /profile                  → Profile.jsx
   /profile/edit             → Profile.jsx (edit mode)
   /support                  → Support.jsx
@@ -697,11 +709,35 @@ autoscreen_client/
 │   │
 │   ├── assets/                    # Images, icons
 │   │
-│   ├── components/                # Reusable UI components (44 files)
+│   ├── components/                # Reusable UI components
 │   │   ├── dashboard/
-│   │   │   └── DashboardLayout.jsx
+│   │   │   ├── DashboardLayout.jsx     # Main layout wrapper
+│   │   │   ├── DashboardSidebar.jsx    # Left nav with badge counts
+│   │   │   ├── DashboardTopBar.jsx     # Header with notifications
+│   │   │   ├── BookingDetailDrawer.jsx # Booking detail side panel
+│   │   │   ├── QuoteDetailPanel.jsx    # Quote detail with responses
+│   │   │   ├── BookingCard.jsx         # Booking list card (redesigned)
+│   │   │   ├── ProviderResponseCard.jsx # Provider quote response card
+│   │   │   ├── PaymentModal.jsx        # Payment processing modal
+│   │   │   ├── SelectSlotModal.jsx     # Date/time slot selector
+│   │   │   ├── RequestQuoteModal.jsx   # Quote request modal
+│   │   │   ├── ReviewModal.jsx         # Booking review modal
+│   │   │   └── DashboardRightSidebar.jsx # Right panel (future use)
+│   │   ├── ui/                    # 26 reusable UI primitives
+│   │   │   ├── Button.jsx, Card.jsx, Modal.jsx, Drawer.jsx
+│   │   │   ├── Input.jsx, Textarea.jsx, Select.jsx
+│   │   │   ├── PremiumSelect.jsx, PremiumDatePicker.jsx
+│   │   │   ├── Tabs.jsx, Badge.jsx, StatusBadge.jsx
+│   │   │   ├── Avatar.jsx, Skeleton.jsx, Toast.jsx
+│   │   │   ├── Tooltip.jsx, Accordion.jsx, AlertBanner.jsx
+│   │   │   ├── ConfirmModal.jsx, EmptyState.jsx
+│   │   │   ├── PageHeader.jsx, StatCard.jsx, Rating.jsx
+│   │   │   └── ServiceInfoCell.jsx
+│   │   ├── skeletons/             # Loading skeletons (4 files)
+│   │   ├── layout/                # Layout wrappers
+│   │   ├── chat/                  # SupportChatPopup.jsx
 │   │   ├── ProtectedRoute.jsx
-│   │   └── ... (Button, Modal, Input, Toast, etc.)
+│   │   └── ErrorBoundary.jsx
 │   │
 │   ├── pages/
 │   │   ├── Dashboard.jsx          # (legacy/base)
@@ -711,21 +747,28 @@ autoscreen_client/
 │   │   ├── auth/
 │   │   │   └── ImpersonatePage.jsx
 │   │   └── dashboard/
-│   │       ├── Overview.jsx         # Dashboard home
+│   │       ├── OverviewNew.jsx      # Dashboard home (greeting, stats)
+│   │       ├── Overview.jsx         # Legacy dashboard (replaced by OverviewNew)
 │   │       ├── BookSearch.jsx       # Service search form
 │   │       ├── BookingForm.jsx      # 5-step booking form
 │   │       ├── BookingSearching.jsx # Live provider search
 │   │       ├── BookingPending.jsx   # Quote/payment pending
 │   │       ├── BookingConfirmation.jsx # Booking confirmed
 │   │       ├── Bookings.jsx         # My bookings list & detail
-│   │       ├── Quotes.jsx           # Quotes list & form
+│   │       ├── QuotesNew.jsx        # Quotes list (tabbed, redesigned)
+│   │       ├── Quotes.jsx           # Legacy quotes list
+│   │       ├── NewQuote.jsx         # Quote request form
+│   │       ├── QuoteDetail.jsx      # Legacy quote detail
+│   │       ├── QuoteDetailPage.jsx  # Quote detail routing wrapper
+│   │       ├── BookAppointment.jsx  # Post-payment appointment scheduling
 │   │       ├── Payments.jsx         # Payment history
+│   │       ├── Vehicles.jsx         # Vehicle add/edit/delete
+│   │       ├── Insurance.jsx        # Placeholder insurance page
 │   │       ├── Profile.jsx          # Profile + vehicles + addresses
 │   │       ├── Messages.jsx         # Chat with provider
 │   │       ├── Support.jsx          # Support tickets
 │   │       ├── ProviderList.jsx     # Provider results (legacy)
-│   │       ├── ProviderProfile.jsx  # Provider detail (legacy)
-│   │       └── QuoteDetail.jsx      # Quote detail view
+│   │       └── ProviderProfile.jsx  # Provider detail (legacy)
 │   │
 │   ├── services/                  # API service layer
 │   │   ├── api.js                 # Base Axios config + request wrapper
@@ -800,6 +843,44 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 ---
 
 ## Changelog
+
+### 9 March 2026 (BookingCard Price Format & Polish)
+
+- **`BookingCard.jsx` — price display**: Whole numbers no longer show `.00` in the booking card footer (e.g., `R 2000` instead of `R 2000.00`). Decimals still shown when meaningful (e.g., `R 2000.10`). Uses local inline formatting — global `formatCurrency` unchanged so other pages (payments, invoices, cancellation fees) are not affected.
+- **`BookingCard.jsx`**: Changed "paid" label to "Paid" (first letter capitalized).
+
+### 9 March 2026 (Full Documentation Refresh)
+
+- **Documentation**: Updated CLAUDE.md with all new pages (OverviewNew, QuotesNew, NewQuote, QuoteDetailPage, BookAppointment, Vehicles, Insurance), updated route map, component inventory, and file structure to reflect current codebase state.
+- **Pages count**: 22 dashboard pages, 12 dashboard components, 26 UI components, 13 services, 5 stores.
+
+### 9 March 2026 (BookingCard Design Matching Reference HTML + BookAppointment Confirmed Modal + Provider Reschedule Socket & Badge)
+
+#### BookingCard Design Redesign
+- **`BookingCard.jsx`**: Complete visual redesign to match reference HTML. Header gradient now green (`#15803D → #166534`) for scheduled cards (confirmed bookings with `scheduledDate`), blue for other upcoming statuses, slate for completed, gray for cancelled. Date format changed from `DD/MM/YYYY` to compact short format (`Tue 14 Jan`) via new `formatDateShort()` utility function. Provider phone number now displays (with Phone icon) when booking is paid and scheduled. Scheduled state shows semi-transparent white badge (`rgba(255,255,255,.15)`) instead of colored StatusBadge. Card layout: four info columns (Date & Time, Provider, Service Type, Location).
+- **`BookingDetailDrawer.jsx`**: Updated StatusBadge to recognize and display "scheduled" state when `booking.status === "confirmed" && booking.scheduledDate` is present.
+- **`StatusBadge.jsx`**: Added "Scheduled" status entry with blue styling to match new card design.
+
+#### BookAppointment Confirmed Modal Refinements
+- **`BookAppointment.jsx` — ConfirmedModal visual polish**: Info rows now wrapped in card containers (`bg-slate-50 border border-slate-100 rounded-lg`). User icon changed to Phone icon for "Provider will call you within 2 hours" line. Reduced spacing throughout: provider avatar 76→64px, title `text-2xl`→`text-xl`, body text 15→13px, padding `pt-10 pb-6`→`pt-7 pb-5`. Booking reference displayed as `inline-block`. CTA button padding reduced. Modal overlay no longer closes on outside click (removed onClick handler).
+
+#### Provider Reschedule Support — Socket & Sidebar Badge
+- **`socketService.js`**: Added `slot_change_proposed` and `schedule_accepted` event types to booking refresh handler — client bookings and quotes stores now properly refresh when provider proposes reschedule or accepts customer's counter-proposal.
+- **`DashboardSidebar.jsx`**: "My Bookings" badge count now includes action-required items: bookings with `slotNegotiation.status === "provider-proposed"` where the customer must respond to provider's slot change proposal.
+- **`DashboardTopBar.jsx`**: `slot_change_proposed` notifications without a `quoteId` now correctly route to `/dashboard/bookings/:bookingId` instead of quotes.
+
+### 9 March 2026 (BookAppointment Page)
+
+- **`BookAppointment.jsx`** (new): Post-payment appointment scheduling page at `/dashboard/quotes/:id/book-appointment`. Appears after Paystack payment succeeds.
+- **Journey progress bar**: 6-step visual stepper (Sent → Providers → Reviewed → Paid → Book Appt [active] → Confirmed).
+- **Provider Paid Bar**: Shows provider initials avatar, name, service + vehicle, amount with "Paid in full" badge.
+- **Visual calendar** (built from scratch — no external library): Month grid with Mo–Su headers, past/today disabled, future dates with available slots get blue dot indicators, selected day highlighted blue.
+- **14-day prefetch**: On mount the calendar fetches availability for the next 14 days concurrently (80ms delay between requests) to pre-populate slot dots before the user clicks a date.
+- **Time slots panel**: 3-column grid, selected slot highlighted blue, loading spinner during fetch, empty-state messaging.
+- **Availability caching**: Results from `quoteService.getProviderAvailability()` cached in `availabilityCache` state keyed by `YYYY-MM-DD` — re-selecting the same date does not re-fetch.
+- **Appointment Summary card**: Appears after both date + slot selected. Shows Date, Time, Provider, Vehicle (with reg plate), Location. "Confirm Appointment" button calls `bookingService.rescheduleBooking(bookingId, { scheduledDate, scheduledTimeSlot })`.
+- **Confirmed modal**: Full-screen overlay with blue gradient header, success check icon, "You're all booked!" title, booking reference card, next-steps list, "View My Bookings" CTA navigates to `/dashboard/bookings`.
+- **`App.jsx`**: Added `<Route path="quotes/:id/book-appointment" element={<BookAppointment />} />` nested under the `/dashboard` protected layout.
 
 ### March 2026 (Maintenance & Robustness)
 

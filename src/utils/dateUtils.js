@@ -131,6 +131,67 @@ export const getRelativeTime = (dateString) => {
 };
 
 /**
+ * Get friendly relative time with time of day (e.g., "Today, 06:30" / "Yesterday, 14:15")
+ * Falls back to "3d ago" for older dates within a week, then full date
+ */
+export const getRelativeTimeDetailed = (dateString) => {
+  if (!dateString) return "-";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "-";
+
+  const now = new Date();
+  const time = toHHMM(date);
+
+  // Check if same calendar day
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  if (isToday) return `Today, ${time}`;
+
+  // Check if yesterday
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  if (isYesterday) return `Yesterday, ${time}`;
+
+  // Within last 7 days — show day name + time
+  const diffInDays = Math.floor((now - date) / 86400000);
+  if (diffInDays < 7) {
+    const dayName = date.toLocaleDateString("en-ZA", { weekday: "short" });
+    return `${dayName}, ${time}`;
+  }
+
+  // Older — show "5 Jan 2025, 06:30" style with time
+  return `${formatDateHuman(dateString)}, ${time}`;
+};
+
+/**
+ * Format date as "5 Jan 2025" style (human-readable short)
+ */
+export const formatDateHuman = (dateString) => {
+  if (!dateString) return "-";
+  let date;
+  if (typeof dateString === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    const [y, m, d] = dateString.split("-").map(Number);
+    date = new Date(y, m - 1, d);
+  } else {
+    date = new Date(dateString);
+  }
+  if (isNaN(date.getTime())) return "-";
+
+  const day = date.getDate();
+  const month = date.toLocaleDateString("en-ZA", { month: "short" });
+  const year = date.getFullYear();
+  return `${day} ${month} ${year}`;
+};
+
+/**
  * Format time slot consistently
  */
 export const formatTimeSlot = (slot) => {

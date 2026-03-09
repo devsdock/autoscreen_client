@@ -2,13 +2,20 @@ import { Routes, Route, Navigate } from "react-router-dom";
 
 // Dashboard Layout and Pages
 import DashboardLayout from "./components/dashboard/DashboardLayout";
-import Overview from "./pages/dashboard/Overview";
-import Quotes from "./pages/dashboard/Quotes";
+// import Overview from "./pages/dashboard/Overview"; // Old dashboard
+import OverviewNew from "./pages/dashboard/OverviewNew";
+// import Quotes from "./pages/dashboard/Quotes"; // Old split-panel quotes
+import QuotesNew from "./pages/dashboard/QuotesNew";
+import QuoteDetailPage from "./pages/dashboard/QuoteDetailPage";
+import NewQuote from "./pages/dashboard/NewQuote";
 import Bookings from "./pages/dashboard/Bookings";
+import BookAppointment from "./pages/dashboard/BookAppointment";
 import Payments from "./pages/dashboard/Payments";
 import Profile from "./pages/dashboard/Profile";
 import Support from "./pages/dashboard/Support";
 import Messages from "./pages/dashboard/Messages";
+import Vehicles from "./pages/dashboard/Vehicles";
+import Insurance from "./pages/dashboard/Insurance";
 
 // Booking Flow Pages
 import BookSearch from "./pages/dashboard/BookSearch";
@@ -53,7 +60,7 @@ const App = () => {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Overview />} />
+        <Route index element={<OverviewNew />} />
 
         {/* Booking Flow Routes (Uber Style - No manual selection) */}
         <Route path="book" element={<BookSearch />} />
@@ -68,10 +75,15 @@ const App = () => {
           element={<BookingConfirmation />}
         />
 
+        {/* New Routes */}
+        <Route path="vehicles" element={<Vehicles />} />
+        <Route path="insurance" element={<Insurance />} />
+
         {/* Existing Routes */}
-        <Route path="quotes" element={<Quotes />} />
-        <Route path="quotes/new" element={<Quotes />} />
-        <Route path="quotes/:id" element={<Quotes />} />
+        <Route path="quotes" element={<QuotesNew />} />
+        <Route path="quotes/new" element={<NewQuote />} />
+        <Route path="quotes/:id" element={<QuoteDetailPage />} />
+        <Route path="quotes/:id/book-appointment" element={<BookAppointment />} />
         <Route path="bookings" element={<Bookings />} />
         <Route path="bookings/:id" element={<Bookings />} />
         <Route path="bookings/:id/:action" element={<Bookings />} />

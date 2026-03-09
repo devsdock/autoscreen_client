@@ -19,6 +19,8 @@ import {
   RefreshCw,
   CheckCircle2,
   XCircle,
+  CalendarCheck,
+  ArrowRight,
 } from "lucide-react";
 import Drawer, { DrawerFooter } from "../ui/Drawer";
 import StatusBadge from "../ui/StatusBadge";
@@ -59,7 +61,6 @@ const BookingDetailDrawer = ({
   const [previewImage, setPreviewImage] = useState(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [pendingPaymentAmount, setPendingPaymentAmount] = useState(null);
-  const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
   const [isSlotAction, setIsSlotAction] = useState(false);
   const [showCounterSlotModal, setShowCounterSlotModal] = useState(false);
 
@@ -159,23 +160,6 @@ const BookingDetailDrawer = ({
       });
     } finally {
       setReviewLoading(false);
-    }
-  };
-
-  const handleComplete = async () => {
-    setLoading(true);
-    try {
-      const res = await bookingService.completeBooking(booking.id);
-      if (res.success) {
-        addToast({ type: "success", message: "Booking marked as completed" });
-        setIsCompleteModalOpen(false);
-        if (onUpdate) onUpdate();
-      }
-    } catch (error) {
-      console.error("Error completing booking:", error);
-      addToast({ type: "error", message: "Failed to complete booking" });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -295,6 +279,13 @@ const BookingDetailDrawer = ({
   const currentStatus = booking?.status?.toLowerCase() || "";
   const currentPaymentStatus = booking?.paymentStatus?.toLowerCase() || "";
 
+  // Derive quoteId for Book Appointment navigation
+  const quoteId =
+    booking?.quote?._id ||
+    (typeof booking?.quote === "string" ? booking.quote : null) ||
+    booking?.quoteId ||
+    booking?.quoteRequestId;
+
   const canCancel = [
     "confirmation",
     "accepted",
@@ -309,13 +300,6 @@ const BookingDetailDrawer = ({
       currentStatus,
     ) &&
     !(booking.quote && currentStatus === "awaiting-payment");
-  const canComplete = [
-    "confirmed",
-    "in-progress",
-    "completed-by-fitter",
-  ].includes(currentStatus);
-  const isCompleteEnabled =
-    currentStatus === "in-progress" || currentStatus === "completed-by-fitter";
   const canReview =
     (currentStatus === "completed" || booking?.status === "Completed") &&
     (!booking?.rating || !booking?.rating?.score);
@@ -340,11 +324,9 @@ const BookingDetailDrawer = ({
     if (isOpen && initialAction) {
       if (initialAction === "review" && canReview) {
         setShowReviewModal(true);
-      } else if (initialAction === "acknowledge" && canComplete) {
-        setIsCompleteModalOpen(true);
       }
     }
-  }, [isOpen, initialAction, canReview, canComplete]);
+  }, [isOpen, initialAction, canReview]);
 
   if (!booking) return null;
 
@@ -364,7 +346,9 @@ const BookingDetailDrawer = ({
                 booking.status?.toLowerCase() === "searching" &&
                 booking.quotes?.length > 0
                   ? "awaiting-customer-approval"
-                  : booking.status
+                  : booking.status?.toLowerCase() === "confirmed" && booking.scheduledDate
+                    ? "scheduled"
+                    : booking.status
               }
               type="booking"
               size="md"
@@ -375,6 +359,28 @@ const BookingDetailDrawer = ({
               size="md"
             />
           </div>
+
+          {/* Book Appointment CTA — paid but no schedule yet */}
+          {currentPaymentStatus === "paid" && !booking.scheduledDate && quoteId && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+              <div className="flex items-center gap-3">
+                <CalendarCheck size={20} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="font-semibold text-blue-800 dark:text-blue-200">Schedule Your Appointment</p>
+                  <p className="text-sm text-blue-600 dark:text-blue-400">Payment confirmed. Choose your preferred date and time.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate(`/dashboard/quotes/${quoteId}/book-appointment`)}
+                className="mt-3 w-full py-2.5 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:-translate-y-px transition-all"
+                style={{ background: "linear-gradient(135deg, #2563EB, #1D4ED8)" }}
+              >
+                <CalendarCheck size={16} />
+                Book Your Appointment
+                <ArrowRight size={14} />
+              </button>
+            </div>
+          )}
 
           {/* Payment Pending Banner — quote-based booking awaiting payment */}
           {booking.quote && currentStatus === "awaiting-payment" && (
@@ -488,30 +494,19 @@ const BookingDetailDrawer = ({
             </div>
           )}
 
-          {/* Service Completed Banner inline */}
+          {/* Service Completed Banner inline — acknowledge handled via BookingCard modal */}
           {currentStatus === "completed-by-fitter" && (
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4 flex items-start gap-4">
               <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center flex-shrink-0 text-green-600 dark:text-green-400">
                 <CheckCircle size={20} />
               </div>
               <div className="flex-1">
                 <h3 className="text-sm font-bold text-green-900 dark:text-green-200">
-                  Service Completed!
+                  Service Completed by Fitter
                 </h3>
                 <p className="text-xs text-green-800 dark:text-green-300 mt-1">
-                  The fitter has marked your service as completed. Please review
-                  and acknowledge the work to finalize your booking.
+                  The fitter has marked your service as completed. Close this panel and tap Acknowledge on the booking card to confirm.
                 </p>
-                <div className="flex gap-4 mt-3">
-                  <Button
-                    variant="primary"
-                    disabled={loading}
-                    size="xs"
-                    onClick={() => handleComplete()}
-                  >
-                    {loading ? "Completing..." : "Complete Booking"}
-                  </Button>
-                </div>
               </div>
             </div>
           )}
@@ -717,6 +712,11 @@ const BookingDetailDrawer = ({
                     <p className="font-medium text-slate-900 dark:text-white text-sm">
                       {booking.vehicle}
                     </p>
+                    {booking.vehicleRegNumber && (
+                      <span className="inline-block font-mono text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600 mt-1">
+                        {booking.vehicleRegNumber}
+                      </span>
+                    )}
                     {(booking.vehicleData?.hasAdasCamera ||
                       booking.vehicleData?.hasRainSensor) && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
@@ -1080,7 +1080,7 @@ const BookingDetailDrawer = ({
                       <span className="text-sm font-bold text-slate-900 dark:text-white">
                         Total Amount
                       </span>
-                      <span className="font-bold text-primary-600 dark:text-primary-400 text-lg">
+                      <span className="font-display font-bold text-primary-600 dark:text-primary-400 text-lg">
                         {formatCurrency(booking.price?.total || 0)}
                       </span>
                     </div>
@@ -1152,7 +1152,6 @@ const BookingDetailDrawer = ({
 
         {/* Actions */}
         {(canPay ||
-          canComplete ||
           canReview ||
           canDownloadInvoice ||
           canCancel) && (
@@ -1162,25 +1161,6 @@ const BookingDetailDrawer = ({
                 <CreditCard size={16} />
                 Confirm & Pay
               </Button>
-            )}
-            {canComplete && (
-              <Tooltip
-                className="w-full"
-                content={
-                  !isCompleteEnabled
-                    ? "Technician will notify you when work is ready for inspection"
-                    : ""
-                }
-              >
-                <Button
-                  onClick={() => setIsCompleteModalOpen(true)}
-                  className="w-full"
-                  disabled={!isCompleteEnabled}
-                >
-                  <CheckCircle size={16} />
-                  Complete Booking
-                </Button>
-              </Tooltip>
             )}
 
             {(canReview || canDownloadInvoice || canCancel) && (
@@ -1364,67 +1344,6 @@ const BookingDetailDrawer = ({
         isLoading={isSlotAction}
       />
 
-      {/* Complete Booking Modal */}
-      <Modal
-        isOpen={isCompleteModalOpen}
-        onClose={() => setIsCompleteModalOpen(false)}
-        title="Complete Booking"
-        size="md"
-      >
-        <div className="space-y-6">
-          <div className="bg-primary-50 dark:bg-primary-900/10 p-4 rounded-xl border border-primary-100 dark:border-primary-900/20 text-center">
-            <div className="w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-primary-600 dark:text-primary-400">
-              <CheckCircle size={32} />
-            </div>
-            <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">
-              Finish this job?
-            </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Please confirm that the technician has completed the work on your{" "}
-              {booking.vehicle} to your satisfaction.
-            </p>
-          </div>
-
-          <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                <span>Service</span>
-                <span className="font-medium text-slate-900 dark:text-white">
-                  {booking.service}
-                </span>
-              </div>
-              <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                <span>Total Paid</span>
-                <span className="font-medium text-slate-900 dark:text-white">
-                  {formatCurrency(booking.price?.total || 0)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <p className="text-xs text-slate-500 text-center">
-            Once completed, you will be able to leave a review and your invoice
-            will be updated.
-          </p>
-        </div>
-
-        <ModalActions>
-          <Button
-            variant="secondary"
-            onClick={() => setIsCompleteModalOpen(false)}
-            disabled={loading}
-          >
-            Not Yet
-          </Button>
-          <Button
-            onClick={handleComplete}
-            loading={loading}
-            className="min-w-[140px]"
-          >
-            Confirm Completion
-          </Button>
-        </ModalActions>
-      </Modal>
 
       {/* Image Preview Modal */}
       <Modal

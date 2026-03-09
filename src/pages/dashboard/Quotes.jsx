@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Search,
@@ -8,6 +8,7 @@ import {
   MapPin,
   Clock,
   ChevronRight,
+  ChevronDown,
   Filter,
   Loader2,
   AlertCircle,
@@ -24,6 +25,17 @@ import ServiceInfoCell from "../../components/ui/ServiceInfoCell";
 import RequestQuoteModal from "../../components/dashboard/RequestQuoteModal";
 import QuoteDetailPanel from "../../components/dashboard/QuoteDetailPanel";
 
+const INITIAL_LIMIT = 5;
+const EXPANDED_LIMIT = 50;
+
+// Map frontend filter labels to backend group params
+const FILTER_TO_GROUP = {
+  Open: "active",
+  Responses: "active",
+  Accepted: "accepted",
+  Closed: "closed",
+};
+
 const statusFilters = [
   { id: "all", label: "All" },
   { id: "Open", label: "Open" },
@@ -31,6 +43,18 @@ const statusFilters = [
   { id: "Accepted", label: "Accepted" },
   { id: "Closed", label: "Closed" },
 ];
+
+// Card background/border classes by quote status (when not selected)
+const getCardStatusClasses = (status) => {
+  switch (status) {
+    case "Completed":
+      return "bg-emerald-50 dark:bg-emerald-900/15 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300 dark:hover:border-emerald-600 hover:shadow-sm";
+    case "Closed":
+      return "bg-slate-50 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-sm";
+    default:
+      return "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-600 hover:shadow-sm";
+  }
+};
 
 const Quotes = () => {
   const { id: routeId } = useParams();
@@ -45,6 +69,14 @@ const Quotes = () => {
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showMobileDetail, setShowMobileDetail] = useState(false);
   const [mismatchEmail, setMismatchEmail] = useState(null);
+
+  // Track totals per group for "View All" buttons
+  const [groupTotals, setGroupTotals] = useState({
+    active: 0,
+    accepted: 0,
+    closed: 0,
+  });
+  const [expandedGroups, setExpandedGroups] = useState({});
 
   // Check for Deep Link User Mismatch
   useEffect(() => {
@@ -66,20 +98,42 @@ const Quotes = () => {
     setMismatchEmail(null);
   };
 
+  // Fetch all groups in parallel on mount
   useEffect(() => {
-    const loadQuotes = async () => {
+    const loadAllGroups = async () => {
       setIsLoading(true);
-      await fetchQuotes();
+      const [activeResult, acceptedResult, closedResult] = await Promise.all([
+        fetchQuotes({ group: "active", limit: INITIAL_LIMIT }),
+        fetchQuotes({ group: "accepted", limit: INITIAL_LIMIT }),
+        fetchQuotes({ group: "closed", limit: INITIAL_LIMIT }),
+      ]);
+
+      setGroupTotals({
+        active: activeResult?.pagination?.total || 0,
+        accepted: acceptedResult?.pagination?.total || 0,
+        closed: closedResult?.pagination?.total || 0,
+      });
+
       setIsLoading(false);
     };
-    loadQuotes();
+    loadAllGroups();
   }, [fetchQuotes]);
+
+  // Expand a group — load all items
+  const handleViewAll = async (group) => {
+    setIsLoading(true);
+    await fetchQuotes({ group, limit: EXPANDED_LIMIT });
+    setExpandedGroups((prev) => ({ ...prev, [group]: true }));
+    setIsLoading(false);
+  };
 
   // Auto-switch to Accepted tab when there are payment-due quotes (first load only, no routeId)
   useEffect(() => {
     if (filterInitialized || routeId || quotes.length === 0) return;
     const hasPaymentDue = quotes.some(
-      (q) => q.status === "Accepted" && q.booking?.status === "awaiting-payment",
+      (q) =>
+        q.status === "Accepted" &&
+        (q.rawStatus === "accepting" || q.booking?.status === "awaiting-payment"),
     );
     if (hasPaymentDue) {
       setActiveFilter("Accepted");
@@ -97,8 +151,6 @@ const Quotes = () => {
         const found = quotes.find((q) => q.id === routeId);
         if (found) {
           setSelectedQuoteId(found.id);
-          // If the found quote has a different status than active filter, switch to All or its status
-          // ONLY if this is a new selection (routeId changed from something else)
           if (
             activeFilter !== "all" &&
             found.status !== activeFilter &&
@@ -110,7 +162,6 @@ const Quotes = () => {
             setShowMobileDetail(true);
           }
         } else {
-          // If not found in store, fetch specifically
           setIsLoading(true);
           const fetched = await fetchQuoteDetails(routeId);
           if (fetched) {
@@ -126,14 +177,12 @@ const Quotes = () => {
               setShowMobileDetail(true);
             }
           } else {
-            // Quote not found or not accessible — redirect to quotes list
             addToast("Quote not found or belongs to a different account.", "error");
             navigate("/dashboard/quotes", { replace: true });
           }
           setIsLoading(false);
         }
       } else if (quotes.length > 0 && !selectedQuoteId) {
-        // Auto-select first quote on desktop that matches the active filter
         if (window.innerWidth >= 1024) {
           const matchingQuotes =
             activeFilter === "all"
@@ -161,35 +210,35 @@ const Quotes = () => {
 
   // Filter quotes
   const filteredQuotes = quotes.filter((quote) => {
-    // Status filter
     if (activeFilter !== "all" && quote.status !== activeFilter) {
       return false;
     }
-
-    // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const vehicle = quote.vehicle || {};
       const vehicleStr =
         `${vehicle.year || ""} ${vehicle.make || ""} ${vehicle.model || ""}`.toLowerCase();
       const city = quote.location?.city || "";
-
       return (
         quote.reference?.toLowerCase().includes(query) ||
         vehicleStr.includes(query) ||
         city.toLowerCase().includes(query)
       );
     }
-
     return true;
   });
+
+  // Check if current filter's group has more items to load
+  const activeGroup = FILTER_TO_GROUP[activeFilter];
+  const activeGroupTotal = activeGroup ? groupTotals[activeGroup] || 0 : 0;
+  const isGroupExpanded = activeGroup ? expandedGroups[activeGroup] : true;
+  const hasMore = activeGroup && !isGroupExpanded && activeGroupTotal > INITIAL_LIMIT;
 
   // When filter changes, clear selection if the selected quote doesn't match the filter
   useEffect(() => {
     if (selectedQuoteId && activeFilter !== "all") {
       const selectedQ = quotes.find((q) => q.id === selectedQuoteId);
       if (selectedQ && selectedQ.status !== activeFilter) {
-        // Selected quote doesn't match filter - try to select first matching quote
         const firstMatch = filteredQuotes[0];
         if (firstMatch) {
           setSelectedQuoteId(firstMatch.id);
@@ -212,7 +261,6 @@ const Quotes = () => {
 
   const handleCloseMobileDetail = () => {
     setShowMobileDetail(false);
-    // On mobile, clearing the selection should reset the URL
     if (window.innerWidth < 1024) {
       navigate("/dashboard/quotes");
     }
@@ -221,9 +269,8 @@ const Quotes = () => {
   const handleRequestModalClose = async (newQuoteId) => {
     setShowRequestModal(false);
     if (newQuoteId) {
-      // Refresh the list to show the new quote
       setIsLoading(true);
-      await fetchQuotes();
+      await fetchQuotes({ group: "active", limit: INITIAL_LIMIT });
       setIsLoading(false);
 
       setSelectedQuoteId(newQuoteId);
@@ -241,17 +288,32 @@ const Quotes = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Request Quotes
+          <h1 className="font-display text-[1.75rem] font-bold text-slate-900 dark:text-white leading-tight">
+            Quote Requests
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Request quotes and compare provider offers
+          <p className="text-[.9375rem] text-slate-500 dark:text-slate-400 mt-1.5">
+            Pending requests sent to providers
           </p>
         </div>
-        <Button onClick={() => setShowRequestModal(true)}>
-          <Plus size={18} />
-          Request a Quote
-        </Button>
+        <button
+          onClick={() => setShowRequestModal(true)}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-[.9375rem] font-semibold text-white tracking-[.01em] whitespace-nowrap transition-all hover:-translate-y-px hover:shadow-lg active:translate-y-0"
+          style={{
+            background: "linear-gradient(135deg, #2563EB, #1D4ED8)",
+            boxShadow: "0 1px 3px rgba(15,23,42,.06), 0 1px 2px -1px rgba(15,23,42,.06), inset 0 1px 0 rgba(255,255,255,.15)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "linear-gradient(135deg, #3B82F6, #2563EB)";
+            e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(15,23,42,.08), 0 2px 4px -2px rgba(15,23,42,.05), 0 4px 14px rgba(37,99,235,.25)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "linear-gradient(135deg, #2563EB, #1D4ED8)";
+            e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,42,.06), 0 1px 2px -1px rgba(15,23,42,.06), inset 0 1px 0 rgba(255,255,255,.15)";
+          }}
+        >
+          <Plus size={16} strokeWidth={2.5} />
+          New Request
+        </button>
       </div>
 
       {/* Mismatch Warning */}
@@ -364,10 +426,17 @@ const Quotes = () => {
                       Request your first quote to compare providers and get the
                       best price
                     </p>
-                    <Button onClick={() => setShowRequestModal(true)}>
-                      <Plus size={16} />
-                      Request Your First Quote
-                    </Button>
+                    <button
+                      onClick={() => setShowRequestModal(true)}
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-[.9375rem] font-semibold text-white tracking-[.01em] whitespace-nowrap transition-all hover:-translate-y-px hover:shadow-lg active:translate-y-0"
+                      style={{
+                        background: "linear-gradient(135deg, #2563EB, #1D4ED8)",
+                        boxShadow: "0 1px 3px rgba(15,23,42,.06), 0 1px 2px -1px rgba(15,23,42,.06), inset 0 1px 0 rgba(255,255,255,.15)",
+                      }}
+                    >
+                      <Plus size={16} strokeWidth={2.5} />
+                      New Request
+                    </button>
                   </>
                 ) : (
                   <>
@@ -381,85 +450,97 @@ const Quotes = () => {
                 )}
               </div>
             ) : (
-              filteredQuotes.map((quote) => (
-                <button
-                  key={quote.id}
-                  onClick={() => handleQuoteSelect(quote.id)}
-                  className={`
-                    w-full text-left p-4 rounded-xl border transition-all
-                    ${
-                      selectedQuoteId === quote.id
-                        ? "bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-800 ring-2 ring-primary-500/20"
-                        : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-600 hover:shadow-sm"
-                    }
-                  `}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      {/* Reference & Status */}
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-semibold text-slate-900 dark:text-white text-sm">
-                          {quote.reference}
-                        </span>
-                        <StatusBadge
-                          status={quote.status}
-                          type="quote"
-                          size="sm"
+              <>
+                {filteredQuotes.map((quote) => (
+                  <button
+                    key={quote.id}
+                    onClick={() => handleQuoteSelect(quote.id)}
+                    className={`
+                      w-full text-left p-4 rounded-xl border transition-all
+                      ${
+                        selectedQuoteId === quote.id
+                          ? "bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-800 ring-2 ring-primary-500/20"
+                          : getCardStatusClasses(quote.status)
+                      }
+                    `}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        {/* Reference & Status */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-semibold text-slate-900 dark:text-white text-sm">
+                            {quote.reference}
+                          </span>
+                          <StatusBadge
+                            status={quote.status}
+                            type="quote"
+                            size="sm"
+                          />
+                        </div>
+
+                        {/* Service Type */}
+                        <div className="flex flex-col gap-1 mt-1.5 mb-1.5 grayscale-[0.3]">
+                          <ServiceInfoCell row={quote} />
+                        </div>
+
+                        {/* Vehicle */}
+                        <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 mb-1">
+                          <Car size={14} className="flex-shrink-0" />
+                          <span className="truncate">
+                            {quote.vehicle.year} {quote.vehicle.make}{" "}
+                            {quote.vehicle.model}
+                          </span>
+                        </div>
+
+                        {/* Location */}
+                        <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+                          <MapPin size={14} className="flex-shrink-0" />
+                          <span>{quote.location.city}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end">
+                        <ChevronRight
+                          size={18}
+                          className="text-slate-300 dark:text-slate-600 mb-2"
                         />
-                      </div>
 
-                      {/* Service Type */}
-                      <div className="flex flex-col gap-1 mt-1.5 mb-1.5 grayscale-[0.3]">
-                        <ServiceInfoCell row={quote} />
-                      </div>
+                        {/* Payment Due pill */}
+                        {quote.status === "Accepted" &&
+                          (quote.rawStatus === "accepting" ||
+                            quote.booking?.status === "awaiting-payment") && (
+                            <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium rounded-full">
+                              Payment Due
+                            </span>
+                          )}
 
-                      {/* Vehicle */}
-                      <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 mb-1">
-                        <Car size={14} className="flex-shrink-0" />
-                        <span className="truncate">
-                          {quote.vehicle.year} {quote.vehicle.make}{" "}
-                          {quote.vehicle.model}
-                        </span>
-                      </div>
+                        {/* Responses Count */}
+                        {quote.responsesCount > 0 &&
+                          quote.status !== "Accepted" && (
+                            <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-xs font-medium rounded-full">
+                              {quote.responsesCount} offer
+                              {quote.responsesCount > 1 ? "s" : ""}
+                            </span>
+                          )}
 
-                      {/* Location */}
-                      <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
-                        <MapPin size={14} className="flex-shrink-0" />
-                        <span>{quote.location.city}</span>
+                        {/* Date */}
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+                          {getRelativeTime(quote.createdAt)}
+                        </p>
                       </div>
                     </div>
-
-                    <div className="flex flex-col items-end">
-                      <ChevronRight
-                        size={18}
-                        className="text-slate-300 dark:text-slate-600 mb-2"
-                      />
-
-                      {/* Payment Due pill */}
-                      {quote.status === "Accepted" &&
-                        quote.booking?.status === "awaiting-payment" && (
-                          <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium rounded-full">
-                            Payment Due
-                          </span>
-                        )}
-
-                      {/* Responses Count */}
-                      {quote.responsesCount > 0 &&
-                        quote.status !== "Accepted" && (
-                          <span className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-xs font-medium rounded-full">
-                            {quote.responsesCount} offer
-                            {quote.responsesCount > 1 ? "s" : ""}
-                          </span>
-                        )}
-
-                      {/* Date */}
-                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
-                        {getRelativeTime(quote.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              ))
+                  </button>
+                ))}
+                {hasMore && (
+                  <button
+                    onClick={() => handleViewAll(activeGroup)}
+                    className="w-full flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-colors"
+                  >
+                    View All ({activeGroupTotal})
+                    <ChevronDown size={16} />
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>

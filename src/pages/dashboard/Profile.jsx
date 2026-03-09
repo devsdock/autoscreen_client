@@ -22,6 +22,9 @@ import {
   ArrowRight,
   CreditCard,
   Lock,
+  ChevronRight,
+  Star,
+  LogOut,
 } from "lucide-react";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { ProfileSkeleton } from "../../components/skeletons/ProfileSkeleton";
@@ -656,492 +659,462 @@ const Profile = () => {
     );
   }
 
+  // Derived display values
+  const displayName =
+    user?.name ||
+    `${user?.firstName || ""} ${user?.lastName || ""}`.trim() ||
+    "User";
+  const displayEmail = user?.email || "";
+  const displayPhone = user?.phone || "Not set";
+  const displayContact = user?.preferredContact || "whatsapp";
+  const memberSince = user?.memberSince
+    ? formatDate(user.memberSince)
+    : "Recently joined";
+
+  // Initials for gradient avatar
+  const initials = displayName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="My Profile"
-        actionLabel={isEditing ? undefined : "Edit Profile"}
-        actionIcon={Edit2}
-        onAction={handleEditProfile}
-      />
+    <div className="max-w-5xl mx-auto space-y-5 pb-8">
+      {/* Page Header */}
+      <div className="pt-1">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+          My Profile
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Account settings and preferences
+        </p>
+      </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Left Column - Profile Info */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Profile Card */}
-          <Card>
-            <div className="flex flex-col sm:flex-row items-start gap-6">
-              <div className="flex flex-col items-center">
-                <Avatar
-                  name={
-                    user?.name ||
-                    `${user?.firstName || ""} ${user?.lastName || ""}`.trim() ||
-                    "User"
-                  }
-                  src={user?.avatar}
-                  size="xl"
-                />
-                <input
-                  type="file"
-                  ref={avatarInputRef}
-                  onChange={handleAvatarChange}
-                  accept="image/*"
-                  className="hidden"
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2 text-primary-600 dark:text-primary-400 font-medium"
-                  onClick={() => avatarInputRef.current?.click()}
-                  loading={uploadingAvatar}
-                >
-                  {uploadingAvatar ? "Uploading..." : "Change Photo"}
-                </Button>
-              </div>
+      {/* Gradient Profile Header Card */}
+      <div
+        className="relative overflow-hidden rounded-2xl p-7 flex items-center gap-6 shadow-lg"
+        style={{
+          background:
+            "linear-gradient(135deg, var(--tw-gradient-stops))",
+          backgroundImage:
+            "linear-gradient(135deg, #1e3a5f 0%, #0f1e35 100%)",
+        }}
+      >
+        {/* Decorative circle */}
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            right: "-60px",
+            top: "-60px",
+            width: "220px",
+            height: "220px",
+            background: "rgba(255,255,255,0.04)",
+            borderRadius: "50%",
+          }}
+        />
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            left: "-40px",
+            bottom: "-80px",
+            width: "180px",
+            height: "180px",
+            background: "rgba(255,255,255,0.03)",
+            borderRadius: "50%",
+          }}
+        />
 
-              {isEditing ? (
-                <div className="flex-1 space-y-4 w-full">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <Input
-                      label="First Name"
-                      value={editForm.firstName}
-                      onChange={(e) =>
-                        setEditForm((prev) => ({
-                          ...prev,
-                          firstName: e.target.value,
-                        }))
-                      }
-                    />
-                    <Input
-                      label="Last Name"
-                      value={editForm.lastName}
-                      onChange={(e) =>
-                        setEditForm((prev) => ({
-                          ...prev,
-                          lastName: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <Input
-                    label="Email"
-                    type="email"
-                    value={editForm.email}
-                    onChange={(e) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        email: e.target.value,
-                      }))
-                    }
-                    helperText="Changing email will require verification"
-                    disabled
-                  />
-                  <Input
-                    label="Mobile"
-                    value={editForm.phone}
-                    onChange={(e) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        phone: e.target.value,
-                      }))
-                    }
-                  />
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      Preferred Contact
-                    </label>
-                    <div className="flex gap-4">
-                      {["whatsapp", "phone", "email"].map((method) => (
-                        <label
-                          key={method}
-                          className="flex items-center gap-2 cursor-pointer"
-                        >
-                          <input
-                            type="radio"
-                            checked={editForm.preferredContact === method}
-                            onChange={() =>
-                              setEditForm((prev) => ({
-                                ...prev,
-                                preferredContact: method,
-                              }))
-                            }
-                            className="w-4 h-4 text-primary-600"
-                          />
-                          <span className="text-sm text-slate-700 dark:text-slate-300 capitalize">
-                            {method}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex gap-3 pt-2">
-                    <Button onClick={handleSaveProfile} disabled={isSaving}>
-                      {isSaving ? (
-                        <Loader2 className="animate-spin mr-2" size={16} />
-                      ) : null}
-                      Save Changes
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => setIsEditing(false)}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
+        {/* Avatar — clickable for photo upload */}
+        <div className="relative flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            className="relative focus:outline-none group"
+            title="Change profile photo"
+            disabled={uploadingAvatar}
+          >
+            <div
+              className="w-18 h-18 rounded-full ring-3 ring-white/30 overflow-hidden flex items-center justify-center"
+              style={{ width: 72, height: 72 }}
+            >
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={displayName}
+                  className="w-full h-full object-cover"
+                />
               ) : (
-                <div className="flex-1 space-y-4">
-                  <div>
-                    <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-                      {user?.name ||
-                        `${user?.firstName || ""} ${
-                          user?.lastName || ""
-                        }`.trim() ||
-                        "User"}
-                    </h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Member since {formatDate(user?.memberSince)}
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 text-sm">
-                      <Mail
-                        size={16}
-                        className="text-slate-400 dark:text-slate-500"
-                      />
-                      <span className="text-slate-700 dark:text-slate-300">
-                        {user?.email}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <Phone
-                        size={16}
-                        className="text-slate-400 dark:text-slate-500"
-                      />
-                      <span className="text-slate-700 dark:text-slate-300">
-                        {user?.phone || "Not set"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <MessageSquare
-                        size={16}
-                        className="text-slate-400 dark:text-slate-500"
-                      />
-                      <span className="text-slate-700 dark:text-slate-300 capitalize">
-                        Preferred: {user?.preferredContact || "whatsapp"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <Calendar
-                        size={16}
-                        className="text-slate-400 dark:text-slate-500"
-                      />
-                      <span className="text-slate-700 dark:text-slate-300">
-                        {totalBookings} total bookings
-                      </span>
-                    </div>
-                  </div>
+                <div
+                  className="w-full h-full flex items-center justify-center text-white font-bold text-xl"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)",
+                  }}
+                >
+                  {uploadingAvatar ? (
+                    <Loader2 size={24} className="animate-spin" />
+                  ) : (
+                    initials
+                  )}
                 </div>
               )}
             </div>
-          </Card>
-
-          {/* Saved Vehicles */}
-          <Card>
-            <CardHeader className="flex items-center justify-between">
-              <div>
-                <CardTitle>Saved Vehicles</CardTitle>
-                <p className="text-sm text-slate-500 mt-1">
-                  Save your vehicles for faster quoting
-                </p>
-              </div>
-              <Button size="sm" onClick={() => openVehicleModal()}>
-                <Plus size={16} />
-                Add Vehicle
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {vehicles.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="w-12 h-12 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
-                    <Car
-                      size={24}
-                      className="text-slate-400 dark:text-slate-500"
-                    />
-                  </div>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm">
-                    No vehicles saved yet
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {vehicles.map((vehicle) => (
-                    <div
-                      key={vehicle.id}
-                      className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
-                          <Car
-                            size={20}
-                            className="text-primary-600 dark:text-primary-400"
-                          />
-                        </div>
-                        <div>
-                          <p className="font-medium text-slate-900 dark:text-white">
-                            {vehicle.year || ""} {vehicle.make || ""}{" "}
-                            {vehicle.model || ""}
-                          </p>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">
-                            {vehicle.bodyType || "Sedan"}
-                            {vehicle.registrationNumber &&
-                              ` · ${vehicle.registrationNumber}`}
-                          </p>
-                          {(vehicle.hasAdasCamera || vehicle.hasRainSensor) && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {vehicle.hasAdasCamera && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
-                                  ADAS
-                                </span>
-                              )}
-                              {vehicle.hasRainSensor && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800">
-                                  Rain Sensor
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openVehicleModal(vehicle)}
-                        >
-                          <Edit2 size={14} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeleteVehicleId(vehicle.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/10"
-                        >
-                          <Trash2 size={14} />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Saved Addresses */}
-          <Card>
-            <CardHeader className="flex items-center justify-between">
-              <div>
-                <CardTitle>Saved Addresses</CardTitle>
-                <p className="text-sm text-slate-500 mt-1">
-                  Save addresses for quicker booking
-                </p>
-              </div>
-              <Button size="sm" onClick={() => openAddressModal()}>
-                <Plus size={16} />
-                Add Address
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {addresses.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="w-12 h-12 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
-                    <MapPin
-                      size={24}
-                      className="text-slate-400 dark:text-slate-500"
-                    />
-                  </div>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm">
-                    No addresses saved yet
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {addresses.map((address) => (
-                    <div
-                      key={address.id}
-                      className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
-                          <MapPin
-                            size={20}
-                            className="text-primary-600 dark:text-primary-400"
-                          />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-slate-900 dark:text-white">
-                              {address.label}
-                            </p>
-                            {address.isDefault && (
-                              <span className="text-xs bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 px-2 py-0.5 rounded-full">
-                                Default
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">
-                            {[address.street, address.suburb, address.city]
-                              .filter(Boolean)
-                              .join(", ")}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openAddressModal(address)}
-                        >
-                          <Edit2 size={14} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeleteAddressId(address.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 size={14} />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            {/* Upload overlay on hover */}
+            <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <Edit2 size={16} className="text-white" />
+            </div>
+          </button>
+          <input
+            type="file"
+            ref={avatarInputRef}
+            onChange={handleAvatarChange}
+            accept="image/*"
+            className="hidden"
+          />
         </div>
 
-        {/* Right Column - Settings */}
-        <div className="space-y-6">
-          {/* Notification Preferences */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell size={18} />
-                Notifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {[
-                {
-                  key: "email",
-                  label: "Email notifications",
-                  description: "Quotes, bookings, receipts",
-                },
-                {
-                  key: "sms",
-                  label: "SMS notifications",
-                  description: "Important updates only",
-                },
-                {
-                  key: "whatsapp",
-                  label: "WhatsApp notifications",
-                  description: "Real-time updates",
-                },
-              ].map(({ key, label, description }) => (
-                <div key={key} className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">
-                      {label}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {description}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => toggleNotification(key)}
-                    className={`
-                      relative w-11 h-6 rounded-full transition-colors
-                      ${
-                        notifications[key]
-                          ? "bg-primary-600"
-                          : "bg-slate-200 dark:bg-slate-700"
-                      }
-                    `}
-                  >
-                    <span
-                      className={`
-                      absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform
-                      ${notifications[key] ? "left-6" : "left-1"}
-                    `}
-                    />
-                  </button>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+        {/* Name / Email / Member badge */}
+        <div className="flex-1 min-w-0">
+          <h2 className="text-xl font-bold text-white leading-tight truncate">
+            {displayName}
+          </h2>
+          <p className="text-sm mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.65)" }}>
+            {displayEmail}
+          </p>
+          <div
+            className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-xs font-medium"
+            style={{ background: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.85)" }}
+          >
+            <Star size={11} className="fill-amber-300 text-amber-300" />
+            Member since {memberSince}
+          </div>
+        </div>
+      </div>
 
-          {/* Security */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield size={18} />
-                Security
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+      {/* Personal Information Section */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="text-[15px] font-bold text-slate-900 dark:text-white">
+            Personal Information
+          </h3>
+          {isEditing ? (
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={handleSaveProfile}
+                disabled={isSaving}
+              >
+                {isSaving && <Loader2 className="animate-spin mr-1.5" size={13} />}
+                Save
+              </Button>
               <Button
                 variant="secondary"
-                className="w-full justify-start"
                 size="sm"
-                onClick={() => setPasswordModal(true)}
+                onClick={() => setIsEditing(false)}
               >
-                <Lock size={14} className="mr-2" />
-                Change Password
+                Cancel
               </Button>
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-                size="sm"
-                onClick={() => setDeleteAccountModal(true)}
-              >
-                <Trash2 size={14} className="mr-2" />
-                Delete Account
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Quick Links */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Links</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <a
-                href="/dashboard/bookings"
-                className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700"
-              >
-                <ExternalLink size={14} />
-                View booking history
-              </a>
-              <a
-                href="/dashboard/quotes/new"
-                className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700"
-              >
-                <ExternalLink size={14} />
-                Request a quote
-              </a>
-              <a
-                href="/dashboard/support"
-                className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700"
-              >
-                <ExternalLink size={14} />
-                Get help
-              </a>
-            </CardContent>
-          </Card>
+            </div>
+          ) : (
+            <button
+              onClick={handleEditProfile}
+              className="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700"
+            >
+              Edit
+            </button>
+          )}
         </div>
+
+        {isEditing ? (
+          <div className="p-6 space-y-4">
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Input
+                label="First Name"
+                value={editForm.firstName}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, firstName: e.target.value }))
+                }
+              />
+              <Input
+                label="Last Name"
+                value={editForm.lastName}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, lastName: e.target.value }))
+                }
+              />
+            </div>
+            <Input
+              label="Email"
+              type="email"
+              value={editForm.email}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, email: e.target.value }))
+              }
+              helperText="Email cannot be changed here"
+              disabled
+            />
+            <Input
+              label="Mobile"
+              value={editForm.phone}
+              onChange={(e) =>
+                setEditForm((prev) => ({ ...prev, phone: e.target.value }))
+              }
+            />
+          </div>
+        ) : (
+          <div>
+            {/* Full Name */}
+            <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+              <div className="flex items-center gap-3.5">
+                <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+                  <User size={16} className="text-slate-500 dark:text-slate-400" />
+                </div>
+                <div>
+                  <p className="text-[15px] font-medium text-slate-700 dark:text-slate-300">Full Name</p>
+                  <p className="text-[13px] text-slate-400 dark:text-slate-500">{displayName}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Phone */}
+            <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+              <div className="flex items-center gap-3.5">
+                <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+                  <Phone size={16} className="text-slate-500 dark:text-slate-400" />
+                </div>
+                <div>
+                  <p className="text-[15px] font-medium text-slate-700 dark:text-slate-300">Phone Number</p>
+                  <p className="text-[13px] text-slate-400 dark:text-slate-500">{displayPhone}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Email */}
+            <div className="flex items-center justify-between px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+              <div className="flex items-center gap-3.5">
+                <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+                  <Mail size={16} className="text-slate-500 dark:text-slate-400" />
+                </div>
+                <div>
+                  <p className="text-[15px] font-medium text-slate-700 dark:text-slate-300">Email Address</p>
+                  <p className="text-[13px] text-slate-400 dark:text-slate-500">{displayEmail}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Insurance Details Section */}
+      <div
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
+        onClick={() => addToast({ type: "info", message: "Insurance management coming soon!" })}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="text-[15px] font-bold text-slate-900 dark:text-white">
+            Insurance Details
+          </h3>
+          <span className="text-xs font-medium text-primary-600 dark:text-primary-400">
+            Manage &rarr;
+          </span>
+        </div>
+        <div className="flex items-center justify-between px-6 py-3.5">
+          <div className="flex items-center gap-3.5">
+            <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+              <Shield size={16} className="text-slate-500 dark:text-slate-400" />
+            </div>
+            <div>
+              <p className="text-[15px] font-medium text-slate-700 dark:text-slate-300">Insurance</p>
+              <p className="text-[13px] text-slate-400 dark:text-slate-500">Manage your insurance details</p>
+            </div>
+          </div>
+          <ChevronRight size={14} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
+        </div>
+      </div>
+
+      {/* Saved Addresses Section (extra — not in reference HTML) */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="text-[15px] font-bold text-slate-900 dark:text-white">
+            Saved Addresses
+          </h3>
+          <button
+            onClick={() => openAddressModal()}
+            className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700"
+          >
+            <Plus size={13} />
+            Add
+          </button>
+        </div>
+
+        {addresses.length === 0 ? (
+          <div className="text-center py-10 px-5">
+            <div className="w-11 h-11 mx-auto bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
+              <MapPin size={20} className="text-slate-400 dark:text-slate-500" />
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              No addresses saved yet
+            </p>
+          </div>
+        ) : (
+          <div>
+            {addresses.map((address, idx) => (
+              <div
+                key={address.id}
+                className={`flex items-center justify-between px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${
+                  idx < addresses.length - 1
+                    ? "border-b border-slate-100 dark:border-slate-800"
+                    : ""
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+                    <MapPin size={16} className="text-slate-500 dark:text-slate-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[15px] font-medium text-slate-700 dark:text-slate-300">
+                        {address.label}
+                      </p>
+                      {address.isDefault && (
+                        <span className="text-[10px] font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 px-1.5 py-0.5 rounded-full">
+                          Default
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[13px] text-slate-400 dark:text-slate-500 truncate">
+                      {[address.street, address.suburb, address.city]
+                        .filter(Boolean)
+                        .join(", ")}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => openAddressModal(address)}
+                    className="p-1.5 text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                    title="Edit address"
+                  >
+                    <Edit2 size={14} />
+                  </button>
+                  <button
+                    onClick={() => setDeleteAddressId(address.id)}
+                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
+                    title="Remove address"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Preferences Section */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="text-[15px] font-bold text-slate-900 dark:text-white">
+            Preferences
+          </h3>
+        </div>
+
+        {/* Notifications */}
+        <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+          <div className="flex items-center gap-3.5">
+            <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+              <Bell size={16} className="text-slate-500 dark:text-slate-400" />
+            </div>
+            <div>
+              <p className="text-[15px] font-medium text-slate-700 dark:text-slate-300">Notifications</p>
+              <p className="text-[13px] text-slate-400 dark:text-slate-500">Quote alerts, booking reminders</p>
+            </div>
+          </div>
+          <span className="text-[15px] font-semibold text-green-600 dark:text-green-400">On</span>
+        </div>
+
+        {/* Default Location */}
+        <div className="flex items-center justify-between px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+          <div className="flex items-center gap-3.5">
+            <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+              <MapPin size={16} className="text-slate-500 dark:text-slate-400" />
+            </div>
+            <div>
+              <p className="text-[15px] font-medium text-slate-700 dark:text-slate-300">Default Location</p>
+              <p className="text-[13px] text-slate-400 dark:text-slate-500">
+                {addresses.find((a) => a.isDefault)
+                  ? `${addresses.find((a) => a.isDefault).suburb || addresses.find((a) => a.isDefault).city || "Not set"}`
+                  : addresses.length > 0
+                    ? `${addresses[0].suburb || addresses[0].city || "Not set"}`
+                    : "Not set"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Account Section */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="text-[15px] font-bold text-slate-900 dark:text-white">
+            Account
+          </h3>
+        </div>
+
+        {/* Saved Payment Methods */}
+        <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+          <div className="flex items-center gap-3.5">
+            <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+              <CreditCard size={16} className="text-slate-500 dark:text-slate-400" />
+            </div>
+            <div>
+              <p className="text-[15px] font-medium text-slate-700 dark:text-slate-300">Saved Payment Methods</p>
+              <p className="text-[13px] text-slate-400 dark:text-slate-500">Paystack</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Save Card */}
+        <button
+          type="button"
+          onClick={() => addToast({ type: "info", message: "Save card feature coming soon!" })}
+          className="w-full flex items-center justify-between px-6 py-3.5 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors text-left"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-9 h-9 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0">
+              <Lock size={16} className="text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <p className="text-[15px] font-medium text-slate-700 dark:text-slate-300">Save Card for Faster Payments</p>
+              <p className="text-[13px] text-slate-400 dark:text-slate-500">
+                <span className="inline-flex items-center gap-1">
+                  <Shield size={11} className="text-green-500" />
+                  Secured by Paystack &middot; PCI DSS compliant
+                </span>
+              </p>
+            </div>
+          </div>
+          <ChevronRight size={14} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
+        </button>
+
+        {/* Sign Out */}
+        <button
+          type="button"
+          onClick={async () => {
+            addToast({ type: "info", message: "Logging out..." });
+            sessionStorage.removeItem("action_banner_dismissed");
+            sessionStorage.removeItem("dismissed_completed_bookings");
+            const { logout } = useAuthStore.getState();
+            await logout();
+          }}
+          className="w-full flex items-center gap-3.5 px-6 py-3.5 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-left"
+        >
+          <div className="w-9 h-9 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
+            <LogOut size={16} className="text-red-600 dark:text-red-400" />
+          </div>
+          <p className="text-[15px] font-medium text-red-600 dark:text-red-400">Sign Out</p>
+        </button>
       </div>
 
       {/* Vehicle Modal */}

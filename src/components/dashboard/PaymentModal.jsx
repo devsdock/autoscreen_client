@@ -1,7 +1,5 @@
-import { useState, useEffect } from "react";
-import { CreditCard, Zap, Lock, AlertCircle } from "lucide-react";
-import Modal, { ModalActions } from "../ui/Modal";
-import Button from "../ui/Button";
+import { useState, useEffect, useRef } from "react";
+import { CreditCard, Lock, AlertCircle, Check, X } from "lucide-react";
 import useDashboardStore, {
   formatCurrency,
 } from "../../store/useDashboardStore";
@@ -22,6 +20,7 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
   const [coversFees, setCoversFees] = useState(false);
   const [surcharge, setSurcharge] = useState(0);
   const [variableFeeRate, setVariableFeeRate] = useState(0.029 * 1.15);
+  const modalRef = useRef(null);
 
   // Fetch fee rate from backend
   useEffect(() => {
@@ -44,6 +43,23 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
     }
   }, [coversFees, payment?.amount, variableFeeRate]);
 
+  // Escape key + body scroll lock
+  useEffect(() => {
+    const handleEscape = (e) => { if (e.key === "Escape") handleClose(); };
+    if (isOpen) {
+      document.addEventListener("keydown", handleEscape);
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && modalRef.current) modalRef.current.focus();
+  }, [isOpen]);
+
   if (!payment || !isOpen) return null;
 
   const handleSubmit = async () => {
@@ -51,16 +67,13 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
     setErrors({});
 
     try {
-      const targetBookingId = payment.bookingId || payment.id;
+      const params = payment.quoteId && payment.responseId
+        ? { quoteId: payment.quoteId, responseId: payment.responseId }
+        : { bookingId: payment.bookingId || payment.id };
 
-      // 1. Initialize Paystack Transaction on backend
-      const res = await paymentService.initializePaystack(
-        targetBookingId,
-        coversFees,
-      );
+      const res = await paymentService.initializePaystack(params, coversFees);
 
       if (res.success && res.authorization_url) {
-        // Validate redirect URL before navigating
         if (!isPaystackUrl(res.authorization_url)) {
           throw new Error("Invalid payment redirect URL.");
         }
@@ -83,104 +96,237 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
     onClose();
   };
 
+  const hasVat = payment.breakdown?.vat > 0 && (payment.breakdown?.vatPercentage || 0) > 0;
+  const initials = payment.providerInitials || "P";
+
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      title="Complete Payment"
-      description={`Secure card payment for ${payment.service}`}
-      size="md"
-    >
-      <div className="space-y-6">
-        {/* Amount Summary */}
-        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6 border border-slate-100 dark:border-slate-700/50 space-y-3">
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-slate-600 dark:text-slate-400">Subtotal</span>
-            <span className="text-slate-900 dark:text-white font-medium">
-              {formatCurrency(
-                (payment.breakdown?.vatPercentage || 0) > 0
-                  ? payment.breakdown?.subtotal || payment.amount
-                  : payment.amount,
-              )}
-            </span>
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      {/* Overlay */}
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
+        onClick={handleClose}
+        aria-hidden="true"
+      />
+
+      {/* Modal container */}
+      <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
+        <div
+          ref={modalRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="payment-modal-title"
+          tabIndex={-1}
+          className="relative w-full max-w-[520px] bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-xl animate-scale-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <h2 id="payment-modal-title" className="text-[1.25rem] font-bold text-slate-900 dark:text-white">
+                Accept & Pay in Full
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                Lock in this quote with full payment
+              </p>
+            </div>
+            <button
+              onClick={handleClose}
+              className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+              aria-label="Close modal"
+            >
+              <X size={18} />
+            </button>
           </div>
 
-          {payment.breakdown?.vat > 0 &&
-            (payment.breakdown?.vatPercentage || 0) > 0 && (
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-600 dark:text-slate-400">
-                  VAT ({payment.breakdown?.vatPercentage || 0}%)
-                </span>
-                <span className="text-slate-900 dark:text-white font-medium">
-                  {formatCurrency(payment.breakdown.vat)}
-                </span>
+          {/* Body */}
+          <div className="px-5 py-5 space-y-5 max-h-[60vh] overflow-y-auto">
+            {/* Quote Summary Card */}
+            <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+              {/* Provider row */}
+              {payment.providerName && (
+                <div className="flex items-center gap-3.5 mb-3.5">
+                  <div
+                    className="w-[42px] h-[42px] rounded-xl flex items-center justify-center text-white font-extrabold text-[0.9375rem] flex-shrink-0"
+                    style={{ background: `linear-gradient(135deg, ${payment.providerColor || "#2563EB"}, ${payment.providerColor ? payment.providerColor + "CC" : "#1E40AF"})` }}
+                  >
+                    {initials}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-base font-bold text-slate-900 dark:text-white truncate">
+                      {payment.providerName}
+                    </div>
+                    <div className="text-[0.8125rem] text-slate-500 truncate">
+                      {payment.service}
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[0.6875rem] font-semibold flex-shrink-0 ml-auto">
+                    <Check size={10} /> Verified
+                  </span>
+                </div>
+              )}
+
+              {/* Vehicle + Reg + Customer row */}
+              {(payment.vehicle || payment.customerName) && (
+                <div className="text-sm text-slate-600 dark:text-slate-400 mb-3.5 pb-3.5 border-b border-slate-200 dark:border-slate-700">
+                  {payment.vehicle && <strong className="text-slate-900 dark:text-white">{payment.vehicle}</strong>}
+                  {payment.registrationNumber && (
+                    <>
+                      {" · "}
+                      <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold tracking-wide">
+                        {payment.registrationNumber}
+                      </span>
+                    </>
+                  )}
+                  {payment.customerName && <> · {payment.customerName}</>}
+                </div>
+              )}
+
+              {/* Line items */}
+              {payment.breakdown?.parts != null && (
+                <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400 py-0.5">
+                  <span>Parts & materials</span>
+                  <span className="font-medium text-slate-900 dark:text-white">
+                    {formatCurrency(payment.breakdown.parts)}
+                  </span>
+                </div>
+              )}
+
+              {payment.breakdown?.labour != null && (
+                <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400 py-0.5">
+                  <span>Labour</span>
+                  <span className="font-medium text-slate-900 dark:text-white">
+                    {formatCurrency(payment.breakdown.labour)}
+                  </span>
+                </div>
+              )}
+
+              {/* Subtotal — show when no parts/labour breakdown */}
+              {payment.breakdown?.parts == null && payment.breakdown?.labour == null && (
+                <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400 py-0.5">
+                  <span>Subtotal</span>
+                  <span className="font-medium text-slate-900 dark:text-white">
+                    {formatCurrency(
+                      hasVat
+                        ? payment.breakdown?.subtotal || payment.amount
+                        : payment.amount,
+                    )}
+                  </span>
+                </div>
+              )}
+
+              {/* VAT */}
+              {hasVat && (
+                <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400 py-0.5">
+                  <span>VAT ({payment.breakdown.vatPercentage}%)</span>
+                  <span className="font-medium text-slate-900 dark:text-white">
+                    {payment.breakdown.vatIncluded ? "Included" : formatCurrency(payment.breakdown.vat)}
+                  </span>
+                </div>
+              )}
+
+              {/* Total */}
+              <div className="flex justify-between items-center border-t border-slate-200 dark:border-slate-700 pt-3 mt-1.5 font-bold text-slate-900 dark:text-white">
+                <span>Total</span>
+                <span className="text-xl">{formatCurrency(payment.amount)}</span>
+              </div>
+            </div>
+
+            {/* Full Payment Note */}
+            <div className="flex gap-3 items-start bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
+              <CreditCard size={18} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="text-[0.9375rem] font-semibold text-blue-900 dark:text-blue-300 mb-1">
+                  Full payment required to confirm
+                </div>
+                <div className="text-[0.8125rem] text-blue-700 dark:text-blue-400 leading-relaxed">
+                  Your payment is held securely. It's only released to the provider once your service is completed to your satisfaction. Fully refundable up to 24 hours before your appointment.
+                </div>
+              </div>
+            </div>
+
+            {/* Payment method */}
+            <div>
+              <div className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+                Payment method
+              </div>
+              <div
+                className="border-[1.5px] border-blue-600 dark:border-blue-500 rounded-xl p-3.5 flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20"
+                style={{ boxShadow: "0 0 0 3px rgba(37,99,235,.1)" }}
+              >
+                <div className="w-[34px] h-[34px] rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: "#0066CC", color: "#fff", fontSize: ".45rem", fontWeight: 800, letterSpacing: "-.01em", textAlign: "center", lineHeight: 1.2 }}
+                >
+                  PAY<br />STACK
+                </div>
+                <div className="flex-1">
+                  <div className="text-[0.9375rem] font-semibold text-slate-800 dark:text-white">
+                    Paystack — Card Payment
+                  </div>
+                  <div className="text-[0.6875rem] text-slate-500">
+                    Visa · Mastercard · Debit card
+                  </div>
+                </div>
+                <div className="flex gap-1.5 items-center flex-shrink-0">
+                  <div className="rounded px-1.5 py-0.5 text-white font-extrabold" style={{ background: "#1A1F71", fontSize: ".5rem", letterSpacing: ".02em" }}>
+                    VISA
+                  </div>
+                  <div className="rounded flex items-center justify-center" style={{ background: "#EB001B", width: 26, height: 17 }}>
+                    <div className="relative" style={{ width: 12, height: 12, background: "#FF5F00", borderRadius: "50%" }}>
+                      <div className="absolute" style={{ left: -4, top: 0, width: 12, height: 12, background: "#EB001B", borderRadius: "50%", opacity: 0.85 }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Error */}
+            {errors.general && (
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400">
+                <AlertCircle size={16} className="flex-shrink-0" />
+                {errors.general}
               </div>
             )}
 
-          <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
-            <span className="text-slate-900 dark:text-white font-bold">
-              Total Amount
-            </span>
-            <span className="text-primary-600 dark:text-primary-400 font-bold text-2xl">
-              {formatCurrency(payment.amount)}
-            </span>
-          </div>
-        </div>
-
-        {/* Payment Info */}
-        <div className="space-y-4">
-          <div className="p-4 bg-primary-50 dark:bg-primary-900/10 rounded-xl border border-primary-100 dark:border-primary-900/20 flex gap-4">
-            <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
-              <CreditCard
-                className="text-primary-600 dark:text-primary-400"
-                size={20}
-              />
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900 dark:text-white">
-                Secure Card Payment
-              </p>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
-                You will be redirected to Paystack's secure checkout to complete
-                your payment via Credit/Debit card.
-              </p>
+            {/* Security footer */}
+            <div className="flex items-center justify-center gap-2 text-xs text-slate-400 py-1">
+              <Lock size={13} />
+              <span>Secured by Paystack · PCI-DSS Compliant</span>
             </div>
           </div>
 
-          {errors.general && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
-              <AlertCircle size={16} />
-              {errors.general}
-            </div>
-          )}
-        </div>
-
-        {/* Security Note */}
-        <div className="flex items-center justify-center gap-2 text-xs text-slate-500 py-2">
-          <Lock size={14} />
-          <span>Secured by Paystack • PCI-DSS Compliant</span>
+          {/* Footer */}
+          <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3">
+            <button
+              onClick={handleClose}
+              disabled={loading}
+              className="px-5 py-3 rounded-2xl text-[0.9375rem] font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="flex-1 py-3 rounded-2xl text-base font-bold text-white flex items-center justify-center gap-2 transition-all hover:shadow-lg hover:-translate-y-px disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{
+                background: loading
+                  ? "linear-gradient(135deg, #93C5FD, #60A5FA)"
+                  : "linear-gradient(135deg, #2563EB, #1D4ED8)",
+                boxShadow: "0 4px 6px -1px rgba(37,99,235,.25)",
+              }}
+            >
+              {loading ? (
+                <span className="w-[18px] h-[18px] border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+              ) : (
+                <>
+                  <CreditCard size={18} />
+                  Pay {formatCurrency(payment.amount)}
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
-
-      <ModalActions>
-        <Button
-          variant="secondary"
-          onClick={handleClose}
-          disabled={loading}
-          className="px-6"
-        >
-          Cancel
-        </Button>
-        <Button
-          onClick={handleSubmit}
-          loading={loading}
-          disabled={loading}
-          className="px-8 bg-primary-600 hover:bg-primary-700 text-white"
-        >
-          Proceed to Pay {formatCurrency(payment.amount)}
-        </Button>
-      </ModalActions>
-    </Modal>
+    </div>
   );
 };
 
