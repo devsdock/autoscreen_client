@@ -1034,24 +1034,6 @@ const Profile = () => {
           <span className="text-[15px] font-semibold text-green-600 dark:text-green-400">On</span>
         </div>
 
-        {/* Default Location */}
-        <div className="flex items-center justify-between px-6 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-          <div className="flex items-center gap-3.5">
-            <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
-              <MapPin size={16} className="text-slate-500 dark:text-slate-400" />
-            </div>
-            <div>
-              <p className="text-[15px] font-medium text-slate-700 dark:text-slate-300">Default Location</p>
-              <p className="text-[13px] text-slate-400 dark:text-slate-500">
-                {addresses.find((a) => a.isDefault)
-                  ? `${addresses.find((a) => a.isDefault).suburb || addresses.find((a) => a.isDefault).city || "Not set"}`
-                  : addresses.length > 0
-                    ? `${addresses[0].suburb || addresses[0].city || "Not set"}`
-                    : "Not set"}
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Account Section */}

@@ -158,7 +158,7 @@ const QuoteCard = ({ quote, onClick }) => {
                 ? `${quote.responsesCount} replied`
                 : "Awaiting providers"}
           </div>
-          {quote.providerCount > 0 && quote.providerCount > (quote.responsesCount || 0) && (
+          {quote.providerCount > 0 && quote.providerCount > (quote.responsesCount || 0) && quote.status !== "Accepted" && quote.status !== "Closed" && (
             <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
               {quote.providerCount - (quote.responsesCount || 0)} still responding
             </div>

@@ -76,8 +76,7 @@ const DashboardSidebar = () => {
             const actionRequired =
               s === "awaiting-customer-approval" ||
               (s === "searching" &&
-                (b.quotes?.length > 0 || b.suggestions?.length > 0)) ||
-              b.slotNegotiation?.status === "provider-proposed";
+                (b.quotes?.length > 0 || b.suggestions?.length > 0));
             return actionRequired;
           })?.length || 0
         );

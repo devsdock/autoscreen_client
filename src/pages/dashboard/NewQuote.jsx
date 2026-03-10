@@ -201,7 +201,12 @@ const NewQuote = () => {
               setMakeLookup((prev) => ({ ...prev, [make.name]: make._id }));
             }
           })
-          .catch(() => {});
+          .catch((err) => {
+            console.error("Failed to create vehicle make:", err);
+            setAvailableMakes((prev) =>
+              [...new Set([...prev, value])].sort(),
+            );
+          });
       }
     }
 
@@ -222,7 +227,12 @@ const NewQuote = () => {
                 );
               }
             })
-            .catch(() => {});
+            .catch((err) => {
+              console.error("Failed to create vehicle model:", err);
+              setAvailableModels((prev) =>
+                [...new Set([...prev, value])].sort(),
+              );
+            });
         }
       }
     }

@@ -4,6 +4,7 @@ import useDashboardStore, {
   formatCurrency,
 } from "../../store/useDashboardStore";
 import paymentService from "../../services/paymentService";
+import { getCancellationPolicy } from "../../services/publicSettingsService";
 
 const PAYSTACK_ALLOWED_HOSTS = [
   "https://checkout.paystack.com/",
@@ -20,14 +21,21 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
   const [coversFees, setCoversFees] = useState(false);
   const [surcharge, setSurcharge] = useState(0);
   const [variableFeeRate, setVariableFeeRate] = useState(0.029 * 1.15);
+  const [policyText, setPolicyText] = useState("");
   const modalRef = useRef(null);
 
-  // Fetch fee rate from backend
+  // Fetch fee rate and cancellation policy from backend
   useEffect(() => {
     paymentService
       .getPaystackConfig()
       .then((res) => {
         if (res.success && res.variableFeeRate) setVariableFeeRate(res.variableFeeRate);
+      })
+      .catch(() => {});
+
+    getCancellationPolicy()
+      .then((data) => {
+        if (data.isActive && data.policyText) setPolicyText(data.policyText);
       })
       .catch(() => {});
   }, []);
@@ -165,10 +173,10 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
                 </div>
               )}
 
-              {/* Vehicle + Reg + Customer row */}
-              {(payment.vehicle || payment.customerName) && (
+              {/* Vehicle + Reg row */}
+              {payment.vehicle && (
                 <div className="text-sm text-slate-600 dark:text-slate-400 mb-3.5 pb-3.5 border-b border-slate-200 dark:border-slate-700">
-                  {payment.vehicle && <strong className="text-slate-900 dark:text-white">{payment.vehicle}</strong>}
+                  <strong className="text-slate-900 dark:text-white">{payment.vehicle}</strong>
                   {payment.registrationNumber && (
                     <>
                       {" · "}
@@ -177,7 +185,6 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
                       </span>
                     </>
                   )}
-                  {payment.customerName && <> · {payment.customerName}</>}
                 </div>
               )}
 
@@ -231,18 +238,20 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
               </div>
             </div>
 
-            {/* Full Payment Note */}
-            <div className="flex gap-3 items-start bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
-              <CreditCard size={18} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <div className="text-[0.9375rem] font-semibold text-blue-900 dark:text-blue-300 mb-1">
-                  Full payment required to confirm
-                </div>
-                <div className="text-[0.8125rem] text-blue-700 dark:text-blue-400 leading-relaxed">
-                  Your payment is held securely. It's only released to the provider once your service is completed to your satisfaction. Fully refundable up to 24 hours before your appointment.
+            {/* Full Payment Note — only shown when cancellation policy is active */}
+            {policyText && (
+              <div className="flex gap-3 items-start bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
+                <CreditCard size={18} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-[0.9375rem] font-semibold text-blue-900 dark:text-blue-300 mb-1">
+                    Cancellation Policy
+                  </div>
+                  <div className="text-[0.8125rem] text-blue-700 dark:text-blue-400 leading-relaxed">
+                    {policyText}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Payment method */}
             <div>

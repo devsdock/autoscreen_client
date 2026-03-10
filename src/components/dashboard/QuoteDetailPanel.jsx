@@ -29,6 +29,7 @@ import Button from "../ui/Button";
 import ProviderResponseCard from "./ProviderResponseCard";
 import Modal from "../ui/Modal";
 import PaymentModal from "./PaymentModal";
+import { useSettingsStore } from "../../store/useSettingsStore";
 
 const QuoteDetailPanel = ({ quote, onClose }) => {
   const navigate = useNavigate();
@@ -39,12 +40,14 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     addToast,
     fetchQuoteDetails,
   } = useDashboardStore();
+  const platformSettings = useSettingsStore((s) => s.settings);
   const [selectedImage, setSelectedImage] = useState(null);
   const [closeModal, setCloseModal] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
   const [sortFilter, setSortFilter] = useState("best-price");
+  const [closePanelModal, setClosePanelModal] = useState(false);
 
   // Fetch latest details to ensure we have responses
   useEffect(() => {
@@ -93,10 +96,15 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
       .slice(0, 2)
       .toUpperCase();
 
+    const subtotal = response.price || 0;
+    const vatRate = platformSettings?.vatPercentage || 0;
+    const vatAmount = vatRate > 0 ? Math.round(subtotal * (vatRate / 100) * 100) / 100 : 0;
+    const total = subtotal + vatAmount;
+
     setPaymentData({
       quoteId: quote.id,
       responseId: response.id,
-      amount: response.price || 0,
+      amount: total,
       service: quote.serviceSelections?.map((s) => s.serviceName).join(", ") ||
         quote.serviceType || "Auto Glass Service",
       providerName,
@@ -105,9 +113,9 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
         ? `${quote.vehicle.year || ""} ${quote.vehicle.make || ""} ${quote.vehicle.model || ""}`.trim()
         : "",
       breakdown: {
-        subtotal: response.price || 0,
-        vat: response.vat || 0,
-        vatPercentage: response.vatPercentage || 0,
+        subtotal,
+        vat: vatAmount,
+        vatPercentage: vatRate,
       },
     });
     setShowPaymentModal(true);
@@ -179,7 +187,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   return (
     <div className="flex-1 overflow-y-auto">
       {/* Header */}
-      <div className="sticky top-0 bg-white dark:bg-slate-900 z-10 px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+      <div className="qdp-header sticky top-0 bg-white dark:bg-slate-900 z-10 px-6 py-4 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -207,27 +215,29 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
               <button
                 onClick={() => setCloseModal(true)}
                 style={{
-                  display: "inline-flex",
                   alignItems: "center",
                   gap: "6px",
                   padding: "8px 14px",
                   borderRadius: "10px",
                   fontSize: "13px",
                   fontWeight: 600,
-                  color: "#DC2626",
-                  background: "#FEF2F2",
-                  border: "1.5px solid #FECACA",
                   cursor: "pointer",
                   transition: "all 150ms",
                 }}
-                className="hover:!bg-red-100 hover:!border-red-300 dark:!bg-red-900/20 dark:!border-red-800 dark:!text-red-400"
+                className="hidden sm:inline-flex items-center text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-[1.5px] border-red-200 dark:border-red-800 hover:bg-red-100 hover:border-red-300"
               >
                 <X size={14} strokeWidth={2.5} />
                 Close Quote
               </button>
             )}
             <button
-              onClick={onClose}
+              onClick={() => {
+                if (!isClosed && !isAccepted) {
+                  setClosePanelModal(true);
+                } else {
+                  onClose();
+                }
+              }}
               className="lg:hidden p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
             >
               <X size={20} />
@@ -236,15 +246,15 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
         </div>
       </div>
 
-      <div className="p-6 space-y-5">
+      <div className="qdp-body p-4 sm:p-6 space-y-4 sm:space-y-5">
         {/* ── Context Bar (dark gradient summary) ── */}
-        <div className="relative rounded-2xl bg-gradient-to-br from-primary-700 to-primary-900 dark:from-primary-800 dark:to-slate-900 p-5 overflow-hidden shadow-lg">
+        <div className="qdp-context-bar relative rounded-2xl bg-gradient-to-br from-primary-700 to-primary-900 dark:from-primary-800 dark:to-slate-900 p-4 sm:p-5 overflow-hidden shadow-lg">
           {/* Decorative circle */}
           <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-white/[.04]" />
           <div className="relative z-10">
-            <div className="flex flex-wrap gap-5">
+            <div className="qdp-context-gap flex flex-wrap gap-3 sm:gap-5">
               {/* Vehicle */}
-              <div className="min-w-0 flex-1">
+              <div className="w-full sm:flex-1 sm:min-w-0">
                 <p className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-1">Vehicle</p>
                 <p className="font-display text-[15px] font-bold text-white leading-snug">
                   {typeof quote.vehicle === "object"
@@ -274,7 +284,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
               {/* Divider */}
               <div className="w-px bg-white/15 self-stretch hidden sm:block" />
               {/* Damage / Service */}
-              <div className="min-w-0 flex-1">
+              <div className="w-full sm:flex-1 sm:min-w-0">
                 <p className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-1">Damage</p>
                 {quote.serviceSelections && quote.serviceSelections.length > 0 ? (
                   <div className="space-y-0.5">
@@ -300,10 +310,12 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                   const expiry = new Date(quote.expiresAt);
                   const diff = expiry - now;
                   if (diff <= 0) return null;
-                  const h = Math.floor(diff / 3600000);
+                  const totalH = Math.floor(diff / 3600000);
                   const m = Math.floor((diff % 3600000) / 60000);
-                  const label = h >= 24
-                    ? `Expires ${expiry.toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" })} at ${expiry.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit", hour12: false })}`
+                  const d = Math.floor(totalH / 24);
+                  const h = totalH % 24;
+                  const label = d > 0
+                    ? `Expires in ${d} ${d === 1 ? "day" : "days"} ${h}h ${m}m`
                     : h > 0 ? `Expires in ${h}h ${m}m` : `Expires in ${m}m`;
                   return (
                     <div className="flex items-center gap-1.5 mt-2 text-[14px] font-semibold text-white/80">
@@ -316,7 +328,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
               {/* Divider */}
               <div className="w-px bg-white/15 self-stretch hidden sm:block" />
               {/* Location */}
-              <div className="min-w-0 flex-1">
+              <div className="w-full sm:flex-1 sm:min-w-0">
                 <p className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-1">Location</p>
                 <p className="font-display text-[15px] font-bold text-white leading-snug">
                   {quote.location?.city || "—"}
@@ -376,18 +388,18 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           if (isClosed) currentJourneyStep = -1;
 
           return (
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
-              <div className="flex items-center">
+            <div className="qdp-stepper bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-1.5 py-3 sm:p-5 shadow-sm">
+              <div className="flex items-start">
                 {journeySteps.map((step, i) => {
                   const isDone = isClosed ? false : i < currentJourneyStep;
                   const isNow = !isClosed && i === currentJourneyStep;
 
                   return (
-                    <div key={i} className={`flex-1 flex flex-col items-center relative ${i < journeySteps.length - 1 ? "after:content-[''] after:absolute after:left-1/2 after:top-4 after:w-full after:h-0.5 after:z-0" : ""} ${isDone && i < journeySteps.length - 1 ? "after:bg-green-500" : isNow && i < journeySteps.length - 1 ? "after:bg-gradient-to-r after:from-primary-500 after:to-slate-200 dark:after:to-slate-600" : i < journeySteps.length - 1 ? "after:bg-slate-200 dark:after:bg-slate-600" : ""}`}>
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center relative z-10 text-xs font-bold transition-all ${isDone ? "bg-green-600 text-white" : isNow ? "bg-primary-600 text-white shadow-[0_0_0_4px] shadow-primary-100 dark:shadow-primary-900/40" : "bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-slate-400"}`}>
-                        {isDone ? <Check size={14} /> : i + 1}
+                    <div key={i} className={`flex-1 flex flex-col items-center relative ${i < journeySteps.length - 1 ? "after:content-[''] after:absolute after:left-1/2 after:top-3 sm:after:top-4 after:w-full after:h-0.5 after:z-0" : ""} ${isDone && i < journeySteps.length - 1 ? "after:bg-green-500" : isNow && i < journeySteps.length - 1 ? "after:bg-gradient-to-r after:from-primary-500 after:to-slate-200 dark:after:to-slate-600" : i < journeySteps.length - 1 ? "after:bg-slate-200 dark:after:bg-slate-600" : ""}`}>
+                      <div className={`qdp-step-circle w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center relative z-10 text-[10px] sm:text-xs font-bold transition-all ${isDone ? "bg-green-600 text-white" : isNow ? "bg-primary-600 text-white shadow-[0_0_0_3px] sm:shadow-[0_0_0_4px] shadow-primary-100 dark:shadow-primary-900/40" : "bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-slate-400"}`}>
+                        {isDone ? <Check size={12} /> : i + 1}
                       </div>
-                      <p className={`text-[10px] font-semibold mt-2 text-center leading-tight ${isDone ? "text-green-600 dark:text-green-400" : isNow ? "text-primary-700 dark:text-primary-400 font-bold" : "text-slate-400 dark:text-slate-500"}`}>
+                      <p className={`qdp-step-label text-[8px] sm:text-[10px] font-semibold mt-1 sm:mt-2 text-center leading-tight ${isDone ? "text-green-600 dark:text-green-400" : isNow ? "text-primary-700 dark:text-primary-400 font-bold" : "text-slate-400 dark:text-slate-500"}`}>
                         {step.label}
                       </p>
                     </div>
@@ -490,6 +502,8 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           const acceptedResp = responses.find((r) => r.status === "Accepted");
           const provName = acceptedResp?.provider?.businessName || acceptedResp?.provider?.name || booking?.providerName || "Provider";
           const provInitials = provName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+          const provAvatarRaw = acceptedResp?.provider?.avatarUrl || acceptedResp?.provider?.personalImageUrl || acceptedResp?.provider?.companyLogoUrl || acceptedResp?.provider?.profileImage;
+          const provAvatarUrl = provAvatarRaw ? (provAvatarRaw.startsWith("http") || provAvatarRaw.startsWith("data:") ? provAvatarRaw : `${NodeURL}${provAvatarRaw}`) : null;
           const svcLabel = quote.serviceSelections?.length > 0
             ? quote.serviceSelections.map((s) => s.serviceName).join(", ")
             : quote.serviceType || "Windscreen Service";
@@ -501,8 +515,6 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           return (
             <div
               style={{
-                background: "#fff",
-                border: "1px solid #E2E8F0",
                 borderRadius: "1rem",
                 padding: "1.25rem 1.5rem",
                 boxShadow: "0 1px 3px rgba(15,23,42,.06)",
@@ -511,41 +523,56 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                 gap: "1.25rem",
                 flexWrap: "wrap",
               }}
-              className="dark:!bg-slate-800 dark:!border-slate-700"
+              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
             >
               {/* Provider logo */}
-              <div
-                style={{
-                  width: 50,
-                  height: 50,
-                  borderRadius: "1rem",
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 800,
-                  fontSize: "1.125rem",
-                  color: "#fff",
-                  background: "linear-gradient(135deg, #16A34A, #15803D)",
-                  boxShadow: "0 4px 6px -1px rgba(15,23,42,.08)",
-                }}
-              >
-                {provInitials}
-              </div>
+              {provAvatarUrl ? (
+                <img
+                  src={provAvatarUrl}
+                  alt={provName}
+                  style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: "1rem",
+                    flexShrink: 0,
+                    objectFit: "cover",
+                    boxShadow: "0 4px 6px -1px rgba(15,23,42,.08)",
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: "1rem",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 800,
+                    fontSize: "1.125rem",
+                    color: "#fff",
+                    background: "linear-gradient(135deg, #16A34A, #15803D)",
+                    boxShadow: "0 4px 6px -1px rgba(15,23,42,.08)",
+                  }}
+                >
+                  {provInitials}
+                </div>
+              )}
 
               {/* Info */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: "1.0625rem", fontWeight: 700, color: "#0F172A" }} className="dark:!text-white">
+                <div style={{ fontSize: "1.0625rem", fontWeight: 700 }} className="text-slate-900 dark:text-white">
                   {provName}
                 </div>
-                <div style={{ fontSize: ".875rem", color: "#64748B", marginTop: ".125rem" }}>
+                <div style={{ fontSize: ".875rem", marginTop: ".125rem" }} className="text-slate-500 dark:text-slate-400">
                   {svcLabel}{vehicleLabel ? ` · ${vehicleLabel}` : ""}
                 </div>
               </div>
 
               {/* Price + Paid badge */}
               <div style={{ textAlign: "right", flexShrink: 0 }}>
-                <div style={{ fontSize: "1.375rem", fontWeight: 800, color: "#0F172A", lineHeight: 1 }} className="dark:!text-white">
+                <div style={{ fontSize: "1.375rem", fontWeight: 800, lineHeight: 1 }} className="text-slate-900 dark:text-white">
                   {formatCurrency(paidAmount)}
                 </div>
                 <div
@@ -555,12 +582,11 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                     gap: ".25rem",
                     fontSize: ".6875rem",
                     fontWeight: 600,
-                    color: "#15803D",
-                    background: "#DCFCE7",
                     padding: ".2rem .625rem",
                     borderRadius: "9999px",
                     marginTop: ".375rem",
                   }}
+                  className="text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20"
                 >
                   <Check size={11} /> Paid in full
                 </div>
@@ -602,24 +628,23 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
         {bookingIsConfirmed && booking?.scheduledDate && (
           <div
             style={{
-              background: "linear-gradient(135deg, #DCFCE7, #BBF7D0)",
-              border: "1px solid #86EFAC",
               borderRadius: "1rem",
               padding: "1rem 1.25rem",
               display: "flex",
               alignItems: "center",
               gap: ".75rem",
+              flexWrap: "wrap",
             }}
-            className="dark:!bg-green-900/20 dark:!border-green-800"
+            className="bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/20 dark:to-green-800/20 border border-green-300 dark:border-green-800"
           >
             <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#16A34A", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Check size={18} style={{ color: "#fff" }} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: ".9375rem", fontWeight: 700, color: "#14532D" }} className="dark:!text-green-200">
+              <div style={{ fontSize: ".9375rem", fontWeight: 700 }} className="text-green-900 dark:text-green-200">
                 Appointment Confirmed
               </div>
-              <div style={{ fontSize: ".8125rem", color: "#166534" }} className="dark:!text-green-400">
+              <div style={{ fontSize: ".8125rem" }} className="text-green-800 dark:text-green-400">
                 {formatDate(booking.scheduledDate, "long")}{booking.scheduledTimeSlot ? ` · ${typeof booking.scheduledTimeSlot === "object" ? `${booking.scheduledTimeSlot.start || ""}${booking.scheduledTimeSlot.end ? ` - ${booking.scheduledTimeSlot.end}` : ""}` : booking.scheduledTimeSlot}` : ""}
               </div>
             </div>
@@ -636,9 +661,11 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
+                justifyContent: "center",
                 gap: ".375rem",
+                flexShrink: 0,
               }}
-              className="hover:!bg-green-700"
+              className="w-full sm:w-auto hover:brightness-110"
             >
               View Booking <ArrowRight size={14} />
             </button>
@@ -742,10 +769,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           )}
         </div>
 
-        {/* Request Date */}
-        <p className="text-xs text-slate-400 dark:text-slate-500 text-center">
-          Requested on {formatDate(quote.createdAt, "long")}
-        </p>
+        {/* Request Date — removed per design request */}
       </div>
 
       {/* Payment Modal */}
@@ -854,6 +878,49 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
             >
               Close Request
             </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Close Panel Confirmation Modal (mobile) */}
+      <Modal
+        isOpen={closePanelModal}
+        onClose={() => setClosePanelModal(false)}
+        title="Before you go..."
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Would you like to close this quote request, or just go back to the list?
+          </p>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button
+              variant="danger"
+              className="w-full whitespace-nowrap"
+              onClick={() => {
+                setClosePanelModal(false);
+                handleCloseRequest();
+              }}
+              loading={isClosing}
+            >
+              Close Quote Request
+            </Button>
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={() => {
+                setClosePanelModal(false);
+                onClose();
+              }}
+            >
+              Go Back to List
+            </Button>
+            <button
+              onClick={() => setClosePanelModal(false)}
+              className="text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 py-1 transition-colors"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       </Modal>

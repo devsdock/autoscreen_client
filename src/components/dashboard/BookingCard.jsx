@@ -61,13 +61,25 @@ const BookingCard = ({
 
   const needsAppointment = category === "upcoming" && isPaid && !hasSchedule && quoteId;
 
-  // Format time slot
+  // Format time slot with duration-aware end time (only for new single-point slots like "09:00")
   const timeSlotStr = (() => {
     const ts = booking.scheduledTimeSlot;
     if (!ts) return null;
-    if (typeof ts === "string") return ts;
-    if (ts.start) return `${ts.start}${ts.end ? ` – ${ts.end}` : ""}`;
-    return null;
+    if (typeof ts === "object" && ts.start) return `${ts.start}${ts.end ? ` – ${ts.end}` : ""}`;
+    if (typeof ts !== "string") return null;
+    // Old bookings have range format like "10:00 - 12:00" — return as-is
+    if (ts.includes("-") || ts.includes("–")) return ts;
+    // New bookings: single time point with estimatedDuration
+    const dur = booking.estimatedDuration;
+    if (dur && dur > 30) {
+      const slotsNeeded = Math.ceil(dur / 30);
+      const [h, m] = ts.split(":").map(Number);
+      const endMins = (h || 0) * 60 + (m || 0) + slotsNeeded * 30;
+      const endH = String(Math.floor(endMins / 60)).padStart(2, "0");
+      const endM = String(endMins % 60).padStart(2, "0");
+      return `${ts} – ${endH}:${endM}`;
+    }
+    return ts;
   })();
 
   // Service display

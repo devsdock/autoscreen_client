@@ -36,6 +36,7 @@ import { CITIES } from "../../data/cities";
 import PremiumSelect from "../../components/ui/PremiumSelect";
 import PremiumDatePicker from "../../components/ui/PremiumDatePicker";
 import { getTodayString, formatLocalDate } from "../../utils/dateUtils";
+import { formatDuration } from "../../utils/formatDuration";
 
 const steps = [
   { id: 1, title: "Service", icon: FileText },
@@ -1267,10 +1268,9 @@ const BookingForm = () => {
                           </p>
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
                             <Clock size={12} /> ~
-                            {serviceType.name.toLowerCase().includes("repair")
+                            {formatDuration(serviceType.name.toLowerCase().includes("repair")
                               ? 45
-                              : 90}{" "}
-                            mins
+                              : 90)}
                           </p>
                         </div>
                       </div>

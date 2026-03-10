@@ -210,7 +210,6 @@ const DashboardTopBar = () => {
                         if (
                           quoteId &&
                           (type === "quote_accepted" ||
-                            type === "slot_change_proposed" ||
                             type === "slot_proposed" ||
                             type === "quote_response" ||
                             type === "new_quote_response")

@@ -353,11 +353,16 @@ const Vehicles = () => {
               setAvailableModels([]);
               if (val && !availableMakes.includes(val)) {
                 vehicleService.createMake(val).then((created) => {
-                  if (created?._id) {
-                    setAvailableMakes((prev) => prev.includes(val) ? prev : [...prev, val]);
-                    setMakeLookup((prev) => ({ ...prev, [val]: created._id }));
+                  if (created) {
+                    const name = created.name || val;
+                    setAvailableMakes((prev) => prev.includes(name) ? prev : [...prev, name].sort());
+                    setMakeLookup((prev) => ({ ...prev, [name]: created._id }));
                   }
-                }).catch(() => {});
+                }).catch((err) => {
+                  console.error("Failed to create vehicle make:", err);
+                  // Still add to local list so user can continue filling the form
+                  setAvailableMakes((prev) => prev.includes(val) ? prev : [...prev, val]);
+                });
               }
             }}
             required
@@ -375,9 +380,13 @@ const Vehicles = () => {
               setVehicleForm((prev) => ({ ...prev, model: val }));
               if (val && !availableModels.includes(val) && vehicleForm.make) {
                 const makeIdOrName = makeLookup[vehicleForm.make] || vehicleForm.make;
-                vehicleService.createModel(makeIdOrName, val).then(() => {
+                vehicleService.createModel(makeIdOrName, val).then((created) => {
+                  const name = created?.name || val;
+                  setAvailableModels((prev) => prev.includes(name) ? prev : [...prev, name].sort());
+                }).catch((err) => {
+                  console.error("Failed to create vehicle model:", err);
                   setAvailableModels((prev) => prev.includes(val) ? prev : [...prev, val]);
-                }).catch(() => {});
+                });
               }
             }}
             required

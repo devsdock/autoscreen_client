@@ -16,9 +16,6 @@ import {
   MessageSquare,
   Layers,
   RotateCcw,
-  RefreshCw,
-  CheckCircle2,
-  XCircle,
   CalendarCheck,
   ArrowRight,
 } from "lucide-react";
@@ -31,13 +28,13 @@ import ConfirmModal from "../ui/ConfirmModal";
 import Modal, { ModalActions } from "../ui/Modal";
 import { Player } from "@lottiefiles/react-lottie-player";
 import PaymentModal from "./PaymentModal";
-import SelectSlotModal from "./SelectSlotModal";
 import useDashboardStore, {
   formatDate,
   formatCurrency,
 } from "../../store/useDashboardStore";
 import bookingService from "../../services/bookingService";
 import { downloadInvoice } from "../../utils/invoiceUtils";
+import { NodeURL } from "../../services/api";
 import { useNavigate } from "react-router-dom";
 import ReviewModal from "./ReviewModal";
 
@@ -49,7 +46,7 @@ const BookingDetailDrawer = ({
   initialAction,
 }) => {
   const navigate = useNavigate();
-  const { addToast, acceptProposedSlot, rejectProposedSlot, counterProposeSlot } =
+  const { addToast } =
     useDashboardStore();
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelQuoteLoading, setCancelQuoteLoading] = useState(false);
@@ -61,9 +58,6 @@ const BookingDetailDrawer = ({
   const [previewImage, setPreviewImage] = useState(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [pendingPaymentAmount, setPendingPaymentAmount] = useState(null);
-  const [isSlotAction, setIsSlotAction] = useState(false);
-  const [showCounterSlotModal, setShowCounterSlotModal] = useState(false);
-
   const [convertedImages, setConvertedImages] = useState({});
 
   const rawDamageImages =
@@ -231,51 +225,6 @@ const BookingDetailDrawer = ({
     }
   };
 
-  // Slot negotiation handlers (for direct bookings where provider proposes a different time)
-  const handleAcceptSlot = async () => {
-    setIsSlotAction(true);
-    try {
-      const result = await acceptProposedSlot(booking.id);
-      if (result) {
-        addToast({ type: "success", message: "Time slot accepted! Your booking is confirmed." });
-        if (onUpdate) onUpdate();
-      }
-    } finally {
-      setIsSlotAction(false);
-    }
-  };
-
-  const handleRejectSlot = async () => {
-    setIsSlotAction(true);
-    try {
-      const result = await rejectProposedSlot(booking.id);
-      if (result) {
-        addToast({ type: "info", message: "Slot rejected. Booking cancelled." });
-        if (onUpdate) onUpdate();
-        onClose();
-      }
-    } finally {
-      setIsSlotAction(false);
-    }
-  };
-
-  const handleCounterSlot = async (slotData) => {
-    setIsSlotAction(true);
-    try {
-      const result = await counterProposeSlot(booking.id, slotData);
-      if (result) {
-        addToast({ type: "success", message: "Your preferred time has been sent to the provider." });
-        setShowCounterSlotModal(false);
-        if (onUpdate) onUpdate();
-      }
-    } finally {
-      setIsSlotAction(false);
-    }
-  };
-
-  const negotiation = booking?.slotNegotiation;
-  const isProviderProposed = negotiation?.status === "provider-proposed";
-
   const currentStatus = booking?.status?.toLowerCase() || "";
   const currentPaymentStatus = booking?.paymentStatus?.toLowerCase() || "";
 
@@ -415,85 +364,6 @@ const BookingDetailDrawer = ({
             </div>
           )}
 
-          {/* Provider Proposed Slot Banner — direct booking slot negotiation */}
-          {isProviderProposed && (
-            <div className="p-4 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-xl space-y-3">
-              <div className="flex items-center gap-2">
-                <RefreshCw
-                  size={18}
-                  className="text-warning-600 dark:text-warning-400"
-                />
-                <h4 className="font-semibold text-warning-800 dark:text-warning-200">
-                  Provider Suggested a Different Time
-                </h4>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="p-2.5 bg-white dark:bg-slate-800 rounded-lg">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">
-                    Your requested time
-                  </p>
-                  <p className="font-medium text-slate-800 dark:text-slate-200">
-                    {booking.scheduledDate ? formatDate(booking.scheduledDate) : "-"}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {typeof booking.scheduledTimeSlot === "object"
-                      ? `${booking.scheduledTimeSlot.start} - ${booking.scheduledTimeSlot.end}`
-                      : booking.scheduledTimeSlot || "-"}
-                  </p>
-                </div>
-                <div className="p-2.5 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
-                  <p className="text-xs text-primary-600 dark:text-primary-400 mb-1">
-                    Provider's preferred time
-                  </p>
-                  <p className="font-semibold text-primary-800 dark:text-primary-200">
-                    {negotiation?.proposedDate ? formatDate(negotiation.proposedDate) : "-"}
-                  </p>
-                  <p className="text-xs text-primary-600 dark:text-primary-400">
-                    {typeof negotiation?.proposedTimeSlot === "object"
-                      ? `${negotiation.proposedTimeSlot.start} - ${negotiation.proposedTimeSlot.end}`
-                      : negotiation?.proposedTimeSlot || "-"}
-                  </p>
-                </div>
-              </div>
-              {negotiation?.note && (
-                <p className="text-sm text-slate-600 dark:text-slate-400 italic">
-                  "{negotiation.note}"
-                </p>
-              )}
-              <div className="flex items-center gap-2 pt-1">
-                <Button
-                  size="sm"
-                  onClick={handleAcceptSlot}
-                  loading={isSlotAction}
-                  className="flex-1"
-                >
-                  <CheckCircle2 size={14} className="mr-1" />
-                  Accept
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setShowCounterSlotModal(true)}
-                  disabled={isSlotAction}
-                  className="flex-1"
-                >
-                  <RefreshCw size={14} className="mr-1" />
-                  Change Time
-                </Button>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  onClick={handleRejectSlot}
-                  loading={isSlotAction}
-                  className="flex-1"
-                >
-                  <XCircle size={14} className="mr-1" />
-                  Reject
-                </Button>
-              </div>
-            </div>
-          )}
-
           {/* Service Completed Banner inline — acknowledge handled via BookingCard modal */}
           {currentStatus === "completed-by-fitter" && (
             <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4 flex items-start gap-4">
@@ -529,9 +399,17 @@ const BookingDetailDrawer = ({
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-primary-600 font-bold text-sm">
-                            {quote.provider.businessName?.charAt(0) || "P"}
-                          </div>
+                          {(() => {
+                            const raw = quote.provider.avatarUrl || quote.provider.personalImageUrl || quote.provider.companyLogoUrl;
+                            const src = raw ? (raw.startsWith("http") || raw.startsWith("data:") ? raw : `${NodeURL}${raw}`) : null;
+                            return src ? (
+                              <img src={src} alt={quote.provider.businessName} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-primary-600 font-bold text-sm">
+                                {quote.provider.businessName?.charAt(0) || "P"}
+                              </div>
+                            );
+                          })()}
                           <div>
                             <p className="font-semibold text-slate-900 dark:text-white text-sm">
                               {quote.provider.businessName}
@@ -749,9 +627,43 @@ const BookingDetailDrawer = ({
                       Date & Time
                     </p>
                     <p className="font-medium text-slate-900 dark:text-white">
-                      {booking.formattedScheduledDateTime ||
-                        formatDate(booking.scheduledDate, "datetime")}
+                      {(() => {
+                        if (!booking.scheduledDate) return "-";
+                        const ds = booking.scheduledDate;
+                        let d;
+                        if (typeof ds === "string" && /^\d{4}-\d{2}-\d{2}$/.test(ds)) {
+                          const [y, m, dd] = ds.split("-").map(Number);
+                          d = new Date(y, m - 1, dd);
+                        } else {
+                          d = new Date(ds);
+                        }
+                        if (isNaN(d.getTime())) return formatDate(ds, "short");
+                        const weekday = d.toLocaleDateString("en-GB", { weekday: "short" });
+                        const day = d.getDate();
+                        const month = d.toLocaleDateString("en-GB", { month: "short" });
+                        const year = d.getFullYear();
+                        return `${weekday} ${day} ${month}`;
+                      })()}
                     </p>
+                    {booking.scheduledTimeSlot && (
+                      <p className="text-sm text-slate-700 dark:text-slate-300">
+                        {(() => {
+                          const ts = booking.scheduledTimeSlot;
+                          if (typeof ts !== "string") return ts;
+                          if (ts.includes("-") || ts.includes("–")) return ts;
+                          const dur = booking.estimatedDuration;
+                          if (dur && dur > 30) {
+                            const slotsNeeded = Math.ceil(dur / 30);
+                            const [h, m] = ts.split(":").map(Number);
+                            const endMins = (h || 0) * 60 + (m || 0) + slotsNeeded * 30;
+                            const endH = String(Math.floor(endMins / 60)).padStart(2, "0");
+                            const endM = String(endMins % 60).padStart(2, "0");
+                            return `${ts} – ${endH}:${endM}`;
+                          }
+                          return ts;
+                        })()}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -949,9 +861,17 @@ const BookingDetailDrawer = ({
                 </h4>
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                      {booking.providerName.charAt(0)}
-                    </div>
+                    {(() => {
+                      const raw = booking.providerAvatarUrl || booking.provider?.avatarUrl || booking.provider?.personalImageUrl || booking.provider?.companyLogoUrl;
+                      const avatarSrc = raw ? (raw.startsWith("http") || raw.startsWith("data:") ? raw : `${NodeURL}${raw}`) : null;
+                      return avatarSrc ? (
+                        <img src={avatarSrc} alt={booking.providerName} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                          {booking.providerName.charAt(0)}
+                        </div>
+                      );
+                    })()}
                     <div>
                       <p className="font-semibold text-slate-900 dark:text-white">
                         {booking.providerName}
@@ -1327,23 +1247,6 @@ const BookingDetailDrawer = ({
         onClose={() => setIsPaymentModalOpen(false)}
         onSuccess={handlePaymentSuccess}
       />
-
-      {/* Counter-propose slot modal */}
-      <SelectSlotModal
-        isOpen={showCounterSlotModal}
-        onClose={() => setShowCounterSlotModal(false)}
-        onConfirm={handleCounterSlot}
-        provider={
-          booking.provider
-            ? {
-                id: booking.provider?._id || booking.provider?.id || booking.provider,
-                name: booking.provider?.businessName || booking.provider?.name || "Provider",
-              }
-            : null
-        }
-        isLoading={isSlotAction}
-      />
-
 
       {/* Image Preview Modal */}
       <Modal

@@ -150,7 +150,27 @@ export const getCommission = async () => {
   }
 };
 
+/**
+ * Fetch cancellation policy (for payment modal display)
+ */
+export const getCancellationPolicy = async () => {
+  try {
+    const response = await request({
+      method: "GET",
+      url: "/public/settings/cancellation-policy",
+    });
+    return response.data || {};
+  } catch (error) {
+    console.error("Failed to fetch cancellation policy:", error);
+    return {
+      policyText:
+        "Your payment is held securely. It's only released to the provider once your service is completed to your satisfaction. Fully refundable up to 24 hours before your appointment.",
+    };
+  }
+};
+
 export default {
   getPublicSettings,
   getCommission,
+  getCancellationPolicy,
 };

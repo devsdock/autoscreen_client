@@ -844,6 +844,28 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 10 March 2026 (Profile — Default Location Removed)
+
+- **`Profile.jsx` — Default Location section removed**: Removed the read-only "Default Location" row from the profile settings list. It was a non-editable duplicate of the default saved address info already visible in the Saved Addresses section above.
+
+### 10 March 2026 (Mobile Responsive Round 2 — 320px Viewport Fixes)
+
+- **Header duplicate buttons**: "Close Quote" text button now hidden below `sm` (640px) — only compact X button shows on mobile. Moved `display: "inline-flex"` from inline style to `hidden sm:inline-flex` Tailwind class.
+- **ProviderResponseCard padding**: Moved padding from non-responsive inline styles to responsive Tailwind classes — Provider column: `p-3 sm:p-5`, Service column: `px-3 py-3 sm:px-4 sm:py-5`, Price column: `p-3 sm:p-[1.125rem]`. Recovers ~36px of content area at 320px.
+- **Journey stepper**: Reduced horizontal padding `p-3` → `px-1.5 py-3` on mobile (reclaims 12px). Step labels hidden on mobile except the current active step (`hidden sm:block`, active step always `block`).
+- **Context bar columns**: Changed from `min-w-0 flex-1` to `w-full sm:flex-1 sm:min-w-0` on Vehicle/Damage/Location columns — now stack vertically on mobile, 3-column row at 640px+.
+
+### 10 March 2026 (Dark Mode + Mobile Responsive Fix — ProviderResponseCard, QuoteDetailPanel, Layout)
+
+- **Dark mode fix**: Moved inline `color`, `background`, `border` properties from `style={{}}` to Tailwind classes with `dark:` variants on `ProviderResponseCard.jsx` (~30 elements) and `QuoteDetailPanel.jsx` (~10 elements). Inline styles for fonts/gradients/shadows remain unchanged.
+- **Mobile responsive fix**: `DashboardLayout.jsx` main content padding reduced from `px-8 py-6` to `px-4 sm:px-8 py-4 sm:py-6`, recovering 32px at 320px viewport. Card layout stacks vertically below 640px via Tailwind responsive classes.
+- **Dead CSS cleanup**: Removed ~180 lines of `.prc-*` and `.qdp-*` CSS rules from `index.css` that used `!important` but could never override inline `style={{}}` attributes (CSS spec limitation).
+- **Pattern established**: Inline styles for fonts/gradients/shadows only; Tailwind classes for colors/backgrounds/borders (enables `dark:` variants).
+
+### 10 March 2026 (BookAppointment — Available/Taken Slot Display)
+
+- **`BookAppointment.jsx` — `TimeSlotsPanel`**: Updated to handle new `{ time, status }` slot objects returned by the backend. Renders "Available" slots (white, selectable) and "Taken" slots (grey, disabled). Backward-compatible with old string-only slot format.
+
 ### 9 March 2026 (BookingCard Price Format & Polish)
 
 - **`BookingCard.jsx` — price display**: Whole numbers no longer show `.00` in the booking card footer (e.g., `R 2000` instead of `R 2000.00`). Decimals still shown when meaningful (e.g., `R 2000.10`). Uses local inline formatting — global `formatCurrency` unchanged so other pages (payments, invoices, cancellation fees) are not affected.

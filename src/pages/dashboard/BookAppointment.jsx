@@ -21,6 +21,7 @@ import quoteService from "../../services/quoteService";
 import bookingService from "../../services/bookingService";
 import paymentService from "../../services/paymentService";
 import { formatDateHuman, formatLocalDate } from "../../utils/dateUtils";
+import { NodeURL } from "../../services/api";
 
 // ─── Journey Progress Bar ────────────────────────────────────────────────────
 
@@ -33,48 +34,53 @@ const STEPS = [
   { label: "Confirmed" },
 ];
 
-const JourneyProgress = () => (
-  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 mb-6">
-    <div className="flex items-center justify-between relative">
-      {/* Connecting line */}
-      <div className="absolute left-0 right-0 top-4 h-0.5 bg-slate-200 dark:bg-slate-700 z-0" />
-      <div
-        className="absolute left-0 top-4 h-0.5 bg-blue-600 z-0 transition-all duration-500"
-        style={{ width: "calc(80% - 0px)" }}
-      />
-
-      {STEPS.map((step, idx) => {
-        const isDone = idx < 4;
-        const isActive = idx === 4;
-        const isPending = idx === 5;
+const JourneyProgress = ({ currentStep = 4 }) => (
+  <div className="qdp-stepper bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 sm:p-5 mb-6 shadow-sm">
+    <div className="flex items-center">
+      {STEPS.map((step, i) => {
+        const isDone = currentStep >= 0 && i < currentStep;
+        const isNow = currentStep >= 0 && i === currentStep;
 
         return (
           <div
-            key={step.label}
-            className="flex flex-col items-center gap-1.5 z-10 flex-1"
+            key={i}
+            className={[
+              "flex-1 flex flex-col items-center relative",
+              i < STEPS.length - 1
+                ? `after:content-[''] after:absolute after:left-1/2 after:top-3 sm:after:top-4 after:w-full after:h-0.5 after:z-0 ${
+                    isDone && i < STEPS.length - 1
+                      ? "after:bg-green-500"
+                      : isNow && i < STEPS.length - 1
+                        ? "after:bg-gradient-to-r after:from-primary-500 after:to-slate-200 dark:after:to-slate-600"
+                        : "after:bg-slate-200 dark:after:bg-slate-600"
+                  }`
+                : "",
+            ].join(" ")}
           >
             <div
               className={[
-                "w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all",
+                "qdp-step-circle w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center relative z-10 text-[10px] sm:text-xs font-bold transition-all",
                 isDone
-                  ? "bg-blue-600 text-white"
-                  : isActive
-                    ? "bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900"
-                    : "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500",
+                  ? "bg-green-600 text-white"
+                  : isNow
+                    ? "bg-primary-600 text-white shadow-[0_0_0_3px] sm:shadow-[0_0_0_4px] shadow-primary-100 dark:shadow-primary-900/40"
+                    : "bg-slate-200 dark:bg-slate-600 text-slate-500 dark:text-slate-400",
               ].join(" ")}
             >
-              {isDone ? <Check size={14} /> : idx + 1}
+              {isDone ? <Check size={12} /> : i + 1}
             </div>
-            <span
+            <p
               className={[
-                "text-[10px] font-medium text-center leading-tight",
-                isDone || isActive
-                  ? "text-blue-600 dark:text-blue-400"
-                  : "text-slate-400 dark:text-slate-500",
+                "qdp-step-label font-semibold mt-1 sm:mt-2 text-center leading-tight text-[8px] sm:text-[10px]",
+                isDone
+                  ? "text-green-600 dark:text-green-400"
+                  : isNow
+                    ? "text-primary-700 dark:text-primary-400 font-bold"
+                    : "text-slate-400 dark:text-slate-500",
               ].join(" ")}
             >
               {step.label}
-            </span>
+            </p>
           </div>
         );
       })}
@@ -84,7 +90,7 @@ const JourneyProgress = () => (
 
 // ─── Provider Paid Bar ───────────────────────────────────────────────────────
 
-const ProviderPaidBar = ({ providerName, service, vehicle, amount }) => {
+const ProviderPaidBar = ({ providerName, service, vehicle, amount, avatarUrl }) => {
   const initials = (providerName || "?")
     .split(" ")
     .map((w) => w[0])
@@ -93,11 +99,41 @@ const ProviderPaidBar = ({ providerName, service, vehicle, amount }) => {
     .toUpperCase();
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 mb-6 flex items-center gap-4 flex-wrap">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5 mb-6 flex items-center gap-3 sm:gap-4 flex-wrap">
       {/* Avatar */}
-      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-        {initials}
-      </div>
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt={providerName}
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: "1rem",
+            objectFit: "cover",
+            flexShrink: 0,
+            boxShadow: "0 4px 6px -1px rgba(15,23,42,.08)",
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: "1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: ".875rem",
+            flexShrink: 0,
+            background: "linear-gradient(135deg, #16A34A, #15803D)",
+            boxShadow: "0 4px 6px -1px rgba(15,23,42,.08)",
+          }}
+        >
+          {initials}
+        </div>
+      )}
 
       {/* Info */}
       <div className="flex-1 min-w-0">
@@ -320,7 +356,35 @@ const formatDateLong = (dateStr) => {
   return `${weekday} ${day} ${month} ${year}`;
 };
 
-const TimeSlotsPanel = ({ selectedDate, selectedSlot, onSlotSelect, slots, isLoading }) => {
+// ─── Time/Duration Helpers ────────────────────────────────────────────────────
+
+const timeToMins = (t) => {
+  if (!t || typeof t !== "string") return 0;
+  const [h, m] = t.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+};
+
+const minsToTime = (mins) => {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+};
+
+const computeEndTime = (startTime, durationMins) => {
+  return minsToTime(timeToMins(startTime) + durationMins);
+};
+
+const formatDuration = (mins) => {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h && m) return `${h} hr ${m} min`;
+  if (h) return `${h} hr${h > 1 ? "s" : ""}`;
+  return `${m} min`;
+};
+
+// ─── TimeSlotsPanel ──────────────────────────────────────────────────────────
+
+const TimeSlotsPanel = ({ selectedDate, selectedSlot, onSlotSelect, slots, isLoading, slotsNeeded = 2, estimatedDuration = 60 }) => {
   if (!selectedDate) {
     return (
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 flex flex-col items-center justify-center min-h-[240px] text-center">
@@ -343,14 +407,64 @@ const TimeSlotsPanel = ({ selectedDate, selectedSlot, onSlotSelect, slots, isLoa
     return `${weekday} ${day} ${month}`;
   })();
 
+  // Build lookup for slot index and status
+  const slotTimes = slots.map((s) => (typeof s === "string" ? s : s.time));
+  const slotStatusMap = {};
+  for (const s of slots) {
+    const t = typeof s === "string" ? s : s.time;
+    slotStatusMap[t] = typeof s === "string" ? "available" : s.status;
+  }
+
+  // Check if slotTime is a valid start (enough consecutive available slots exist)
+  const isValidStart = (slotTime) => {
+    if (slotStatusMap[slotTime] === "taken") return false;
+    const idx = slotTimes.indexOf(slotTime);
+    if (idx === -1) return false;
+    if (idx + slotsNeeded > slotTimes.length) return false;
+    const startMins = timeToMins(slotTime);
+    for (let i = 0; i < slotsNeeded; i++) {
+      const expectedTime = minsToTime(startMins + i * 30);
+      const candidateTime = slotTimes[idx + i];
+      if (candidateTime !== expectedTime) return false; // gap (e.g. lunch break)
+      if (slotStatusMap[candidateTime] === "taken") return false;
+    }
+    return true;
+  };
+
+  // Get set of all slots covered by a selection
+  const getCoveredSlots = (startTime) => {
+    if (!startTime) return new Set();
+    const startMins = timeToMins(startTime);
+    const covered = new Set();
+    for (let i = 0; i < slotsNeeded; i++) {
+      covered.add(minsToTime(startMins + i * 30));
+    }
+    return covered;
+  };
+
+  const coveredSlots = selectedSlot ? getCoveredSlots(selectedSlot) : new Set();
+  const lastCoveredSlot = selectedSlot && slotsNeeded > 1
+    ? minsToTime(timeToMins(selectedSlot) + (slotsNeeded - 1) * 30)
+    : null;
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-md">
       <h3
-        className="font-bold text-[15px] text-slate-900 dark:text-slate-100 mb-4"
+        className="font-bold text-[15px] text-slate-900 dark:text-slate-100 mb-3"
         style={{ fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif" }}
       >
         {dateLongNoYear} — Available Times
       </h3>
+
+      {/* Duration info banner */}
+      {slotsNeeded > 1 && !isLoading && slots.length > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 mb-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+          <Clock size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
+          <p className="text-xs text-blue-700 dark:text-blue-300">
+            Service duration: <span className="font-semibold">{formatDuration(estimatedDuration)}</span> ({slotsNeeded} consecutive slots needed)
+          </p>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -369,24 +483,49 @@ const TimeSlotsPanel = ({ selectedDate, selectedSlot, onSlotSelect, slots, isLoa
       ) : (
         <div className="grid grid-cols-3 gap-2">
           {slots.map((slot) => {
-            const isSelected = selectedSlot === slot;
+            const slotTime = typeof slot === "string" ? slot : slot.time;
+            const isTaken = slotStatusMap[slotTime] === "taken";
+            const validStart = !isTaken && isValidStart(slotTime);
+            const isSelectedStart = selectedSlot === slotTime;
+            const isHighlighted = !isSelectedStart && coveredSlots.has(slotTime);
+            const isLastSlot = slotTime === lastCoveredSlot;
+            const cantStart = !isTaken && !validStart;
+            const isDisabled = isTaken || cantStart;
+
             return (
               <button
-                key={slot}
-                onClick={() => onSlotSelect(slot)}
+                key={slotTime}
+                onClick={() => validStart && onSlotSelect(slotTime)}
+                disabled={isDisabled}
                 className={[
                   "px-2 py-2.5 rounded-lg border-[1.5px] text-center transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-                  isSelected
-                    ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/25"
-                    : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20",
+                  isTaken
+                    ? "bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60"
+                    : isSelectedStart
+                      ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/25"
+                      : isHighlighted
+                        ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700"
+                        : cantStart
+                          ? "bg-slate-50 dark:bg-slate-800/30 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-50"
+                          : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20",
                 ].join(" ")}
               >
-                <div className="text-sm font-semibold">{slot}</div>
+                <div className="text-sm font-semibold">
+                  {isLastSlot ? `${slotTime} - ${minsToTime(timeToMins(slotTime) + 30)}` : slotTime}
+                </div>
                 <div className={[
-                  "text-[10px] mt-0.5 opacity-70",
-                  isSelected ? "text-white/70" : "",
+                  "text-[10px] mt-0.5",
+                  isTaken
+                    ? "text-slate-400 dark:text-slate-500"
+                    : isSelectedStart
+                      ? "text-white/70"
+                      : isHighlighted
+                        ? "text-blue-500 dark:text-blue-400"
+                        : cantStart
+                          ? "text-slate-400 dark:text-slate-500"
+                          : "opacity-70",
                 ].join(" ")}>
-                  Available
+                  {isTaken ? "Taken" : isSelectedStart ? "Start" : isHighlighted ? "In use" : cantStart ? "Unavailable" : "Available"}
                 </div>
               </button>
             );
@@ -409,10 +548,20 @@ const AppointmentSummary = ({
   registrationNumber,
   onConfirm,
   isConfirming,
+  estimatedDuration = 60,
+  slotsNeeded = 2,
 }) => {
+  const slotDuration = slotsNeeded * 30;
+  const endTime = selectedSlot && slotsNeeded > 1
+    ? computeEndTime(selectedSlot, slotDuration)
+    : null;
+  const timeDisplay = selectedSlot && endTime
+    ? `${selectedSlot} — ${endTime} (${formatDuration(slotDuration)})`
+    : selectedSlot;
+
   const rows = [
     { label: "Date", value: formatDateLong(selectedDate) },
-    { label: "Time", value: selectedSlot },
+    { label: "Time", value: timeDisplay },
     { label: "Provider", value: providerName },
     {
       label: "Service",
@@ -486,10 +635,11 @@ const AppointmentSummary = ({
 
 // ─── Confirmed Modal ──────────────────────────────────────────────────────────
 
-const ConfirmedModal = ({ isOpen, bookingReference, selectedDate, selectedSlot, onViewBookings }) => {
+const ConfirmedModal = ({ isOpen, bookingReference, selectedDate, selectedSlot, onViewBookings, slotsNeeded = 2 }) => {
   if (!isOpen) return null;
 
-  // "Thursday 9 Jan, 09:00" format
+  // "Thursday 9 Jan, 09:00 — 10:30" format
+  const slotDuration = slotsNeeded * 30;
   const apptText = (() => {
     if (!selectedDate || !selectedSlot) return "";
     const [y, m, d] = selectedDate.split("-").map(Number);
@@ -498,7 +648,13 @@ const ConfirmedModal = ({ isOpen, bookingReference, selectedDate, selectedSlot, 
     const weekday = date.toLocaleDateString("en-GB", { weekday: "long" });
     const day = date.getDate();
     const month = date.toLocaleDateString("en-GB", { month: "short" });
-    return `${weekday} ${day} ${month}, ${selectedSlot}`;
+    const endTime = slotsNeeded > 1
+      ? computeEndTime(selectedSlot, slotDuration)
+      : null;
+    const timeStr = endTime
+      ? `${selectedSlot} — ${endTime}`
+      : selectedSlot;
+    return `${weekday} ${day} ${month}, ${timeStr}`;
   })();
 
   return (
@@ -712,6 +868,21 @@ const BookAppointment = () => {
     return "Provider";
   })();
 
+  // ── Derive provider avatar URL ──
+  const providerAvatarUrl = (() => {
+    const sources = [
+      booking?.provider,
+      quote?.responses?.find((r) => r.status === "accepted" || r.status === "Accepted")?.provider,
+    ];
+    for (const src of sources) {
+      const raw = src?.avatarUrl || src?.personalImageUrl || src?.companyLogoUrl || src?.profileImage;
+      if (raw) {
+        return raw.startsWith("http") || raw.startsWith("data:") ? raw : `${NodeURL}${raw}`;
+      }
+    }
+    return null;
+  })();
+
   // ── Derive display fields ──
   const vehicleStr = quote?.vehicleFormatted || quote?.vehicle || "";
 
@@ -753,6 +924,10 @@ const BookAppointment = () => {
 
   // Get registration number from quote vehicle raw data
   const regNumber = quote?.vehicle?.registrationNumber || "";
+
+  // Duration-aware slot selection
+  const estimatedDuration = booking?.estimatedDuration || 60;
+  const slotsNeeded = Math.ceil(estimatedDuration / 30);
 
   // ── Fetch availability on date change ──
   const fetchSlotsForDate = useCallback(
@@ -938,6 +1113,7 @@ const BookAppointment = () => {
         service={serviceStr}
         vehicle={vehicleStr}
         amount={totalAmount}
+        avatarUrl={providerAvatarUrl}
       />
 
       {/* Provider ID warning */}
@@ -970,6 +1146,8 @@ const BookAppointment = () => {
             onSlotSelect={setSelectedSlot}
             slots={currentSlots}
             isLoading={isFetchingSlots}
+            slotsNeeded={slotsNeeded}
+            estimatedDuration={estimatedDuration}
           />
 
           {/* Appointment summary — appears below slots when both date and slot are selected */}
@@ -984,6 +1162,8 @@ const BookAppointment = () => {
               location={locationStr}
               onConfirm={handleConfirm}
               isConfirming={isConfirming}
+              estimatedDuration={estimatedDuration}
+              slotsNeeded={slotsNeeded}
             />
           )}
         </div>
@@ -1037,6 +1217,7 @@ const BookAppointment = () => {
         selectedDate={selectedDate}
         selectedSlot={selectedSlot}
         onViewBookings={() => navigate("/dashboard/bookings")}
+        slotsNeeded={slotsNeeded}
       />
     </div>
   );

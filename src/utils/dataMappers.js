@@ -468,11 +468,20 @@ export const mapBooking = (booking) => {
         ? booking.suggestions[booking.suggestions.length - 1].note
         : booking.alternateSlotNote,
     timeline: generateTimeline(booking.status, booking.timeline),
-    // Combined date and time for display
-    formattedScheduledDateTime: formatDateTime(
-      booking.scheduledDate,
-      booking.scheduledTimeSlot,
-    ),
+    // Combined date and time for display (duration-aware for new bookings)
+    formattedScheduledDateTime: (() => {
+      const ts = booking.scheduledTimeSlot;
+      const dur = booking.estimatedDuration;
+      if (ts && typeof ts === "string" && !ts.includes("-") && !ts.includes("–") && dur && dur > 30) {
+        const slotsNeeded = Math.ceil(dur / 30);
+        const [h, m] = ts.split(":").map(Number);
+        const endMins = (h || 0) * 60 + (m || 0) + slotsNeeded * 30;
+        const endH = String(Math.floor(endMins / 60)).padStart(2, "0");
+        const endM = String(endMins % 60).padStart(2, "0");
+        return formatDateTime(booking.scheduledDate, `${ts} – ${endH}:${endM}`);
+      }
+      return formatDateTime(booking.scheduledDate, ts);
+    })(),
     cancellation: booking.cancellation || null,
   };
 };

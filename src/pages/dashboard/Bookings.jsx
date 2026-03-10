@@ -106,10 +106,7 @@ const Bookings = () => {
     const searchingWithQuotes = upcoming.items.filter(
       (b) => b.status?.toLowerCase() === "searching" && b.quotes?.length > 0,
     );
-    const slotProposed = upcoming.items.filter(
-      (b) => b.slotNegotiation?.status === "provider-proposed",
-    );
-    const movedItems = [...searchingWithQuotes, ...slotProposed];
+    const movedItems = [...searchingWithQuotes];
     const movedIds = new Set(movedItems.map((b) => b.id));
 
     setCategories({

@@ -59,9 +59,7 @@ class SocketService {
         type === "booking_cancelled" ||
         type === "booking_request_updated" ||
         type === "booking_completed_by_fitter" ||
-        type === "booking_completed" ||
-        type === "slot_change_proposed" ||
-        type === "schedule_accepted"
+        type === "booking_completed"
       ) {
         if (typeof useDashboardStore.getState().fetchBookings === "function") {
           await useDashboardStore.getState().fetchBookings();

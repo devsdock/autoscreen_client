@@ -5,6 +5,7 @@ import {
   Clock, ChevronRight, Calendar, Check, Truck, FileCheck, Image
 } from 'lucide-react';
 import useDashboardStore, { formatCurrency, formatDate } from '../../store/useDashboardStore';
+import { formatDuration } from '../../utils/formatDuration';
 import Button from '../../components/ui/Button';
 import { getTodayString } from '../../utils/dateUtils';
 
@@ -221,7 +222,7 @@ const ProviderProfile = () => {
                       <div className="flex items-center gap-4 mt-2 text-sm text-slate-500 dark:text-slate-400">
                         <span className="flex items-center gap-1">
                           <Clock size={14} />
-                          ~{service.durationMins} mins
+                          ~{formatDuration(service.durationMins)}
                         </span>
                       </div>
                     </div>

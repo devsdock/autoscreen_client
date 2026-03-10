@@ -77,4 +77,6 @@ The customer portal never shows Platform Fee or Provider Earnings — those are 
 
 | C-026 | 🟢 `FIXED` | `Bookings.jsx` + `bookingController.js` — My Bookings page shows "No bookings yet" | **All tab counts (Upcoming 0, Completed 0, Cancelled 0, All 0) showed zero even though completed/older bookings existed.** Root cause: The API default `limit=10` combined with `createdAt: -1` sort meant the first page was filled with recent `awaiting-payment` quote-flow bookings. The frontend then filtered those out, leaving an empty list. Older confirmed/completed bookings were never fetched (on page 2+). Secondary issue: `in-progress` bookings were missing from the Upcoming tab filter. | **Fixed (backend):** `getBookings` now excludes `awaiting-payment` and `awaiting-provider-acceptance` by default — these belong to the Quotes flow. **Fixed (frontend):** Added `"in-progress"` to Upcoming tab status list; removed the past-date exclusion (`scheduledDate > now`) from Upcoming count and filter (in-progress jobs can have past scheduled dates). |
 
-_Portal: **autoscreen_client** | Last updated: 09 March 2026_
+| C-PROFILE | 🟢 `FIXED` | `Profile.jsx` — Default Location section | **Read-only "Default Location" row in profile settings was a non-editable duplicate** of the default saved address already visible in the Saved Addresses section above. User could not edit it. | **Fixed:** Removed the Default Location section entirely from the profile settings list. |
+
+_Portal: **autoscreen_client** | Last updated: 10 March 2026_

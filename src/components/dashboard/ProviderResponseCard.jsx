@@ -10,6 +10,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { formatCurrency } from "../../store/useDashboardStore";
+import { formatDuration } from "../../utils/formatDuration";
+import { NodeURL } from "../../services/api";
 
 const ProviderResponseCard = ({
   response,
@@ -41,6 +43,14 @@ const ProviderResponseCard = ({
     .slice(0, 2)
     .toUpperCase();
 
+  // Resolve provider avatar URL
+  const providerAvatarUrl = (() => {
+    const raw = provider.avatarUrl || provider.personalImageUrl || provider.companyLogoUrl || provider.profileImage;
+    if (!raw) return null;
+    if (raw.startsWith("http") || raw.startsWith("data:")) return raw;
+    return `${NodeURL}${raw}`;
+  })();
+
   // Time remaining — use the earlier of quote expiry and response validUntil
   const effectiveExpiry = (() => {
     const quoteExp = quoteData?.expiresAt ? new Date(quoteData.expiresAt) : null;
@@ -55,7 +65,10 @@ const ProviderResponseCard = ({
     if (diff <= 0) return "Expired";
     const totalHours = Math.floor(diff / (1000 * 60 * 60));
     const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    if (totalHours > 0) return `${totalHours}h ${mins}m left`;
+    const days = Math.floor(totalHours / 24);
+    const hours = totalHours % 24;
+    if (days > 0) return `${days} ${days === 1 ? "day" : "days"} ${hours}h ${mins}m left`;
+    if (hours > 0) return `${hours}h ${mins}m left`;
     return `${mins}m left`;
   };
   const timeLeft = getTimeRemaining();
@@ -97,8 +110,6 @@ const ProviderResponseCard = ({
   return (
     <div
       style={{
-        background: "#fff",
-        border: `1.5px solid ${isAccepted ? "#22C55E" : isRejected ? "#E2E8F0" : "#E2E8F0"}`,
         borderRadius: "1.25rem",
         overflow: "hidden",
         boxShadow: isAccepted
@@ -109,7 +120,7 @@ const ProviderResponseCard = ({
         position: "relative",
         opacity: isRejected ? 0.55 : 1,
       }}
-      className="hover:shadow-xl hover:-translate-y-0.5 hover:border-primary-200 dark:bg-slate-800 dark:border-slate-700"
+      className={`bg-white dark:bg-slate-800 border-[1.5px] ${isAccepted ? "border-green-500" : "border-slate-200 dark:border-slate-700"} hover:shadow-xl hover:-translate-y-0.5`}
     >
       {/* Best Value Ribbon */}
       {isBest && !isAccepted && !isRejected && (
@@ -168,61 +179,65 @@ const ProviderResponseCard = ({
       {/* ── Ticket Main ── */}
       <div
         style={{
-          display: "flex",
-          alignItems: "stretch",
-          borderBottom: "1px dashed #E2E8F0",
           paddingTop: isBest || isAccepted ? "1.625rem" : 0,
         }}
-        className="flex-col sm:flex-row dark:border-slate-700"
+        className="flex flex-col sm:flex-row items-stretch border-b border-dashed border-slate-200 dark:border-slate-700"
       >
         {/* Provider Column */}
         <div
           style={{
-            width: "auto",
             flexShrink: 0,
-            padding: "1.25rem 1rem 1.25rem 1.25rem",
-            borderRight: "1px dashed #E2E8F0",
-            background: "#F8FAFC",
-            display: "flex",
-            flexDirection: "column",
             gap: ".5rem",
-            justifyContent: "center",
           }}
-          className="!border-b sm:!border-b-0 sm:w-[160px] dark:bg-slate-800/50 dark:border-slate-700"
+          className="bg-slate-50 dark:bg-slate-800/50 flex flex-row sm:flex-col items-center sm:items-start sm:justify-center sm:w-[160px] border-b sm:border-b-0 sm:border-r border-dashed border-slate-200 dark:border-slate-700 p-3 sm:p-5"
         >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: "1rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#fff",
-              fontWeight: 800,
-              fontSize: ".9375rem",
-              boxShadow:
-                "0 4px 6px -1px rgba(15,23,42,.08), 0 2px 4px -2px rgba(15,23,42,.05)",
-              background: isAccepted
-                ? "linear-gradient(135deg, #16A34A, #15803D)"
-                : "linear-gradient(135deg, #2563EB, #1E40AF)",
-            }}
-          >
-            {initials}
-          </div>
+          {providerAvatarUrl ? (
+            <img
+              src={providerAvatarUrl}
+              alt={displayName}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: "1rem",
+                objectFit: "cover",
+                boxShadow: "0 4px 6px -1px rgba(15,23,42,.08), 0 2px 4px -2px rgba(15,23,42,.05)",
+                flexShrink: 0,
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: "1rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#fff",
+                fontWeight: 800,
+                fontSize: ".9375rem",
+                boxShadow:
+                  "0 4px 6px -1px rgba(15,23,42,.08), 0 2px 4px -2px rgba(15,23,42,.05)",
+                background: isAccepted
+                  ? "linear-gradient(135deg, #16A34A, #15803D)"
+                  : "linear-gradient(135deg, #2563EB, #1E40AF)",
+              }}
+            >
+              {initials}
+            </div>
+          )}
           <div
             style={{
               fontSize: ".9375rem",
               fontWeight: 700,
-              color: "#0F172A",
               lineHeight: 1.2,
             }}
-            className="dark:text-white"
+            className="text-slate-900 dark:text-white"
           >
             {displayName}
           </div>
           {provider.businessType && (
-            <div style={{ fontSize: ".75rem", color: "#64748B" }}>
+            <div style={{ fontSize: ".75rem" }} className="text-slate-500 dark:text-slate-400">
               {provider.businessType === "company" ||
               provider.businessType === "franchise"
                 ? "Franchise Workshop"
@@ -236,9 +251,8 @@ const ProviderResponseCard = ({
               gap: ".25rem",
               fontSize: ".75rem",
               fontWeight: 600,
-              color: "#334155",
             }}
-            className="dark:text-slate-300"
+            className="text-slate-700 dark:text-slate-300"
           >
             <Star
               size={11}
@@ -248,17 +262,17 @@ const ProviderResponseCard = ({
             {provider.reviewsCount > 0 && (
               <span
                 style={{
-                  color: "#94A3B8",
                   fontWeight: 400,
                   fontSize: ".6875rem",
                 }}
+                className="text-slate-400 dark:text-slate-500"
               >
                 ({provider.reviewsCount})
               </span>
             )}
           </div>
           {provider.distance && (
-            <div style={{ fontSize: ".6875rem", color: "#94A3B8" }}>
+            <div style={{ fontSize: ".6875rem" }} className="text-slate-400 dark:text-slate-500">
               {provider.distance} away
             </div>
           )}
@@ -268,12 +282,12 @@ const ProviderResponseCard = ({
         <div
           style={{
             flex: 1,
-            padding: "1.25rem 1rem",
             display: "flex",
             flexDirection: "column",
             gap: ".5rem",
             justifyContent: "center",
           }}
+          className="px-3 py-3 sm:px-4 sm:py-5"
         >
           {/* Service pill */}
           <div
@@ -286,11 +300,10 @@ const ProviderResponseCard = ({
               fontSize: ".6875rem",
               fontWeight: 600,
               width: "fit-content",
-              background:
-                serviceType === "workshop" ? "#EDE9FE" : "#FEF3C7",
-              color:
-                serviceType === "workshop" ? "#6D28D9" : "#D97706",
             }}
+            className={serviceType === "workshop"
+              ? "bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400"
+              : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"}
           >
             <svg
               width="9"
@@ -318,10 +331,9 @@ const ProviderResponseCard = ({
             style={{
               fontSize: ".9375rem",
               fontWeight: 700,
-              color: "#0F172A",
               lineHeight: 1.5,
             }}
-            className="dark:text-white"
+            className="text-slate-900 dark:text-white"
           >
             {svcLines.map((line, i) => (
               <div key={i}>{line}</div>
@@ -332,13 +344,13 @@ const ProviderResponseCard = ({
             <div
               style={{
                 fontSize: ".8125rem",
-                color: "#64748B",
                 lineHeight: 1.5,
                 display: "-webkit-box",
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
               }}
+              className="text-slate-500 dark:text-slate-400"
             >
               {message}
             </div>
@@ -346,13 +358,13 @@ const ProviderResponseCard = ({
             <div
               style={{
                 fontSize: ".8125rem",
-                color: "#64748B",
                 lineHeight: 1.5,
                 display: "-webkit-box",
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
               }}
+              className="text-slate-500 dark:text-slate-400"
             >
               {response.notes}
             </div>
@@ -363,40 +375,37 @@ const ProviderResponseCard = ({
         <div
           style={{
             padding: "1.25rem .875rem",
-            borderRight: "1px dashed #E2E8F0",
-            borderLeft: "1px dashed #E2E8F0",
-            display: "flex",
             alignItems: "center",
             gap: ".625rem",
             flexShrink: 0,
           }}
-          className="hidden md:flex dark:border-slate-700"
+          className="hidden md:flex border-x border-dashed border-slate-200 dark:border-slate-700"
         >
           <div style={{ textAlign: "center" }}>
             <div
               style={{
                 fontSize: ".5625rem",
                 fontWeight: 600,
-                color: "#94A3B8",
                 textTransform: "uppercase",
                 letterSpacing: ".04em",
                 marginBottom: ".25rem",
               }}
+              className="text-slate-400 dark:text-slate-500"
             >
               Type
             </div>
             <div
-              style={{ fontSize: ".875rem", fontWeight: 700, color: "#1E293B" }}
-              className="dark:text-slate-200"
+              style={{ fontSize: ".875rem", fontWeight: 700 }}
+              className="text-slate-800 dark:text-slate-200"
             >
               {locShort}
             </div>
             <div
               style={{
                 fontSize: ".625rem",
-                color: "#64748B",
                 marginTop: ".125rem",
               }}
+              className="text-slate-500 dark:text-slate-400"
             >
               {locType}
             </div>
@@ -416,18 +425,18 @@ const ProviderResponseCard = ({
                 style={{
                   fontSize: ".5625rem",
                   fontWeight: 600,
-                  color: "#94A3B8",
                   whiteSpace: "nowrap",
                 }}
+                className="text-slate-400 dark:text-slate-500"
               >
-                {estimatedDuration} min
+                {formatDuration(estimatedDuration)}
               </div>
               <div
                 style={{
                   width: 24,
                   height: 1,
-                  background: "#CBD5E1",
                 }}
+                className="bg-slate-300 dark:bg-slate-600"
               />
             </div>
           )}
@@ -438,11 +447,11 @@ const ProviderResponseCard = ({
                 style={{
                   fontSize: ".5625rem",
                   fontWeight: 600,
-                  color: "#94A3B8",
                   textTransform: "uppercase",
                   letterSpacing: ".04em",
                   marginBottom: ".25rem",
                 }}
+                className="text-slate-400 dark:text-slate-500"
               >
                 Earliest
               </div>
@@ -450,9 +459,8 @@ const ProviderResponseCard = ({
                 style={{
                   fontSize: ".875rem",
                   fontWeight: 700,
-                  color: "#1E293B",
                 }}
-                className="dark:text-slate-200"
+                className="text-slate-800 dark:text-slate-200"
               >
                 {etaText}
               </div>
@@ -463,19 +471,13 @@ const ProviderResponseCard = ({
         {/* Price + CTA Column */}
         <div
           style={{
-            width: "auto",
             flexShrink: 0,
-            padding: "1.125rem",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-end",
-            justifyContent: "center",
             gap: ".625rem",
           }}
-          className="sm:w-[148px]"
+          className="flex flex-col justify-center items-center sm:items-end sm:w-[148px] border-t sm:border-t-0 border-dashed border-slate-200 dark:border-slate-700 p-3 sm:p-[1.125rem]"
         >
           {/* Price */}
-          <div style={{ textAlign: "right" }}>
+          <div className="text-center sm:text-right">
             <div>
               <span
                 style={{ fontSize: ".9375rem", fontWeight: 600 }}
@@ -498,11 +500,11 @@ const ProviderResponseCard = ({
             <div
               style={{
                 fontSize: ".625rem",
-                color: "#94A3B8",
                 marginTop: ".25rem",
               }}
+              className="text-slate-400 dark:text-slate-500"
             >
-              incl. VAT · Full payment
+              Service amount
             </div>
           </div>
 
@@ -517,7 +519,6 @@ const ProviderResponseCard = ({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                width: "100%",
                 padding: ".5625rem .875rem",
                 borderRadius: ".75rem",
                 background: "linear-gradient(135deg, #2563EB, #1D4ED8)",
@@ -529,8 +530,9 @@ const ProviderResponseCard = ({
                 boxShadow:
                   "0 1px 3px rgba(15,23,42,.06), 0 1px 2px -1px rgba(15,23,42,.06), inset 0 1px 0 rgba(255,255,255,.15)",
                 transition: "all 150ms cubic-bezier(.4,0,.2,1)",
+                whiteSpace: "nowrap",
               }}
-              className="hover:shadow-lg hover:-translate-y-px"
+              className="w-full hover:shadow-lg hover:-translate-y-px"
             >
               Accept &amp; Pay
             </button>
@@ -542,11 +544,11 @@ const ProviderResponseCard = ({
               style={{
                 fontSize: ".625rem",
                 fontWeight: 600,
-                color: isUrgent ? "#DC2626" : "#94A3B8",
                 display: "flex",
                 alignItems: "center",
                 gap: ".25rem",
               }}
+              className={isUrgent ? "text-red-600 dark:text-red-400" : "text-slate-400 dark:text-slate-500"}
             >
               <Clock size={10} />
               {timeLeft}
@@ -558,12 +560,11 @@ const ProviderResponseCard = ({
             <span
               style={{
                 padding: ".25rem .75rem",
-                background: "#F1F5F9",
-                color: "#64748B",
                 fontSize: ".75rem",
                 fontWeight: 600,
                 borderRadius: "9999px",
               }}
+              className="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
             >
               Not Selected
             </span>
@@ -590,10 +591,10 @@ const ProviderResponseCard = ({
               gap: ".375rem",
               fontSize: ".6875rem",
               fontWeight: 600,
-              color: "#16A34A",
             }}
+            className="text-green-600 dark:text-green-400"
           >
-            <Shield size={12} style={{ color: "#22C55E" }} />
+            <Shield size={12} className="text-green-500 dark:text-green-400" />
             {glassDetails.warranty} warranty
           </div>
         )}
@@ -607,10 +608,10 @@ const ProviderResponseCard = ({
               gap: ".375rem",
               fontSize: ".6875rem",
               fontWeight: 600,
-              color: "#2563EB",
             }}
+            className="text-blue-600 dark:text-blue-400"
           >
-            <Check size={12} style={{ color: "#3B82F6" }} />
+            <Check size={12} className="text-blue-500 dark:text-blue-400" />
             {glassDetails.quality === "OEM"
               ? "OEM Glass"
               : glassDetails.quality === "OEE"
@@ -630,8 +631,8 @@ const ProviderResponseCard = ({
               gap: ".375rem",
               fontSize: ".6875rem",
               fontWeight: 600,
-              color: "#94A3B8",
             }}
+            className="text-slate-400 dark:text-slate-500"
           >
             <MapPin size={12} />
             {Array.isArray(provider.serviceAreas)
@@ -640,7 +641,7 @@ const ProviderResponseCard = ({
           </div>
         )}
 
-        {/* ETA on mobile */}
+        {/* ETA on mobile — hidden at md+ */}
         {etaText && (
           <div
             style={{
@@ -649,16 +650,15 @@ const ProviderResponseCard = ({
               gap: ".375rem",
               fontSize: ".6875rem",
               fontWeight: 600,
-              color: "#94A3B8",
             }}
-            className="md:hidden"
+            className="md:hidden text-slate-400 dark:text-slate-500"
           >
             <Clock size={12} />
             {etaText}
           </div>
         )}
 
-        {/* Duration on mobile */}
+        {/* Duration on mobile — hidden at md+ */}
         {estimatedDuration && (
           <div
             style={{
@@ -667,11 +667,10 @@ const ProviderResponseCard = ({
               gap: ".375rem",
               fontSize: ".6875rem",
               fontWeight: 600,
-              color: "#94A3B8",
             }}
-            className="md:hidden"
+            className="md:hidden text-slate-400 dark:text-slate-500"
           >
-            {estimatedDuration} min
+            {formatDuration(estimatedDuration)}
           </div>
         )}
 
@@ -685,10 +684,9 @@ const ProviderResponseCard = ({
               gap: ".375rem",
               fontSize: ".75rem",
               fontWeight: 600,
-              color: "#2563EB",
               marginLeft: "auto",
             }}
-            className="hover:text-primary-700 dark:text-primary-400"
+            className="text-blue-600 dark:text-indigo-400"
           >
             <Phone size={12} />
             {provider.phone}
@@ -704,10 +702,10 @@ const ProviderResponseCard = ({
               gap: ".375rem",
               fontSize: ".6875rem",
               fontWeight: 600,
-              color: "#D97706",
             }}
+            className="text-amber-600 dark:text-amber-400"
           >
-            <AlertTriangle size={12} style={{ color: "#F59E0B" }} />
+            <AlertTriangle size={12} className="text-amber-500 dark:text-amber-400" />
             Counter offer
           </div>
         )}
@@ -719,8 +717,8 @@ const ProviderResponseCard = ({
               marginLeft: "auto",
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: ".625rem",
-              color: "#CBD5E1",
             }}
+            className="text-slate-300 dark:text-slate-600"
           >
             {response.reference}
           </div>
