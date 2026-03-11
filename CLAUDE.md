@@ -669,11 +669,6 @@ const BASE_URL = import.meta.env.VITE_API_URL;
 
 /dashboard                  → DashboardLayout (Protected)
   /                         → OverviewNew.jsx (dashboard home)
-  /book                     → BookSearch.jsx
-  /book/request             → BookingForm.jsx
-  /booking/searching/:id    → BookingSearching.jsx
-  /booking/pending/:id      → BookingPending.jsx
-  /booking/confirmation/:id → BookingConfirmation.jsx
   /quotes                   → QuotesNew.jsx (tabbed list view)
   /quotes/new               → NewQuote.jsx (request form)
   /quotes/:id               → QuoteDetailPage.jsx (detail wrapper)
@@ -748,17 +743,9 @@ autoscreen_client/
 │   │   │   └── ImpersonatePage.jsx
 │   │   └── dashboard/
 │   │       ├── OverviewNew.jsx      # Dashboard home (greeting, stats)
-│   │       ├── Overview.jsx         # Legacy dashboard (replaced by OverviewNew)
-│   │       ├── BookSearch.jsx       # Service search form
-│   │       ├── BookingForm.jsx      # 5-step booking form
-│   │       ├── BookingSearching.jsx # Live provider search
-│   │       ├── BookingPending.jsx   # Quote/payment pending
-│   │       ├── BookingConfirmation.jsx # Booking confirmed
 │   │       ├── Bookings.jsx         # My bookings list & detail
 │   │       ├── QuotesNew.jsx        # Quotes list (tabbed, redesigned)
-│   │       ├── Quotes.jsx           # Legacy quotes list
 │   │       ├── NewQuote.jsx         # Quote request form
-│   │       ├── QuoteDetail.jsx      # Legacy quote detail
 │   │       ├── QuoteDetailPage.jsx  # Quote detail routing wrapper
 │   │       ├── BookAppointment.jsx  # Post-payment appointment scheduling
 │   │       ├── Payments.jsx         # Payment history
@@ -766,9 +753,7 @@ autoscreen_client/
 │   │       ├── Insurance.jsx        # Placeholder insurance page
 │   │       ├── Profile.jsx          # Profile + vehicles + addresses
 │   │       ├── Messages.jsx         # Chat with provider
-│   │       ├── Support.jsx          # Support tickets
-│   │       ├── ProviderList.jsx     # Provider results (legacy)
-│   │       └── ProviderProfile.jsx  # Provider detail (legacy)
+│   │       └── Support.jsx          # Support tickets
 │   │
 │   ├── services/                  # API service layer
 │   │   ├── api.js                 # Base Axios config + request wrapper
@@ -843,6 +828,12 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 ---
 
 ## Changelog
+
+### 11 March 2026 (Dead Code Removal + Cancel / Service Display Fixes)
+
+- **`App.jsx`** — Removed 7 unused direct-booking page imports (BookSearch, ProviderList, ProviderProfile, BookingForm, BookingSearching, BookingPending, BookingConfirmation) and their 5 routes (`/book`, `/book/request`, `/booking/searching/:id`, `/booking/pending/:id`, `/booking/confirmation/:id`). Page files deleted from disk. Platform is quote-only; these routes were unreachable.
+- **`utils/dataMappers.js`** — Added ObjectId regex guard (`/^[a-f\d]{24}$/i`) in `formatServiceName()`. Raw unpopulated ObjectId strings are now skipped and fallback to `serviceType` is used, fixing service name showing as a 24-char hex string in Bookings list and drawer.
+- **`pages/dashboard/Bookings.jsx`** — Cancel now passes `"Customer requested cancellation"` as the reason to `bookingService.cancelBooking()`.
 
 ### 10 March 2026 (Profile — Default Location Removed)
 
