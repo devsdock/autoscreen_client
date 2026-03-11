@@ -29,6 +29,7 @@ import Button from "../ui/Button";
 import ProviderResponseCard from "./ProviderResponseCard";
 import Modal from "../ui/Modal";
 import PaymentModal from "./PaymentModal";
+import Tooltip from "../ui/Tooltip";
 import { useSettingsStore } from "../../store/useSettingsStore";
 
 const QuoteDetailPanel = ({ quote, onClose }) => {
@@ -499,7 +500,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
 
         {/* Booking Confirmed — Provider Bar + Book Appointment CTA */}
         {bookingIsConfirmed && (() => {
-          const acceptedResp = responses.find((r) => r.status === "Accepted");
+          const acceptedResp = responses.find((r) => r.status === "Accepted" || r.status === "accepted");
           const provName = acceptedResp?.provider?.businessName || acceptedResp?.provider?.name || booking?.providerName || "Provider";
           const provInitials = provName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
           const provAvatarRaw = acceptedResp?.provider?.avatarUrl || acceptedResp?.provider?.personalImageUrl || acceptedResp?.provider?.companyLogoUrl || acceptedResp?.provider?.profileImage;
@@ -516,62 +517,70 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
             <div
               style={{
                 borderRadius: "1rem",
-                padding: "1.25rem 1.5rem",
                 boxShadow: "0 1px 3px rgba(15,23,42,.06)",
-                display: "flex",
-                alignItems: "center",
-                gap: "1.25rem",
-                flexWrap: "wrap",
               }}
-              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+              className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 p-3 sm:p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
             >
-              {/* Provider logo */}
-              {provAvatarUrl ? (
-                <img
-                  src={provAvatarUrl}
-                  alt={provName}
-                  style={{
-                    width: 50,
-                    height: 50,
-                    borderRadius: "1rem",
-                    flexShrink: 0,
-                    objectFit: "cover",
-                    boxShadow: "0 4px 6px -1px rgba(15,23,42,.08)",
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: 50,
-                    height: 50,
-                    borderRadius: "1rem",
-                    flexShrink: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: 800,
-                    fontSize: "1.125rem",
-                    color: "#fff",
-                    background: "linear-gradient(135deg, #16A34A, #15803D)",
-                    boxShadow: "0 4px 6px -1px rgba(15,23,42,.08)",
-                  }}
-                >
-                  {provInitials}
-                </div>
-              )}
+              {/* Top row: Avatar + Info */}
+              <div className="flex items-center gap-3 sm:gap-5 sm:flex-1 sm:min-w-0">
+                {/* Provider logo */}
+                {provAvatarUrl ? (
+                  <img
+                    src={provAvatarUrl}
+                    alt={provName}
+                    style={{
+                      width: 50,
+                      height: 50,
+                      borderRadius: "1rem",
+                      flexShrink: 0,
+                      objectFit: "cover",
+                      boxShadow: "0 4px 6px -1px rgba(15,23,42,.08)",
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: 50,
+                      height: 50,
+                      borderRadius: "1rem",
+                      flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 800,
+                      fontSize: "1.125rem",
+                      color: "#fff",
+                      background: "linear-gradient(135deg, #16A34A, #15803D)",
+                      boxShadow: "0 4px 6px -1px rgba(15,23,42,.08)",
+                    }}
+                  >
+                    {provInitials}
+                  </div>
+                )}
 
-              {/* Info */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: "1.0625rem", fontWeight: 700 }} className="text-slate-900 dark:text-white">
-                  {provName}
-                </div>
-                <div style={{ fontSize: ".875rem", marginTop: ".125rem" }} className="text-slate-500 dark:text-slate-400">
-                  {svcLabel}{vehicleLabel ? ` · ${vehicleLabel}` : ""}
+                {/* Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: "1.0625rem", fontWeight: 700 }} className="text-slate-900 dark:text-white">
+                    {provName}
+                  </div>
+                  {/* Mobile: truncated + tooltip on tap */}
+                  <Tooltip content={`${svcLabel}${vehicleLabel ? ` · ${vehicleLabel}` : ""}`} position="bottom" className="sm:!hidden block">
+                    <div style={{ fontSize: ".8125rem", marginTop: ".125rem" }} className="text-slate-500 dark:text-slate-400 truncate sm:text-sm">
+                      {svcLabel}{vehicleLabel ? ` · ${vehicleLabel}` : ""}
+                    </div>
+                  </Tooltip>
+                  {/* Desktop: normal wrapping, no tooltip needed */}
+                  <div style={{ fontSize: ".8125rem", marginTop: ".125rem" }} className="text-slate-500 dark:text-slate-400 hidden sm:block sm:text-sm">
+                    {svcLabel}{vehicleLabel ? ` · ${vehicleLabel}` : ""}
+                  </div>
                 </div>
               </div>
 
+              {/* Divider — mobile only */}
+              <div className="border-t border-slate-100 dark:border-slate-700 sm:hidden" />
+
               {/* Price + Paid badge */}
-              <div style={{ textAlign: "right", flexShrink: 0 }}>
+              <div className="flex items-center justify-between sm:block sm:text-right sm:flex-shrink-0">
                 <div style={{ fontSize: "1.375rem", fontWeight: 800, lineHeight: 1 }} className="text-slate-900 dark:text-white">
                   {formatCurrency(paidAmount)}
                 </div>
@@ -584,9 +593,8 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                     fontWeight: 600,
                     padding: ".2rem .625rem",
                     borderRadius: "9999px",
-                    marginTop: ".375rem",
                   }}
-                  className="text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20"
+                  className="text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20 sm:mt-1.5"
                 >
                   <Check size={11} /> Paid in full
                 </div>
@@ -599,8 +607,8 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
         {bookingIsConfirmed && !booking?.scheduledDate && (
           <button
             onClick={() => navigate(`/dashboard/quotes/${quote.id}/book-appointment`)}
+            className="w-full sm:max-w-md sm:mx-auto"
             style={{
-              width: "100%",
               padding: "1rem",
               borderRadius: "1rem",
               background: "linear-gradient(135deg, #2563EB, #1D4ED8)",
@@ -629,13 +637,9 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           <div
             style={{
               borderRadius: "1rem",
-              padding: "1rem 1.25rem",
-              display: "flex",
-              alignItems: "center",
-              gap: ".75rem",
               flexWrap: "wrap",
             }}
-            className="bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/20 dark:to-green-800/20 border border-green-300 dark:border-green-800"
+            className="flex items-center gap-2 sm:gap-3 p-3 sm:p-5 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/20 dark:to-green-800/20 border border-green-300 dark:border-green-800"
           >
             <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#16A34A", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Check size={18} style={{ color: "#fff" }} />
@@ -695,7 +699,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           </div>
 
           {/* Filter chips */}
-          {responses.length > 1 && (
+          {responses.length > 1 && !isAccepted && !isClosed && (
             <div className="flex flex-wrap gap-2 mb-4">
               {[
                 { key: "best-price", label: "Best Price", icon: <SlidersHorizontal size={12} /> },

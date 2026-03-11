@@ -13,6 +13,7 @@ import BookingDetailDrawer from "../../components/dashboard/BookingDetailDrawer"
 import { downloadInvoice } from "../../utils/invoiceUtils";
 import { CardSkeleton } from "../../components/skeletons/CardSkeleton";
 import ConfirmModal from "../../components/ui/ConfirmModal";
+import ReviewModal from "../../components/dashboard/ReviewModal";
 
 const INITIAL_LIMIT = 5;
 const EXPANDED_LIMIT = 50;
@@ -54,6 +55,10 @@ const Bookings = () => {
   const [cancelQuote, setCancelQuote] = useState(null);
   const [cancelQuoteLoading, setCancelQuoteLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
+
+  // Review modal state
+  const [reviewBooking, setReviewBooking] = useState(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   // Check for Deep Link User Mismatch
   useEffect(() => {
@@ -280,7 +285,7 @@ const Bookings = () => {
     if (!cancelBooking) return;
     setCancelLoading(true);
     try {
-      await bookingService.cancelBooking(cancelBooking.id);
+      await bookingService.cancelBooking(cancelBooking.id, "Customer requested cancellation");
       addToast({ type: "success", message: "Booking cancelled successfully" });
       setCancelBooking(null);
       setCancelQuote(null);
@@ -289,6 +294,25 @@ const Bookings = () => {
       addToast({ type: "error", message: "Failed to cancel booking" });
     } finally {
       setCancelLoading(false);
+    }
+  };
+
+  const handleReviewSubmit = async (reviewData) => {
+    setReviewLoading(true);
+    try {
+      const res = await bookingService.addReview(reviewBooking.id, reviewData);
+      if (res.success) {
+        addToast({ type: "success", message: "Review submitted successfully" });
+        setReviewBooking(null);
+        fetchAllBookings();
+      }
+    } catch (error) {
+      addToast({
+        type: "error",
+        message: error.message || "Failed to submit review",
+      });
+    } finally {
+      setReviewLoading(false);
     }
   };
 
@@ -306,7 +330,7 @@ const Bookings = () => {
         addToast({ type: type || "error", message: msg }),
       ),
     onRate: (b) => {
-      navigate(`/dashboard/bookings/${b.id}/review`, { replace: true });
+      setReviewBooking(b);
     },
     onDirections: (b) => {
       const addr = encodeURIComponent(b.address || "");
@@ -564,6 +588,15 @@ const Bookings = () => {
         cancelLabel="Keep Booking"
         type="danger"
         loading={cancelLoading || cancelQuoteLoading}
+      />
+
+      {/* Review Modal (standalone — not inside drawer) */}
+      <ReviewModal
+        isOpen={!!reviewBooking}
+        onClose={() => setReviewBooking(null)}
+        onSubmit={handleReviewSubmit}
+        booking={reviewBooking}
+        isLoading={reviewLoading}
       />
     </div>
   );

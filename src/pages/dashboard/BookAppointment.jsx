@@ -501,31 +501,27 @@ const TimeSlotsPanel = ({ selectedDate, selectedSlot, onSlotSelect, slots, isLoa
                   "px-2 py-2.5 rounded-lg border-[1.5px] text-center transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
                   isTaken
                     ? "bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60"
-                    : isSelectedStart
+                    : isSelectedStart || isHighlighted
                       ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/25"
-                      : isHighlighted
-                        ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700"
                         : cantStart
                           ? "bg-slate-50 dark:bg-slate-800/30 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-50"
                           : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20",
                 ].join(" ")}
               >
                 <div className="text-sm font-semibold">
-                  {isLastSlot ? `${slotTime} - ${minsToTime(timeToMins(slotTime) + 30)}` : slotTime}
+                  {`${slotTime} - ${minsToTime(timeToMins(slotTime) + 30)}`}
                 </div>
                 <div className={[
                   "text-[10px] mt-0.5",
                   isTaken
                     ? "text-slate-400 dark:text-slate-500"
-                    : isSelectedStart
+                    : isSelectedStart || isHighlighted
                       ? "text-white/70"
-                      : isHighlighted
-                        ? "text-blue-500 dark:text-blue-400"
                         : cantStart
                           ? "text-slate-400 dark:text-slate-500"
                           : "opacity-70",
                 ].join(" ")}>
-                  {isTaken ? "Taken" : isSelectedStart ? "Start" : isHighlighted ? "In use" : cantStart ? "Unavailable" : "Available"}
+                  {isTaken ? "Taken" : isSelectedStart ? "Start" : isHighlighted ? "Included" : cantStart ? "Unavailable" : "Available"}
                 </div>
               </button>
             );

@@ -340,35 +340,21 @@ const ProviderResponseCard = ({
             ))}
           </div>
 
-          {message ? (
+          {estimatedDuration ? (
             <div
               style={{
                 fontSize: ".8125rem",
                 lineHeight: 1.5,
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: ".375rem",
               }}
               className="text-slate-500 dark:text-slate-400"
             >
-              {message}
+              <Clock size={13} />
+              Duration: {formatDuration(estimatedDuration)}
             </div>
-          ) : (response.notes && (
-            <div
-              style={{
-                fontSize: ".8125rem",
-                lineHeight: 1.5,
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-              }}
-              className="text-slate-500 dark:text-slate-400"
-            >
-              {response.notes}
-            </div>
-          ))}
+          ) : null}
         </div>
 
         {/* Timing Column — hidden on small screens */}
@@ -575,12 +561,9 @@ const ProviderResponseCard = ({
       {/* ── Footer ── */}
       <div
         style={{
-          padding: ".875rem 1.25rem",
-          display: "flex",
-          gap: "1rem",
           flexWrap: "wrap",
-          alignItems: "center",
         }}
+        className="flex items-center gap-2 sm:gap-4 px-3 py-2.5 sm:px-5 sm:py-3.5"
       >
         {/* Warranty */}
         {glassDetails?.warranty && (
@@ -641,7 +624,7 @@ const ProviderResponseCard = ({
           </div>
         )}
 
-        {/* ETA on mobile — hidden at md+ */}
+        {/* ETA */}
         {etaText && (
           <div
             style={{
@@ -651,26 +634,10 @@ const ProviderResponseCard = ({
               fontSize: ".6875rem",
               fontWeight: 600,
             }}
-            className="md:hidden text-slate-400 dark:text-slate-500"
+            className="text-slate-400 dark:text-slate-500"
           >
             <Clock size={12} />
             {etaText}
-          </div>
-        )}
-
-        {/* Duration on mobile — hidden at md+ */}
-        {estimatedDuration && (
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: ".375rem",
-              fontSize: ".6875rem",
-              fontWeight: 600,
-            }}
-            className="md:hidden text-slate-400 dark:text-slate-500"
-          >
-            {formatDuration(estimatedDuration)}
           </div>
         )}
 

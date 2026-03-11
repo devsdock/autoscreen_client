@@ -145,7 +145,8 @@ export const mapBooking = (booking) => {
     if (
       typeof booking.service === "string" &&
       booking.service &&
-      booking.service !== booking.serviceType
+      booking.service !== booking.serviceType &&
+      !/^[a-f\d]{24}$/i.test(booking.service)
     ) {
       // Check if it's already a formatted string or just the type
       const lowerService = booking.service.toLowerCase();

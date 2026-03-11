@@ -2,9 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 
 // Dashboard Layout and Pages
 import DashboardLayout from "./components/dashboard/DashboardLayout";
-// import Overview from "./pages/dashboard/Overview"; // Old dashboard
 import OverviewNew from "./pages/dashboard/OverviewNew";
-// import Quotes from "./pages/dashboard/Quotes"; // Old split-panel quotes
 import QuotesNew from "./pages/dashboard/QuotesNew";
 import QuoteDetailPage from "./pages/dashboard/QuoteDetailPage";
 import NewQuote from "./pages/dashboard/NewQuote";
@@ -16,15 +14,6 @@ import Support from "./pages/dashboard/Support";
 import Messages from "./pages/dashboard/Messages";
 import Vehicles from "./pages/dashboard/Vehicles";
 import Insurance from "./pages/dashboard/Insurance";
-
-// Booking Flow Pages
-import BookSearch from "./pages/dashboard/BookSearch";
-import ProviderList from "./pages/dashboard/ProviderList";
-import ProviderProfile from "./pages/dashboard/ProviderProfile";
-import BookingForm from "./pages/dashboard/BookingForm";
-import BookingSearching from "./pages/dashboard/BookingSearching";
-import BookingPending from "./pages/dashboard/BookingPending";
-import BookingConfirmation from "./pages/dashboard/BookingConfirmation";
 
 // Auth Protection
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -61,19 +50,6 @@ const App = () => {
         }
       >
         <Route index element={<OverviewNew />} />
-
-        {/* Booking Flow Routes (Uber Style - No manual selection) */}
-        <Route path="book" element={<BookSearch />} />
-        <Route path="book/request" element={<BookingForm />} />
-        <Route
-          path="booking/searching/:bookingId"
-          element={<BookingSearching />}
-        />
-        <Route path="booking/pending/:bookingId" element={<BookingPending />} />
-        <Route
-          path="booking/confirmation/:bookingId"
-          element={<BookingConfirmation />}
-        />
 
         {/* New Routes */}
         <Route path="vehicles" element={<Vehicles />} />
