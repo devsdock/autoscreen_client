@@ -79,6 +79,16 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     quote.status === "Accepted" ||
     quote.status?.toLowerCase() === "accepted" ||
     !!quote.booking;
+
+  // Find the accepted/selected response — check status OR match acceptedResponse ID
+  const acceptedResponseId = quote.acceptedResponse?._id || quote.acceptedResponse;
+  const findAcceptedResponse = () =>
+    responses.find(
+      (r) =>
+        r.status === "Accepted" ||
+        r.status === "accepted" ||
+        (acceptedResponseId && (r.id === acceptedResponseId || r._id === acceptedResponseId))
+    );
   const isClosed =
     quote.status === "Closed" ||
     ["closed", "expired", "cancelled"].includes(quote.status?.toLowerCase());
@@ -97,6 +107,12 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
       .slice(0, 2)
       .toUpperCase();
 
+    // Resolve provider avatar URL
+    const rawAvatar = response.provider?.avatarUrl || response.provider?.personalImageUrl || response.provider?.companyLogoUrl || response.provider?.profileImage;
+    const providerAvatar = rawAvatar
+      ? rawAvatar.startsWith("http") || rawAvatar.startsWith("data:") ? rawAvatar : `${NodeURL}${rawAvatar}`
+      : null;
+
     const subtotal = response.price || 0;
     const vatRate = platformSettings?.vatPercentage || 0;
     const vatAmount = vatRate > 0 ? Math.round(subtotal * (vatRate / 100) * 100) / 100 : 0;
@@ -110,9 +126,11 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
         quote.serviceType || "Auto Glass Service",
       providerName,
       providerInitials,
+      providerAvatar,
       vehicle: quote.vehicle
         ? `${quote.vehicle.year || ""} ${quote.vehicle.make || ""} ${quote.vehicle.model || ""}`.trim()
         : "",
+      registrationNumber: quote.vehicle?.registrationNumber || "",
       breakdown: {
         subtotal,
         vat: vatAmount,
@@ -479,10 +497,8 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
             <Button
               size="sm"
               onClick={() => {
-                // Find the accepted response for this quote
-                const acceptedResp = responses.find(
-                  (r) => r.status === "Accepted" || r.status === "accepted"
-                );
+                // Find the accepted/selected response for this quote
+                const acceptedResp = findAcceptedResponse();
                 if (acceptedResp) {
                   handleAcceptAndPay(acceptedResp);
                 } else if (booking) {
@@ -750,7 +766,10 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                   return 0;
                 })
                 .map((response, idx) => {
-                  const thisAccepted = response.status === "Accepted" || response.status === "accepted";
+                  const thisAccepted =
+                    response.status === "Accepted" ||
+                    response.status === "accepted" ||
+                    (acceptedResponseId && (response.id === acceptedResponseId || response._id === acceptedResponseId));
                   // If any response in this quote is accepted, mark non-accepted ones as rejected
                   const thisRejected = response.status === "Rejected" || response.status === "rejected" ||
                     (isAccepted && !thisAccepted);

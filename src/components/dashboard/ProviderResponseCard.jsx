@@ -259,7 +259,7 @@ const ProviderResponseCard = ({
               style={{ fill: "#F59E0B", color: "#F59E0B" }}
             />
             {(provider.rating || 0).toFixed(1)}
-            {provider.reviewsCount > 0 && (
+            {provider.reviewCount > 0 && (
               <span
                 style={{
                   fontWeight: 400,
@@ -267,7 +267,7 @@ const ProviderResponseCard = ({
                 }}
                 className="text-slate-400 dark:text-slate-500"
               >
-                ({provider.reviewsCount})
+                ({provider.reviewCount})
               </span>
             )}
           </div>

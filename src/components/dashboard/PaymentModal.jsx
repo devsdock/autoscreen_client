@@ -153,9 +153,20 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
               {/* Provider row */}
               {payment.providerName && (
                 <div className="flex items-center gap-3.5 mb-3.5">
+                  {payment.providerAvatar ? (
+                    <img
+                      src={payment.providerAvatar}
+                      alt={payment.providerName}
+                      className="w-[42px] h-[42px] rounded-xl object-cover flex-shrink-0"
+                      onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }}
+                    />
+                  ) : null}
                   <div
                     className="w-[42px] h-[42px] rounded-xl flex items-center justify-center text-white font-extrabold text-[0.9375rem] flex-shrink-0"
-                    style={{ background: `linear-gradient(135deg, ${payment.providerColor || "#2563EB"}, ${payment.providerColor ? payment.providerColor + "CC" : "#1E40AF"})` }}
+                    style={{
+                      background: `linear-gradient(135deg, ${payment.providerColor || "#2563EB"}, ${payment.providerColor ? payment.providerColor + "CC" : "#1E40AF"})`,
+                      display: payment.providerAvatar ? "none" : "flex",
+                    }}
                   >
                     {initials}
                   </div>
