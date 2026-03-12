@@ -607,7 +607,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
         {bookingIsConfirmed && !booking?.scheduledDate && (
           <button
             onClick={() => navigate(`/dashboard/quotes/${quote.id}/book-appointment`)}
-            className="w-full sm:max-w-md sm:mx-auto"
+            className="w-full sm:max-w-md sm:mx-auto hover:shadow-lg hover:-translate-y-px"
             style={{
               padding: "1rem",
               borderRadius: "1rem",
@@ -624,7 +624,6 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
               boxShadow: "0 4px 6px -1px rgba(37,99,235,.25)",
               transition: "all 150ms",
             }}
-            className="hover:shadow-lg hover:-translate-y-px"
           >
             <CalendarCheck size={18} />
             Book Your Appointment

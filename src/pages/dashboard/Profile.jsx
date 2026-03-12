@@ -271,6 +271,11 @@ const Profile = () => {
         preferredContact: editForm.preferredContact,
       };
 
+      // Only include email if it was changed
+      if (editForm.email !== user?.email) {
+        updateData.email = editForm.email.trim().toLowerCase();
+      }
+
       const res = await profileService.updateProfile(updateData);
       if (res.success) {
         const mappedUser = mapUser(res.data);
@@ -851,8 +856,6 @@ const Profile = () => {
               onChange={(e) =>
                 setEditForm((prev) => ({ ...prev, email: e.target.value }))
               }
-              helperText="Email cannot be changed here"
-              disabled
             />
             <Input
               label="Mobile"

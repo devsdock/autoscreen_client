@@ -15,7 +15,7 @@ import useDashboardStore from "../../store/useDashboardStore";
 import vehicleService from "../../services/vehicleService";
 import geocodingService from "../../services/geocodingService";
 import publicSettingsService from "../../services/publicSettingsService";
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PremiumSelect from "../../components/ui/PremiumSelect";
 import { CITIES } from "../../data/cities";
@@ -601,55 +601,60 @@ const NewQuote = () => {
 
       {/* Stepper */}
       <div className="max-w-md mx-auto">
-        <div className="flex items-start">
+        {/* Circles + Lines row */}
+        <div className="flex items-center">
           {steps.map((step, i) => {
             const state = getStepState(i);
             const StepIcon = step.icon;
             return (
-              <div
-                key={i}
-                className={`flex items-center ${i < steps.length - 1 ? "flex-1" : "flex-none"}`}
-              >
-                {/* Circle + Label column */}
-                <div className="flex flex-col items-center flex-shrink-0">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                      state === "done"
-                        ? "bg-primary-600 text-white"
-                        : state === "now"
-                          ? "bg-primary-600 text-white ring-4 ring-primary-100 dark:ring-primary-900/40"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-[1.5px] border-slate-200 dark:border-slate-700"
-                    }`}
-                  >
-                    {state === "done" ? (
-                      <Check size={14} strokeWidth={3} />
-                    ) : (
-                      <StepIcon size={16} />
-                    )}
-                  </div>
-                  <span
-                    className={`mt-1.5 text-[11px] font-semibold whitespace-nowrap text-center ${
-                      state === "done"
-                        ? "text-primary-600 dark:text-primary-400"
-                        : state === "now"
-                          ? "text-primary-700 dark:text-primary-300 font-bold"
-                          : "text-slate-400 dark:text-slate-500"
-                    }`}
-                  >
-                    {step.label}
-                  </span>
+              <React.Fragment key={i}>
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                    state === "done"
+                      ? "bg-primary-600 text-white"
+                      : state === "now"
+                        ? "bg-primary-600 text-white ring-4 ring-primary-100 dark:ring-primary-900/40"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-[1.5px] border-slate-200 dark:border-slate-700"
+                  }`}
+                >
+                  {state === "done" ? (
+                    <Check size={14} strokeWidth={3} />
+                  ) : (
+                    <StepIcon size={16} />
+                  )}
                 </div>
-                {/* Line */}
                 {i < steps.length - 1 && (
                   <div
-                    className={`flex-1 h-0.5 mx-2 mt-5 transition-all duration-300 ${
+                    className={`flex-1 h-0.5 mx-2 transition-all duration-300 ${
                       i + 1 < currentStep
                         ? "bg-primary-500"
                         : "bg-slate-200 dark:bg-slate-700"
                     }`}
                   />
                 )}
-              </div>
+              </React.Fragment>
+            );
+          })}
+        </div>
+        {/* Labels row */}
+        <div className="flex justify-between mt-1.5">
+          {steps.map((step, i) => {
+            const state = getStepState(i);
+            return (
+              <span
+                key={i}
+                className={`text-[11px] font-semibold whitespace-nowrap text-center ${
+                  i === 0 ? "text-left" : i === steps.length - 1 ? "text-right" : "text-center"
+                } ${
+                  state === "done"
+                    ? "text-primary-600 dark:text-primary-400"
+                    : state === "now"
+                      ? "text-primary-700 dark:text-primary-300 font-bold"
+                      : "text-slate-400 dark:text-slate-500"
+                }`}
+              >
+                {step.label}
+              </span>
             );
           })}
         </div>
