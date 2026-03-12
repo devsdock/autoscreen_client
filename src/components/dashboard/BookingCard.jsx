@@ -65,8 +65,12 @@ const BookingCard = ({
   const timeSlotStr = (() => {
     const ts = booking.scheduledTimeSlot;
     if (!ts) return null;
-    if (typeof ts === "object" && ts.start) return `${ts.start}${ts.end ? ` – ${ts.end}` : ""}`;
+    if (typeof ts === "object" && ts.start) {
+      if (ts.start === "00:00" && (!ts.end || ts.end === "00:00")) return null;
+      return `${ts.start}${ts.end ? ` – ${ts.end}` : ""}`;
+    }
     if (typeof ts !== "string") return null;
+    if (ts === "00:00" || ts === "00:00 - 00:00") return null;
     // Old bookings have range format like "10:00 - 12:00" — return as-is
     if (ts.includes("-") || ts.includes("–")) return ts;
     // New bookings: single time point with estimatedDuration

@@ -473,6 +473,13 @@ export const mapBooking = (booking) => {
     formattedScheduledDateTime: (() => {
       const ts = booking.scheduledTimeSlot;
       const dur = booking.estimatedDuration;
+      // Guard "00:00" slots — show date only
+      if (ts === "00:00" || ts === "00:00 - 00:00") {
+        return formatDateTime(booking.scheduledDate);
+      }
+      if (typeof ts === "object" && ts?.start === "00:00" && (!ts?.end || ts?.end === "00:00")) {
+        return formatDateTime(booking.scheduledDate);
+      }
       if (ts && typeof ts === "string" && !ts.includes("-") && !ts.includes("–") && dur && dur > 30) {
         const slotsNeeded = Math.ceil(dur / 30);
         const [h, m] = ts.split(":").map(Number);
