@@ -649,7 +649,8 @@ const BookingDetailDrawer = ({
                       <p className="text-sm text-slate-700 dark:text-slate-300">
                         {(() => {
                           const ts = booking.scheduledTimeSlot;
-                          if (typeof ts !== "string") return ts;
+                          if (typeof ts === "object" && ts.start) return `${ts.start}${ts.end ? ` – ${ts.end}` : ""}`;
+                          if (typeof ts !== "string") return null;
                           if (ts.includes("-") || ts.includes("–")) return ts;
                           const dur = booking.estimatedDuration;
                           if (dur && dur > 30) {
