@@ -136,7 +136,7 @@ const DashboardRightSidebar = () => {
               <Avatar name={provider.name} size="sm" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{provider.name}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{provider.location}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{typeof provider.location === "object" ? provider.location.city || "" : provider.location || ""}</p>
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-xs font-medium text-warning-500">★</span>

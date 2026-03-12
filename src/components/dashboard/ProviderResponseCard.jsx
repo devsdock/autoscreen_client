@@ -620,7 +620,9 @@ const ProviderResponseCard = ({
             <MapPin size={12} />
             {Array.isArray(provider.serviceAreas)
               ? provider.serviceAreas.join(", ")
-              : provider.serviceArea || provider.address?.city}
+              : (typeof provider.serviceArea === "object"
+                  ? provider.serviceArea?.location || provider.serviceArea?.address?.city || provider.serviceArea?.cities?.join(", ")
+                  : provider.serviceArea) || provider.address?.city}
           </div>
         )}
 

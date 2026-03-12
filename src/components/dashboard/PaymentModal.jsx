@@ -187,7 +187,7 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
               {/* Vehicle + Reg row */}
               {payment.vehicle && (
                 <div className="text-sm text-slate-600 dark:text-slate-400 mb-3.5 pb-3.5 border-b border-slate-200 dark:border-slate-700">
-                  <strong className="text-slate-900 dark:text-white">{payment.vehicle}</strong>
+                  <strong className="text-slate-900 dark:text-white">{typeof payment.vehicle === "object" ? `${payment.vehicle.year || ""} ${payment.vehicle.make || ""} ${payment.vehicle.model || ""}`.trim() : payment.vehicle}</strong>
                   {payment.registrationNumber && (
                     <>
                       {" · "}

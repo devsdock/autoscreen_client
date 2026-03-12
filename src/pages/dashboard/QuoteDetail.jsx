@@ -107,7 +107,7 @@ const QuoteDetail = () => {
 
             <div>
               <h2 className="text-xl font-semibold text-slate-900">
-                {quote.vehicle}
+                {quote.vehicleFormatted || "Unknown Vehicle"}
               </h2>
               <p className="text-slate-600 mt-1">
                 {Array.isArray(quote.glassTypes) && quote.glassTypes.length > 0
@@ -124,7 +124,7 @@ const QuoteDetail = () => {
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-600">
               <span className="flex items-center gap-1.5">
                 <MapPin size={16} className="text-slate-400" />
-                {quote.location}
+                {typeof quote.location === "object" ? [quote.location.suburb, quote.location.city].filter(Boolean).join(", ") || "N/A" : quote.location}
               </span>
               <span className="flex items-center gap-1.5">
                 <Clock size={16} className="text-slate-400" />
