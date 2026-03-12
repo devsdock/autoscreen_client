@@ -131,9 +131,23 @@ client.interceptors.response.use(
     } else {
     }
 
-    return Promise.reject(
-      error.response?.data || error.response || error.message,
-    );
+    // Sanitize error — nginx/proxy may return raw HTML (e.g. 413, 502, 504)
+    const rawData = error.response?.data;
+    const status = error.response?.status;
+
+    if (typeof rawData === "string" && rawData.trim().startsWith("<")) {
+      const friendly =
+        status === 413
+          ? "The file or request is too large. Please reduce the size and try again."
+          : status === 502 || status === 503
+            ? "The server is temporarily unavailable. Please try again shortly."
+            : status === 504
+              ? "The request timed out. Please try again."
+              : "Something went wrong. Please try again.";
+      return Promise.reject({ success: false, message: friendly, status });
+    }
+
+    return Promise.reject(rawData || error.response || error.message);
   },
 );
 
