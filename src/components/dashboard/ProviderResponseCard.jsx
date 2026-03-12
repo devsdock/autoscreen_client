@@ -621,7 +621,7 @@ const ProviderResponseCard = ({
             {Array.isArray(provider.serviceAreas)
               ? provider.serviceAreas.join(", ")
               : (typeof provider.serviceArea === "object"
-                  ? provider.serviceArea?.location || provider.serviceArea?.address?.city || provider.serviceArea?.cities?.join(", ")
+                  ? provider.serviceArea?.address?.city || provider.serviceArea?.cities?.join(", ")
                   : provider.serviceArea) || provider.address?.city}
           </div>
         )}

@@ -471,51 +471,6 @@ const useDashboardStore = create(
         }
       },
 
-      acceptQuote: async (quoteId, responseId, data = {}) => {
-        try {
-          const quoteService = (await import("../services/quoteService"))
-            .default;
-
-          const result = await quoteService.acceptQuoteResponse(
-            quoteId,
-            responseId,
-            data,
-          );
-
-          if (result.success) {
-            const bookingData = result.data || null;
-
-            // Refresh in background — failures must not mask a successful acceptance
-            get().fetchQuotes().catch(() => {});
-            get().fetchBookings().catch(() => {});
-
-            get().addActivity({
-              type: "quote_accepted",
-              message: `Quote accepted! Booking created.`,
-              relatedId: quoteId,
-            });
-
-            return bookingData;
-          } else {
-            get().addToast({
-              type: "error",
-              message: result.message || "Failed to accept quote",
-            });
-            return null;
-          }
-        } catch (error) {
-          get().addToast({
-            type: "error",
-            message:
-              error?.response?.data?.error ||
-              "An error occurred while accepting the quote",
-          });
-          return null;
-        }
-      },
-
-      // Note: closeQuoteRequest is defined above in Quote actions
-
       // Booking actions
       setBookings: (bookings) => set({ bookings }),
       fetchBookings: async () => {

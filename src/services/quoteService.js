@@ -70,17 +70,6 @@ const quoteService = {
   },
 
   /**
-   * Accept a quote response and create booking
-   */
-  acceptQuoteResponse: (quoteId, responseId, data = {}) => {
-    return request({
-      method: "POST",
-      url: `/customer/quotes/${quoteId}/accept/${responseId}`,
-      data,
-    });
-  },
-
-  /**
    * Cancel a quote
    */
   cancelQuote: (quoteId) => {

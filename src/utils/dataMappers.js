@@ -243,7 +243,7 @@ export const mapBooking = (booking) => {
           booking.actualTimes?.confirmedAt ||
           booking.statusHistory?.find((h) => h.status === "confirmed")
             ?.timestamp,
-        completed: isPaid || currentStatusLevel >= 4,
+        completed: isPaid,
       });
 
       // 5. Appointment Scheduled
@@ -314,7 +314,7 @@ export const mapBooking = (booking) => {
       stages.push({
         status: "Confirmed",
         date: booking.actualTimes?.confirmedAt || booking.confirmedAt,
-        completed: isPaid || currentStatusLevel >= 4,
+        completed: isPaid,
       });
 
       // 5. In Progress

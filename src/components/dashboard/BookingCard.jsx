@@ -51,7 +51,7 @@ const BookingCard = ({
   const hasSchedule = !!booking.scheduledDate;
   const isCompletedByFitter = booking.status?.toLowerCase() === "completed-by-fitter";
   const isCompleted = booking.status?.toLowerCase() === "completed";
-  const isScheduled = booking.status?.toLowerCase() === "confirmed" && hasSchedule;
+  const isScheduled = booking.status?.toLowerCase() === "confirmed" && hasSchedule && isPaid;
 
   const quoteId =
     booking.quote?._id ||

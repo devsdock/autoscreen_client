@@ -829,6 +829,13 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 12 March 2026 (Dead Code Cleanup — Old Quote Acceptance Flow)
+
+- **`useDashboardStore.js` — `acceptQuote` action removed**: Deleted the `acceptQuote` store action (~40 lines) that called the now-removed `acceptQuoteResponse` backend endpoint. The current flow uses `PaymentModal` → `initializeQuotePayment` directly.
+- **`quoteService.js` — `acceptQuoteResponse` method removed**: Deleted the API method that called `POST /customer/quotes/:quoteId/accept/:responseId`.
+- **`QuoteDetail.jsx` deleted**: Old quote detail page that used `acceptQuote` + `SelectSlotModal`. Not imported by any component or route — superseded by `QuoteDetailPanel.jsx` (used in `Quotes.jsx` and `QuoteDetailPage.jsx`).
+- **`SelectSlotModal.jsx` deleted**: Date/time slot selector component only used by the deleted `QuoteDetail.jsx`. Scheduling now happens post-payment on `BookAppointment.jsx`.
+
 ### 11 March 2026 (Dead Code Removal + Cancel / Service Display Fixes)
 
 - **`App.jsx`** — Removed 7 unused direct-booking page imports (BookSearch, ProviderList, ProviderProfile, BookingForm, BookingSearching, BookingPending, BookingConfirmation) and their 5 routes (`/book`, `/book/request`, `/booking/searching/:id`, `/booking/pending/:id`, `/booking/confirmation/:id`). Page files deleted from disk. Platform is quote-only; these routes were unreachable.
