@@ -96,6 +96,13 @@ const quoteService = {
       url: `/customer/quotes/providers/${providerId}/availability?date=${date}`,
     });
   },
+
+  getProviderBlockedDates: (providerId) => {
+    return request({
+      method: "GET",
+      url: `/customer/quotes/providers/${providerId}/blocked-dates`,
+    });
+  },
 };
 
 export default quoteService;

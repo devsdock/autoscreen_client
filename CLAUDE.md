@@ -801,6 +801,13 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 13 March 2026 (Blocked Dates in Calendar & Slot Format Fix)
+
+- **`PremiumDatePicker.jsx` — `disabledDates` prop**: New prop accepting an array of YYYY-MM-DD strings. Dates in the blocklist are greyed out and unselectable, checked before the `availableDates` whitelist and `minDate` in `isDisabled()`.
+- **`SelectSlotModal.jsx` — blocked dates fetch**: On modal open, fetches provider's blocked dates via `quoteService.getProviderBlockedDates(provider.id)` and passes them to `PremiumDatePicker` as `disabledDates`. Adds `isBlocked` fallback message ("Provider is unavailable on this date") before the existing "Provider is closed" check.
+- **`SelectSlotModal.jsx` — slot format fix**: Backend returns slots as `[{ time, status }]` objects. Previously treated as strings, causing `[object Object]` in the dropdown. Now normalizes: filters to `status === "available"` only, extracts `time` string.
+- **`quoteService.js` — `getProviderBlockedDates`**: New service method calling `GET /customer/quotes/providers/:providerId/blocked-dates`.
+
 ### March 2026 (Maintenance & Robustness)
 
 - **Service & Glass Multi-select**: Implemented multi-select for services and glass types in `BookingForm.jsx`. Introduced `serviceSelections` grouping logic to map glass types to specific services.

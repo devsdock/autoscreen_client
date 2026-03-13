@@ -24,6 +24,7 @@ const SelectSlotModal = ({
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [dayInfo, setDayInfo] = useState(null);
   const [error, setError] = useState("");
+  const [blockedDates, setBlockedDates] = useState([]);
 
   // Reset when modal opens
   useEffect(() => {
@@ -33,8 +34,20 @@ const SelectSlotModal = ({
       setAvailableSlots([]);
       setDayInfo(null);
       setError("");
+      setBlockedDates([]);
     }
   }, [isOpen]);
+
+  // Fetch blocked dates when modal opens with a provider
+  useEffect(() => {
+    if (isOpen && provider?.id) {
+      quoteService.getProviderBlockedDates(provider.id)
+        .then(res => {
+          if (res.success) setBlockedDates(res.data || []);
+        })
+        .catch(() => {});
+    }
+  }, [isOpen, provider?.id]);
 
   // Fetch availability when date changes
   useEffect(() => {
@@ -53,7 +66,11 @@ const SelectSlotModal = ({
 
         if (result.success) {
           setDayInfo(result.data);
-          setAvailableSlots(result.data.slots || []);
+          const rawSlots = result.data.slots || [];
+          const available = rawSlots
+            .filter(s => typeof s === "string" || s.status === "available")
+            .map(s => typeof s === "string" ? s : s.time);
+          setAvailableSlots(available);
         } else {
           setError("Failed to load availability");
           setAvailableSlots([]);
@@ -128,6 +145,7 @@ const SelectSlotModal = ({
           onChange={(date) => setSelectedDate(date)}
           placeholder="Choose a date"
           minDate={minDate}
+          disabledDates={blockedDates}
           required
         />
 
@@ -152,6 +170,16 @@ const SelectSlotModal = ({
                 />
                 <p className="text-sm text-danger-600 dark:text-danger-400">
                   {error}
+                </p>
+              </div>
+            ) : dayInfo && dayInfo.isBlocked ? (
+              <div className="p-4 bg-warning-50 dark:bg-warning-900/20 rounded-xl text-center">
+                <AlertCircle
+                  size={20}
+                  className="mx-auto text-warning-500 mb-2"
+                />
+                <p className="text-sm text-warning-600 dark:text-warning-400">
+                  Provider is unavailable on this date. Please select a different date.
                 </p>
               </div>
             ) : dayInfo && !dayInfo.isOpen ? (
