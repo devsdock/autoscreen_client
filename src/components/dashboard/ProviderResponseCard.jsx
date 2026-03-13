@@ -618,11 +618,28 @@ const ProviderResponseCard = ({
             className="text-slate-400 dark:text-slate-500"
           >
             <MapPin size={12} />
-            {Array.isArray(provider.serviceAreas)
-              ? provider.serviceAreas.join(", ")
-              : (typeof provider.serviceArea === "object"
-                  ? provider.serviceArea?.address?.city || provider.serviceArea?.cities?.join(", ")
-                  : provider.serviceArea) || provider.address?.city}
+            {(() => {
+              if (Array.isArray(provider.serviceAreas) && provider.serviceAreas.length > 0)
+                return provider.serviceAreas.join(", ");
+              // Show provider's address city if available
+              if (provider.address?.city) return provider.address.city;
+              if (typeof provider.serviceArea === "object") {
+                if (provider.serviceArea?.address?.city) return provider.serviceArea.address.city;
+                // Match client's requested city from provider's service area cities
+                const cities = provider.serviceArea?.cities;
+                if (Array.isArray(cities) && cities.length > 0) {
+                  const requestedCity = quoteData?.location?.city;
+                  if (requestedCity) {
+                    const match = cities.find(
+                      (c) => c.toLowerCase() === requestedCity.toLowerCase()
+                    );
+                    if (match) return match;
+                  }
+                  return cities[0];
+                }
+              }
+              return typeof provider.serviceArea === "string" ? provider.serviceArea : null;
+            })()}
           </div>
         )}
 
