@@ -22,7 +22,7 @@ export const formatCurrency = (amount) => {
 };
 
 // Helper to format date
-export { formatDate, getRelativeTime } from "../utils/dateUtils";
+export { formatDate, getRelativeTime, getRelativeTimeDetailed, formatDateHuman } from "../utils/dateUtils";
 
 const useDashboardStore = create(
   persist(
@@ -266,11 +266,11 @@ const useDashboardStore = create(
 
       // Quote actions
       setQuotes: (quotes) => set({ quotes }),
-      fetchQuotes: async () => {
+      fetchQuotes: async (params) => {
         try {
           const quoteService = (await import("../services/quoteService"))
             .default;
-          const response = await quoteService.getQuotes();
+          const response = await quoteService.getQuotes(params);
           if (response.success) {
             const { mapQuote } = await import("../utils/dataMappers");
             const mappedQuotes = response.data.map(mapQuote);
@@ -284,18 +284,46 @@ const useDashboardStore = create(
                     ...r,
                     id: r._id || r.id,
                     quoteRequestId: q.id,
-                    provider: r.provider || { name: "Provider" }, // Ensure provider exists
+                    provider: r.provider || { name: "Provider" },
                   });
                 });
               }
             });
 
-            set({
-              quotes: mappedQuotes,
-              quoteResponses: allResponses,
-            });
+            // If fetching a specific group, merge with existing quotes
+            if (params?.group) {
+              set((state) => {
+                // Remove old quotes of the same group and add new ones
+                const groupStatuses = {
+                  active: ["Open", "Responses"],
+                  accepted: ["Accepted"],
+                  closed: ["Closed"],
+                };
+                const statusesForGroup = groupStatuses[params.group] || [];
+                const otherQuotes = state.quotes.filter(
+                  (q) => !statusesForGroup.includes(q.status),
+                );
+                const otherResponses = state.quoteResponses.filter(
+                  (r) => !mappedQuotes.some((q) => q.id === r.quoteRequestId),
+                );
+                return {
+                  quotes: [...otherQuotes, ...mappedQuotes],
+                  quoteResponses: [...otherResponses, ...allResponses],
+                };
+              });
+            } else {
+              set({
+                quotes: mappedQuotes,
+                quoteResponses: allResponses,
+              });
+            }
+
+            return { quotes: mappedQuotes, pagination: response.pagination };
           }
-        } catch (error) {}
+          return { quotes: [], pagination: null };
+        } catch (error) {
+          return { quotes: [], pagination: null };
+        }
       },
 
       fetchQuoteDetails: async (quoteId) => {
@@ -442,122 +470,6 @@ const useDashboardStore = create(
           return false;
         }
       },
-
-      acceptQuote: async (quoteId, responseId, data = {}) => {
-        try {
-          const quoteService = (await import("../services/quoteService"))
-            .default;
-
-          const result = await quoteService.acceptQuoteResponse(
-            quoteId,
-            responseId,
-            data,
-          );
-
-          if (result.success) {
-            const bookingData = result.data || null;
-
-            // Refresh in background — failures must not mask a successful acceptance
-            get().fetchQuotes().catch(() => {});
-            get().fetchBookings().catch(() => {});
-
-            get().addActivity({
-              type: "quote_accepted",
-              message: `Quote accepted! Booking created.`,
-              relatedId: quoteId,
-            });
-
-            return bookingData;
-          } else {
-            get().addToast({
-              type: "error",
-              message: result.message || "Failed to accept quote",
-            });
-            return null;
-          }
-        } catch (error) {
-          get().addToast({
-            type: "error",
-            message:
-              error?.response?.data?.error ||
-              "An error occurred while accepting the quote",
-          });
-          return null;
-        }
-      },
-
-      acceptProposedSlot: async (bookingId) => {
-        try {
-          const bookingService = (await import("../services/bookingService"))
-            .default;
-          const result = await bookingService.acceptProposedSlot(bookingId);
-          if (result.success) {
-            await get().fetchBookings();
-            return true;
-          }
-          get().addToast({
-            type: "error",
-            message: result.message || "Failed to accept time slot",
-          });
-          return false;
-        } catch (error) {
-          get().addToast({
-            type: "error",
-            message: "An error occurred",
-          });
-          return false;
-        }
-      },
-
-      rejectProposedSlot: async (bookingId) => {
-        try {
-          const bookingService = (await import("../services/bookingService"))
-            .default;
-          const result = await bookingService.rejectProposedSlot(bookingId);
-          if (result.success) {
-            await get().fetchBookings();
-            return true;
-          }
-          get().addToast({
-            type: "error",
-            message: result.message || "Failed to reject time slot",
-          });
-          return false;
-        } catch (error) {
-          get().addToast({
-            type: "error",
-            message: "An error occurred",
-          });
-          return false;
-        }
-      },
-
-      counterProposeSlot: async (bookingId, data) => {
-        try {
-          const bookingService = (await import("../services/bookingService"))
-            .default;
-          const result = await bookingService.counterProposeSlot(
-            bookingId,
-            data,
-          );
-          if (result.success) {
-            return true;
-          }
-          get().addToast({
-            type: "error",
-            message: result.message || "Failed to send time proposal",
-          });
-          return false;
-        } catch (error) {
-          get().addToast({
-            type: "error",
-            message: "An error occurred",
-          });
-          return false;
-        }
-      },
-
-      // Note: closeQuoteRequest is defined above in Quote actions
 
       // Booking actions
       setBookings: (bookings) => set({ bookings }),

@@ -1,5 +1,4 @@
 import {
-  X,
   Upload,
   Trash2,
   Check,
@@ -16,17 +15,20 @@ import useDashboardStore from "../../store/useDashboardStore";
 import vehicleService from "../../services/vehicleService";
 import geocodingService from "../../services/geocodingService";
 import publicSettingsService from "../../services/publicSettingsService";
-import { useState, useRef, useEffect } from "react";
-import PremiumSelect from "../ui/PremiumSelect";
-
+import React, { useState, useRef, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import PremiumSelect from "../../components/ui/PremiumSelect";
 import { CITIES } from "../../data/cities";
 
 const TOTAL_STEPS = 3;
 
-const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
-  const { createQuote, user, vehicles, addresses, quotes } =
-    useDashboardStore();
+const NewQuote = () => {
+  const { createQuote, user, vehicles, addresses } = useDashboardStore();
   const fileInputRef = useRef(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const prefillVehicle = location.state?.prefillVehicle || null;
 
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -65,62 +67,28 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
   const [glassTypes, setGlassTypes] = useState([]);
   const [adminServiceTypes, setAdminServiceTypes] = useState([]);
 
-  // Initialize form when opening
+  // Pre-fill vehicle on mount
   useEffect(() => {
-    if (isOpen) {
-      setFormData({
-        vehicleMake: "",
-        vehicleModel: "",
-        vehicleYear: new Date().getFullYear().toString(),
-        serviceTypes: [],
-        glassTypes: [],
-        serviceSelections: [],
-        city: "",
-        postcode: "",
-        addressLine1: "",
-        coordinates: null,
-        preferredDate: null,
-        preferredTimeSlot: null,
-        notes: "",
-        images: [],
-        suburb: "",
-        hasAdasCamera: false,
-        hasRainSensor: false,
-      });
-      setErrors({});
-      setCurrentStep(1);
+    const targetVehicle =
+      prefillVehicle ||
+      (vehicles.length > 0
+        ? vehicles.find((v) => v.isDefault) || vehicles[0]
+        : null);
+    if (targetVehicle) {
+      setFormData((prev) => ({
+        ...prev,
+        vehicleMake: targetVehicle.make || prev.vehicleMake,
+        vehicleModel: targetVehicle.model || prev.vehicleModel,
+        vehicleYear: targetVehicle.year?.toString() || prev.vehicleYear,
+        hasAdasCamera: targetVehicle.hasAdasCamera || prev.hasAdasCamera,
+        hasRainSensor: targetVehicle.hasRainSensor || prev.hasRainSensor,
+      }));
     }
-  }, [isOpen]);
+  }, []);
 
-  // Pre-fill Logic
+  // Pre-fill address when cities are loaded
   useEffect(() => {
-    if (isOpen && !formData.vehicleMake) {
-      const targetVehicle =
-        prefillVehicle ||
-        (vehicles.length > 0
-          ? vehicles.find((v) => v.isDefault) || vehicles[0]
-          : null);
-      if (targetVehicle) {
-        setFormData((prev) => ({
-          ...prev,
-          vehicleMake: targetVehicle.make || prev.vehicleMake,
-          vehicleModel: targetVehicle.model || prev.vehicleModel,
-          vehicleYear: targetVehicle.year?.toString() || prev.vehicleYear,
-          hasAdasCamera: targetVehicle.hasAdasCamera || prev.hasAdasCamera,
-          hasRainSensor: targetVehicle.hasRainSensor || prev.hasRainSensor,
-        }));
-      }
-    }
-  }, [isOpen, user, vehicles, prefillVehicle, formData.vehicleMake]);
-
-  useEffect(() => {
-    if (
-      isOpen &&
-      user &&
-      addresses.length > 0 &&
-      !formData.city &&
-      cities.length > 0
-    ) {
+    if (user && addresses.length > 0 && !formData.city && cities.length > 0) {
       const defaultAddress =
         addresses.find((a) => a.isDefault) || addresses[0];
       if (defaultAddress) {
@@ -145,7 +113,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
         }
       }
     }
-  }, [isOpen, user, addresses, cities, formData.city]);
+  }, [user, addresses, cities]);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 20 }, (_, i) => currentYear - i);
@@ -174,7 +142,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
     fetchMakes();
   }, []);
 
-  // Fetch public settings
+  // Fetch public settings on mount
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -233,7 +201,12 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
               setMakeLookup((prev) => ({ ...prev, [make.name]: make._id }));
             }
           })
-          .catch(() => {});
+          .catch((err) => {
+            console.error("Failed to create vehicle make:", err);
+            setAvailableMakes((prev) =>
+              [...new Set([...prev, value])].sort(),
+            );
+          });
       }
     }
 
@@ -254,7 +227,12 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                 );
               }
             })
-            .catch(() => {});
+            .catch((err) => {
+              console.error("Failed to create vehicle model:", err);
+              setAvailableModels((prev) =>
+                [...new Set([...prev, value])].sort(),
+              );
+            });
         }
       }
     }
@@ -471,11 +449,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
       // Go to step with errors
       if (errors.vehicleMake || errors.vehicleModel || errors.vehicleYear) {
         setCurrentStep(1);
-      } else if (
-        errors.serviceType ||
-        errors.glassType ||
-        errors.images
-      ) {
+      } else if (errors.serviceType || errors.glassType || errors.images) {
         setCurrentStep(2);
       } else if (errors.city) {
         setCurrentStep(3);
@@ -533,6 +507,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
         })(),
         glassTypes: formData.glassTypes.map((g) => {
           const lower = g.toLowerCase().trim();
+          // Map display names to backend enum values
           if (lower === "windscreen") return "windscreen";
           if (lower.includes("front left") || lower.includes("front-left")) return "front-side-left";
           if (lower.includes("front right") || lower.includes("front-right")) return "front-side-right";
@@ -542,6 +517,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
           if (lower.includes("quarter")) return "quarter-glass";
           if (lower.includes("sunroof")) return "sunroof";
           if (lower.includes("full car") || lower.includes("all")) return "all";
+          // Fallback: normalize as before
           return lower.replace(/\s+/g, "-").replace(/[()]/g, "");
         }),
         serviceSelections: formData.serviceSelections,
@@ -578,26 +554,8 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
           } providers notified.`,
       });
 
-      setFormData({
-        vehicleMake: "",
-        vehicleModel: "",
-        vehicleYear: new Date().getFullYear().toString(),
-        serviceTypes: [],
-        glassTypes: [],
-        serviceSelections: [],
-        city: "",
-        postcode: "",
-        addressLine1: "",
-        coordinates: null,
-        preferredDate: null,
-        preferredTimeSlot: null,
-        notes: "",
-        images: [],
-      });
-      setModelSearchQuery("");
-      setCurrentStep(1);
-
-      onClose(response?.data?._id || response?.data?.quoteNumber);
+      const quoteId = response?.data?._id || response?.data?.quoteNumber;
+      navigate(`/dashboard/quotes/${quoteId}`);
     } catch (error) {
       console.error("Error creating quote:", error);
       const { addToast } = useDashboardStore.getState();
@@ -610,8 +568,6 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
       setIsSubmitting(false);
     }
   };
-
-  if (!isOpen) return null;
 
   // Stepper config
   const steps = [
@@ -628,109 +584,86 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 pointer-events-none">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity pointer-events-auto"
-        onClick={() => onClose()}
-      />
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* Page Header */}
+      <div className="text-center">
+        <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          Request a{" "}
+          <span className="text-primary-600 dark:text-primary-400 italic">
+            Quote
+          </span>
+        </h1>
+        <p className="text-[15px] text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+          Quick, easy, and free. Enter your details below to receive competitive
+          quotes from trusted professionals.
+        </p>
+      </div>
 
-      {/* Modal */}
-      <div className="relative bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-200/50 dark:border-slate-700/50 animate-in fade-in zoom-in duration-200 pointer-events-auto">
-        {/* Header */}
-        <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800">
-          {/* Close button */}
-          <button
-            onClick={() => onClose()}
-            className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all z-10"
-          >
-            <X size={20} />
-          </button>
-
-          {/* Title */}
-          <div className="text-center mb-5">
-            <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Request a{" "}
-              <span className="text-primary-600 dark:text-primary-400 italic">
-                Quote
-              </span>
-            </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-[460px] mx-auto leading-relaxed">
-              Quick, easy, and free. Enter your details below to receive
-              competitive quotes from trusted professionals.
-            </p>
-          </div>
-
-          {/* Icon Stepper */}
-          <div className="max-w-md mx-auto">
-            {/* Circles + Lines */}
-            <div className="flex items-center mb-2">
-              {steps.map((step, i) => {
-                const state = getStepState(i);
-                const StepIcon = step.icon;
-                return (
+      {/* Stepper */}
+      <div className="max-w-md mx-auto">
+        {/* Circles + Lines row */}
+        <div className="flex items-center">
+          {steps.map((step, i) => {
+            const state = getStepState(i);
+            const StepIcon = step.icon;
+            return (
+              <React.Fragment key={i}>
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                    state === "done"
+                      ? "bg-primary-600 text-white"
+                      : state === "now"
+                        ? "bg-primary-600 text-white ring-4 ring-primary-100 dark:ring-primary-900/40"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-[1.5px] border-slate-200 dark:border-slate-700"
+                  }`}
+                >
+                  {state === "done" ? (
+                    <Check size={14} strokeWidth={3} />
+                  ) : (
+                    <StepIcon size={16} />
+                  )}
+                </div>
+                {i < steps.length - 1 && (
                   <div
-                    key={i}
-                    className={`flex items-center ${i < steps.length - 1 ? "flex-1" : "flex-none"}`}
-                  >
-                    {/* Circle */}
-                    <div
-                      className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-300 ${
-                        state === "done"
-                          ? "bg-primary-600 text-white"
-                          : state === "now"
-                            ? "bg-primary-600 text-white ring-4 ring-primary-100 dark:ring-primary-900/40"
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-[1.5px] border-slate-200 dark:border-slate-700"
-                      }`}
-                    >
-                      {state === "done" ? (
-                        <Check size={14} strokeWidth={3} />
-                      ) : (
-                        <StepIcon size={16} />
-                      )}
-                    </div>
-                    {/* Line */}
-                    {i < steps.length - 1 && (
-                      <div
-                        className={`flex-1 h-0.5 mx-1 transition-all duration-300 ${
-                          i + 1 < currentStep
-                            ? "bg-primary-500"
-                            : "bg-slate-200 dark:bg-slate-700"
-                        }`}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Labels */}
-            <div className="flex justify-between">
-              {steps.map((step, i) => {
-                const state = getStepState(i);
-                return (
-                  <div
-                    key={i}
-                    className={`text-[11px] font-semibold text-center ${
-                      i < steps.length - 1 ? "flex-1" : "flex-none"
-                    } ${
-                      state === "done"
-                        ? "text-primary-600 dark:text-primary-400"
-                        : state === "now"
-                          ? "text-primary-700 dark:text-primary-300 font-bold"
-                          : "text-slate-400 dark:text-slate-500"
+                    className={`flex-1 h-0.5 mx-2 transition-all duration-300 ${
+                      i + 1 < currentStep
+                        ? "bg-primary-500"
+                        : "bg-slate-200 dark:bg-slate-700"
                     }`}
-                  >
-                    {step.label}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
         </div>
+        {/* Labels row */}
+        <div className="flex justify-between mt-1.5">
+          {steps.map((step, i) => {
+            const state = getStepState(i);
+            return (
+              <span
+                key={i}
+                className={`text-[11px] font-semibold whitespace-nowrap text-center ${
+                  i === 0 ? "text-left" : i === steps.length - 1 ? "text-right" : "text-center"
+                } ${
+                  state === "done"
+                    ? "text-primary-600 dark:text-primary-400"
+                    : state === "now"
+                      ? "text-primary-700 dark:text-primary-300 font-bold"
+                      : "text-slate-400 dark:text-slate-500"
+                }`}
+              >
+                {step.label}
+              </span>
+            );
+          })}
+        </div>
+      </div>
 
+      {/* Wizard Card */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200/70 dark:border-slate-700/50 overflow-hidden">
         {/* Step Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="p-6 sm:p-8">
           {/* Step 1: Vehicle Details */}
           {currentStep === 1 && (
             <div>
@@ -785,7 +718,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                 />
               </div>
 
-              <div className="max-w-[50%]">
+              <div className="sm:w-1/2 sm:pr-2">
                 <PremiumSelect
                   label="Year"
                   value={formData.vehicleYear}
@@ -814,17 +747,16 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
               </p>
 
               {/* Service Type Cards */}
-              <div className="mb-1">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1">
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <Wrench
-                    size={13}
+                    size={14}
                     className="text-slate-400 dark:text-slate-500"
                   />
-                  Service Type{" "}
-                  <span className="text-red-500">*</span>
+                  Service Type <span className="text-red-500">*</span>
                 </label>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                 {adminServiceTypes.map((st) => {
                   const isSelected = formData.serviceTypes?.includes(st.name);
                   return (
@@ -832,32 +764,22 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                       key={st.name}
                       type="button"
                       onClick={() => handleToggleService(st.name)}
-                      className={`relative p-4 rounded-xl border-[1.5px] text-left transition-all ${
+                      className={`relative p-5 rounded-xl border text-left transition-all ${
                         isSelected
-                          ? "border-primary-600 bg-primary-50 dark:bg-primary-900/20 shadow-[0_0_0_3px_rgba(37,99,235,0.1)]"
-                          : "border-slate-200 dark:border-slate-700 hover:border-primary-300 hover:bg-primary-50/50 dark:hover:border-primary-700 dark:hover:bg-primary-900/10"
+                          ? "border-primary-600 bg-primary-50 dark:bg-primary-900/20 ring-2 ring-primary-600/20 dark:ring-primary-400/20"
+                          : "border-slate-200 dark:border-slate-700 hover:border-primary-400/50 hover:bg-slate-50 dark:hover:border-primary-600/50 dark:hover:bg-slate-800/50"
                       }`}
                     >
                       {/* Check circle */}
-                      <div
-                        className={`absolute top-3 right-3 w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center transition-all ${
-                          isSelected
-                            ? "bg-primary-600 border-primary-600"
-                            : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600"
-                        }`}
-                      >
-                        {isSelected && (
-                          <Check
-                            size={11}
-                            strokeWidth={3}
-                            className="text-white"
-                          />
-                        )}
-                      </div>
-                      <div className="font-bold text-[15px] text-slate-900 dark:text-white pr-6 mb-0.5">
+                      {isSelected && (
+                        <div className="absolute top-3 right-3 w-5 h-5 bg-primary-600 text-white rounded-full flex items-center justify-center">
+                          <Check size={12} strokeWidth={3} />
+                        </div>
+                      )}
+                      <div className="font-semibold text-[15px] text-slate-900 dark:text-white pr-6">
                         {st.name}
                       </div>
-                      <div className="text-[13px] text-slate-500 dark:text-slate-400 leading-snug">
+                      <div className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-snug">
                         {st.name.toLowerCase().includes("replacement")
                           ? "Full windscreen and window replacement"
                           : st.name.toLowerCase().includes("repair")
@@ -871,7 +793,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                 })}
               </div>
               {errors.serviceType && (
-                <p className="text-red-500 text-sm mb-4">
+                <p className="text-red-500 text-sm mt-2 mb-4">
                   {errors.serviceType}
                 </p>
               )}
@@ -879,7 +801,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
               {/* Glass Type per service */}
               {formData.serviceSelections &&
                 formData.serviceSelections.length > 0 && (
-                  <div className="space-y-4 mb-5">
+                  <div className="space-y-6 mb-6">
                     {formData.serviceSelections.map((selection) => {
                       const serviceDef = adminServiceTypes.find(
                         (s) => s.name === selection.serviceName,
@@ -893,19 +815,18 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                       return (
                         <div
                           key={selection.serviceName}
-                          className="bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-xl p-4"
+                          className="p-5 border border-slate-200 dark:border-slate-700 rounded-2xl bg-white dark:bg-slate-800/30 shadow-sm"
                         >
-                          <div className="flex items-center gap-2 mb-3">
-                            <Wrench
-                              size={15}
-                              className="text-primary-600 dark:text-primary-400"
-                            />
-                            <h4 className="font-bold text-sm text-slate-800 dark:text-white">
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center text-primary-600 dark:text-primary-400">
+                              <Wrench size={16} />
+                            </div>
+                            <h4 className="font-bold text-slate-900 dark:text-white">
                               {selection.serviceName}
                             </h4>
                           </div>
 
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                             {validGlassForThisService.map((glassName) => {
                               const isSelected =
                                 selection.glassTypes.includes(glassName);
@@ -919,13 +840,18 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                                       glassName,
                                     )
                                   }
-                                  className={`p-2 rounded-lg border-[1.5px] text-xs font-semibold text-center transition-all leading-tight ${
+                                  className={`relative p-3 rounded-xl border text-xs font-medium text-left transition-all ${
                                     isSelected
-                                      ? "border-primary-600 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 shadow-[0_0_0_2px_rgba(37,99,235,0.1)]"
-                                      : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 hover:border-primary-400 hover:text-primary-700 hover:bg-primary-50 dark:hover:border-primary-600 dark:hover:text-primary-300 dark:hover:bg-primary-900/10"
+                                      ? "border-primary-600 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 ring-2 ring-primary-600/20 dark:ring-primary-400/20"
+                                      : "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-primary-400/50 hover:bg-slate-50 dark:hover:border-primary-600/50 dark:hover:bg-slate-800/50"
                                   }`}
                                 >
-                                  {glassName}
+                                  {isSelected && (
+                                    <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-primary-600 text-white rounded-full flex items-center justify-center">
+                                      <Check size={8} strokeWidth={3} />
+                                    </div>
+                                  )}
+                                  <span className={isSelected ? "pr-4" : ""}>{glassName}</span>
                                 </button>
                               );
                             })}
@@ -936,41 +862,41 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                   </div>
                 )}
               {errors.glassType && (
-                <p className="text-red-500 text-sm mb-4">{errors.glassType}</p>
+                <p className="text-red-500 text-sm mt-2 mb-4">{errors.glassType}</p>
               )}
 
               {/* Vehicle Features - Only for Windscreen */}
               {formData.glassTypes.includes("Windscreen") && (
-                <div className="mb-5">
-                  <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+                <div className="pt-5 border-t border-slate-100 dark:border-slate-800 mb-6">
+                  <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
                     Vehicle Features
                   </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button
                       type="button"
                       onClick={() =>
                         handleChange("hasAdasCamera", !formData.hasAdasCamera)
                       }
-                      className={`flex items-center gap-3 p-3 rounded-xl border-[1.5px] transition-all text-left ${
+                      className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${
                         formData.hasAdasCamera
-                          ? "border-primary-600 bg-primary-50 dark:bg-primary-900/20 shadow-[0_0_0_3px_rgba(37,99,235,0.1)]"
-                          : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                          ? "border-primary-600 bg-primary-50 dark:bg-primary-900/20 ring-2 ring-primary-600/20 dark:ring-primary-400/20"
+                          : "border-slate-200 dark:border-slate-700 hover:border-primary-400/50 hover:bg-slate-50 dark:hover:border-primary-600/50 dark:hover:bg-slate-800/50"
                       }`}
                     >
                       <div
-                        className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
+                        className={`w-6 h-6 rounded flex items-center justify-center border-2 transition-all ${
                           formData.hasAdasCamera
-                            ? "bg-primary-500 border-primary-500 text-white"
+                            ? "bg-primary-600 border-primary-600 text-white"
                             : "border-slate-300 dark:border-slate-600"
                         }`}
                       >
-                        {formData.hasAdasCamera && <Check size={12} />}
+                        {formData.hasAdasCamera && <Check size={14} />}
                       </div>
                       <div>
                         <div className="font-semibold text-slate-900 dark:text-white text-sm">
                           ADAS Camera
                         </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">
                           Advanced Driver Assistance System
                         </div>
                       </div>
@@ -981,26 +907,26 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                       onClick={() =>
                         handleChange("hasRainSensor", !formData.hasRainSensor)
                       }
-                      className={`flex items-center gap-3 p-3 rounded-xl border-[1.5px] transition-all text-left ${
+                      className={`flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${
                         formData.hasRainSensor
-                          ? "border-primary-600 bg-primary-50 dark:bg-primary-900/20 shadow-[0_0_0_3px_rgba(37,99,235,0.1)]"
-                          : "border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                          ? "border-primary-600 bg-primary-50 dark:bg-primary-900/20 ring-2 ring-primary-600/20 dark:ring-primary-400/20"
+                          : "border-slate-200 dark:border-slate-700 hover:border-primary-400/50 hover:bg-slate-50 dark:hover:border-primary-600/50 dark:hover:bg-slate-800/50"
                       }`}
                     >
                       <div
-                        className={`w-5 h-5 rounded flex items-center justify-center border transition-all ${
+                        className={`w-6 h-6 rounded flex items-center justify-center border-2 transition-all ${
                           formData.hasRainSensor
-                            ? "bg-primary-500 border-primary-500 text-white"
+                            ? "bg-primary-600 border-primary-600 text-white"
                             : "border-slate-300 dark:border-slate-600"
                         }`}
                       >
-                        {formData.hasRainSensor && <Check size={12} />}
+                        {formData.hasRainSensor && <Check size={14} />}
                       </div>
                       <div>
                         <div className="font-semibold text-slate-900 dark:text-white text-sm">
                           Rain / Light Sensor
                         </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">
                           Automatic wipers and lights
                         </div>
                       </div>
@@ -1010,35 +936,29 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
               )}
 
               {/* Photo Upload */}
-              <div className="mb-5">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1 mb-1">
+              <div className="pt-5 border-t border-slate-100 dark:border-slate-800 mb-6">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5">
                   <Upload
-                    size={13}
+                    size={14}
                     className="text-slate-400 dark:text-slate-500"
                   />
-                  Upload Photos{" "}
-                  <span className="text-red-500">*</span>
+                  Upload Photos <span className="text-red-500">*</span>
                 </label>
-                <p className="text-[13px] text-slate-400 dark:text-slate-500 mb-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
                   Add photos of the damage to help providers give accurate
                   quotes. (PNG, JPG up to 5MB each)
                 </p>
 
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-[1.5px] border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-6 text-center cursor-pointer hover:border-primary-400 dark:hover:border-primary-500 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-all"
+                  className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-8 text-center cursor-pointer hover:border-primary-400/50 dark:hover:border-primary-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all"
                 >
-                  <div className="w-11 h-11 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3">
-                    <Upload
-                      size={20}
-                      className="text-slate-400 dark:text-slate-500"
-                    />
-                  </div>
-                  <p className="text-[15px] font-semibold text-slate-700 dark:text-slate-300">
+                  <Upload
+                    size={28}
+                    className="mx-auto text-slate-400 dark:text-slate-500 mb-3"
+                  />
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
                     Click to upload damage photos
-                  </p>
-                  <p className="text-[13px] text-slate-400 dark:text-slate-500 mt-1">
-                    PNG, JPG up to 5MB each
                   </p>
                 </div>
 
@@ -1052,32 +972,34 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                 />
 
                 {formData.images.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
+                  <div className="flex flex-wrap gap-4 mt-6">
                     {formData.images.map((img) => (
                       <div key={img.id} className="relative group">
-                        <img
-                          src={img.data}
-                          alt={img.name}
-                          className="w-16 h-16 object-cover rounded-lg border-[1.5px] border-slate-200 dark:border-slate-700"
-                        />
+                        <div className="w-24 h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm transition-transform group-hover:scale-105">
+                          <img
+                            src={img.data}
+                            alt={img.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
                         <button
                           type="button"
                           onClick={() => removeImage(img.id)}
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-all"
                         >
-                          <Trash2 size={10} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     ))}
                   </div>
                 )}
                 {errors.images && (
-                  <p className="text-sm text-red-500 mt-2">{errors.images}</p>
+                  <p className="text-sm text-red-500 mt-4">{errors.images}</p>
                 )}
               </div>
 
               {/* Notes */}
-              <div>
+              <div className="pt-5 border-t border-slate-100 dark:border-slate-800">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   Damage Description{" "}
                   <span className="text-slate-400 dark:text-slate-500 font-normal">
@@ -1133,7 +1055,9 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                 <input
                   type="text"
                   value={formData.addressLine1}
-                  onChange={(e) => handleChange("addressLine1", e.target.value)}
+                  onChange={(e) =>
+                    handleChange("addressLine1", e.target.value)
+                  }
                   placeholder="e.g. 14 Sandton Drive"
                   className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 text-slate-700 dark:text-slate-200"
                 />
@@ -1176,7 +1100,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
         </div>
 
         {/* Footer Navigation */}
-        <div className="flex-shrink-0 px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+        <div className="px-6 sm:px-8 py-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
           {/* Trust Indicators (on last step) */}
           {currentStep === TOTAL_STEPS && (
             <div className="flex justify-center gap-5 mb-4 flex-wrap">
@@ -1199,7 +1123,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
             {/* Back */}
             <button
               type="button"
-              onClick={currentStep === 1 ? () => onClose() : handleBack}
+              onClick={currentStep === 1 ? () => navigate(-1) : handleBack}
               className="inline-flex items-center gap-1.5 px-3 py-2.5 text-[15px] font-medium text-slate-500 dark:text-slate-400 rounded-lg hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
             >
               <ArrowLeft size={16} />
@@ -1243,4 +1167,4 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
   );
 };
 
-export default RequestQuoteModal;
+export default NewQuote;

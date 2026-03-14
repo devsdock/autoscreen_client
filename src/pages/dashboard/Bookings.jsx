@@ -1,52 +1,64 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import {
-  Search,
-  Calendar,
-  Filter,
-  Loader2,
-  Star,
-  RotateCcw,
-  AlertCircle,
-} from "lucide-react";
-import useDashboardStore, {
-  formatDate,
-  formatCurrency,
-} from "../../store/useDashboardStore";
+import { Loader2, AlertCircle, ChevronDown } from "lucide-react";
+import useDashboardStore, { formatCurrency } from "../../store/useDashboardStore";
 import useAuthStore from "../../store/useAuthStore";
 import bookingService from "../../services/bookingService";
 import paymentService from "../../services/paymentService";
 import { mapBooking } from "../../utils/dataMappers";
-import PageHeader from "../../components/ui/PageHeader";
-import Card from "../../components/ui/Card";
-import StatusBadge from "../../components/ui/StatusBadge";
 import Button from "../../components/ui/Button";
-import Tabs from "../../components/ui/Tabs";
-import Input from "../../components/ui/Input";
 import EmptyState from "../../components/ui/EmptyState";
-import ServiceInfoCell from "../../components/ui/ServiceInfoCell";
+import BookingCard from "../../components/dashboard/BookingCard";
 import BookingDetailDrawer from "../../components/dashboard/BookingDetailDrawer";
 import { downloadInvoice } from "../../utils/invoiceUtils";
-import Tooltip from "../../components/ui/Tooltip";
 import { CardSkeleton } from "../../components/skeletons/CardSkeleton";
+import ConfirmModal from "../../components/ui/ConfirmModal";
+import ReviewModal from "../../components/dashboard/ReviewModal";
+
+const INITIAL_LIMIT = 5;
+const EXPANDED_LIMIT = 50;
+
+// Status groups for separate API calls
+const STATUS_GROUPS = {
+  actionRequired: "awaiting-customer-approval,completed-by-fitter",
+  upcoming: "confirmed,accepted,in-progress,searching",
+  completed: "completed",
+  cancelled: "cancelled,rejected,expired",
+};
 
 const Bookings = () => {
   const navigate = useNavigate();
   const { id, action } = useParams();
   const { addToast, fetchQuotes } = useDashboardStore();
 
-  const [bookings, setBookings] = useState([]);
+  // Per-category state
+  const [categories, setCategories] = useState({
+    actionRequired: { items: [], total: 0, expanded: false },
+    upcoming: { items: [], total: 0, expanded: false },
+    completed: { items: [], total: 0, expanded: false },
+    cancelled: { items: [], total: 0, expanded: false },
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [tabsInitialized, setTabsInitialized] = useState(false);
-  const [activeTab, setActiveTab] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedBooking, setSelectedBooking] = useState(null);
   const fetchBookingDetails = useDashboardStore(
     (state) => state.fetchBookingDetails,
   );
-  const [error, setError] = useState(null);
   const [mismatchEmail, setMismatchEmail] = useState(null);
+
+  // Acknowledge (complete) modal state
+  const [acknowledgeBooking, setAcknowledgeBooking] = useState(null);
+  const [acknowledgeLoading, setAcknowledgeLoading] = useState(false);
+
+  // Cancel modal state
+  const [cancelBooking, setCancelBooking] = useState(null);
+  const [cancelQuote, setCancelQuote] = useState(null);
+  const [cancelQuoteLoading, setCancelQuoteLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+
+  // Review modal state
+  const [reviewBooking, setReviewBooking] = useState(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   // Check for Deep Link User Mismatch
   useEffect(() => {
@@ -68,48 +80,67 @@ const Bookings = () => {
     setMismatchEmail(null);
   };
 
-  const fetchBookings = async () => {
+  // Fetch a single category
+  const fetchCategory = useCallback(async (category, limit = INITIAL_LIMIT) => {
     try {
-      setIsLoading(true);
-      const res = await bookingService.getBookings();
+      const res = await bookingService.getBookings({
+        status: STATUS_GROUPS[category],
+        limit,
+      });
       if (res.success) {
-        // Use data mappers to format backend data for components
-        const mappedBookings = res.data
-          .map(mapBooking)
-          .filter((b) => {
-            const s = b.status?.toLowerCase();
-            return s !== "awaiting-payment" && s !== "awaiting-provider-acceptance";
-          });
-        setBookings(mappedBookings);
-
-        // If there's an ID in URL, select that booking
-        if (id) {
-          const booking = mappedBookings.find(
-            (b) => b.id === id || b.reference === id,
-          );
-          if (booking) setSelectedBooking(booking);
-        }
-
-        // Default to Action Required if any exist, otherwise All
-        const hasActionRequired = mappedBookings.some(isActionRequired);
-        if (!tabsInitialized && !id) {
-          if (hasActionRequired) {
-            setActiveTab("action-required");
-          } else if (activeTab === "all" || activeTab === "action-required") {
-            setActiveTab("upcoming");
-          }
-          setTabsInitialized(true);
-        }
+        const mapped = res.data.map(mapBooking);
+        return { items: mapped, total: res.pagination?.total || mapped.length };
       }
     } catch (err) {
-      setError("Failed to load bookings");
-    } finally {
-      setIsLoading(false);
+      console.error(`Failed to load ${category} bookings:`, err);
     }
+    return { items: [], total: 0 };
+  }, []);
+
+  // Fetch all categories in parallel
+  const fetchAllBookings = useCallback(async () => {
+    setIsLoading(true);
+    const [actionRequired, upcoming, completed, cancelled] = await Promise.all([
+      fetchCategory("actionRequired", INITIAL_LIMIT),
+      fetchCategory("upcoming", INITIAL_LIMIT),
+      fetchCategory("completed", INITIAL_LIMIT),
+      fetchCategory("cancelled", INITIAL_LIMIT),
+    ]);
+
+    // Move "searching" bookings with quotes from upcoming to actionRequired
+    const searchingWithQuotes = upcoming.items.filter(
+      (b) => b.status?.toLowerCase() === "searching" && b.quotes?.length > 0,
+    );
+    const movedItems = [...searchingWithQuotes];
+    const movedIds = new Set(movedItems.map((b) => b.id));
+
+    setCategories({
+      actionRequired: {
+        items: [...actionRequired.items, ...movedItems],
+        total: actionRequired.total + movedItems.length,
+        expanded: false,
+      },
+      upcoming: {
+        items: upcoming.items.filter((b) => !movedIds.has(b.id)),
+        total: Math.max(0, upcoming.total - movedItems.length),
+        expanded: false,
+      },
+      completed: { ...completed, expanded: false },
+      cancelled: { ...cancelled, expanded: false },
+    });
+    setIsLoading(false);
+  }, [fetchCategory]);
+
+  // Expand a category to load all items
+  const handleViewAll = async (category) => {
+    const result = await fetchCategory(category, EXPANDED_LIMIT);
+    setCategories((prev) => ({
+      ...prev,
+      [category]: { ...result, expanded: true },
+    }));
   };
 
   const location = useLocation();
-
   const isVerifyingRef = useRef(false);
 
   const verifyPayment = async (reference) => {
@@ -123,8 +154,7 @@ const Bookings = () => {
           type: "success",
           message: "Payment confirmed! Your booking is now scheduled.",
         });
-        // Refresh both bookings (to show confirmed booking) and quotes (to clear Payment Due badge)
-        fetchBookings();
+        fetchAllBookings();
         fetchQuotes().catch(() => {});
       }
     } catch (err) {
@@ -139,7 +169,7 @@ const Bookings = () => {
   };
 
   useEffect(() => {
-    fetchBookings();
+    fetchAllBookings();
 
     const queryParams = new URLSearchParams(location.search);
     const reference = queryParams.get("reference");
@@ -147,31 +177,35 @@ const Bookings = () => {
 
     if (reference || trxref) {
       verifyPayment(reference || trxref);
-      // Clean up URL
       navigate("/dashboard/bookings", { replace: true });
     }
   }, [location.search]);
 
-  // Sync selected booking when ID changes or bookings list updates
+  // All bookings flat list for deep-link lookup
+  const allBookings = [
+    ...categories.actionRequired.items,
+    ...categories.upcoming.items,
+    ...categories.completed.items,
+    ...categories.cancelled.items,
+  ];
+
+  // Sync selected booking when ID changes
   useEffect(() => {
     const checkAndFetchBooking = async () => {
       if (id) {
-        let b = bookings.find(
+        let b = allBookings.find(
           (item) => item.id === id || item.reference === id,
         );
 
         if (b) {
           setSelectedBooking(b);
         } else {
-          // If not found in current list, fetch specifically
-          setIsLoading(true);
           const fetchedBooking = await fetchBookingDetails(id);
           if (fetchedBooking) {
             const s = fetchedBooking.status?.toLowerCase();
             const isPrePayment =
               s === "awaiting-payment" || s === "awaiting-provider-acceptance";
             if (isPrePayment) {
-              // Pre-payment bookings belong to Quotes — redirect there
               const quoteId =
                 fetchedBooking.quote?._id || fetchedBooking.quote;
               if (quoteId) {
@@ -181,126 +215,30 @@ const Bookings = () => {
               }
             } else {
               setSelectedBooking(fetchedBooking);
-              setBookings((prev) => {
-                if (prev.find((p) => p.id === fetchedBooking.id)) return prev;
-                return [fetchedBooking, ...prev];
-              });
             }
           }
-          setIsLoading(false);
         }
       } else {
         setSelectedBooking(null);
       }
     };
 
-    checkAndFetchBooking();
-  }, [id, bookings, fetchBookingDetails]);
+    if (!isLoading) checkAndFetchBooking();
+  }, [id, isLoading]);
 
-  // Filter logic
-  const isActionRequired = (b) => {
-    const s = b.status?.toLowerCase();
-    return (
-      s === "awaiting-customer-approval" ||
-      (s === "searching" && b.quotes?.length > 0) ||
-      b.slotNegotiation?.status === "provider-proposed"
-    );
+  // ── Handlers ──
+  const handleBookAppointment = (booking) => {
+    const quoteId =
+      booking.quote?._id ||
+      (typeof booking.quote === "string" ? booking.quote : null) ||
+      booking.quoteId ||
+      booking.quoteRequestId;
+    if (quoteId) {
+      navigate(`/dashboard/quotes/${quoteId}/book-appointment`);
+    } else {
+      addToast({ type: "info", message: "Unable to find linked quote." });
+    }
   };
-
-  const actionRequiredCount = bookings.filter(isActionRequired).length;
-
-  const tabs = [
-    ...(actionRequiredCount > 0
-      ? [
-          {
-            value: "action-required",
-            label: "Action Required",
-            count: actionRequiredCount,
-          },
-        ]
-      : []),
-    {
-      value: "upcoming",
-      label: "Upcoming",
-      count: bookings.filter((b) => {
-        const s = b.status?.toLowerCase();
-        return (
-          [
-            "confirmed",
-            "accepted",
-            "in-progress",
-            "pending payment",
-            "searching",
-          ].includes(s) &&
-          !isActionRequired(b)
-        );
-      }).length,
-    },
-    {
-      value: "completed",
-      label: "Completed",
-      count: bookings.filter((b) => {
-        const s = b.status?.toLowerCase();
-        return s === "completed" || s === "completed-by-fitter";
-      }).length,
-    },
-    {
-      value: "cancelled",
-      label: "Cancelled",
-      count: bookings.filter((b) =>
-        ["cancelled", "rejected", "expired"].includes(b.status?.toLowerCase()),
-      ).length,
-    },
-    { value: "all", label: "All", count: bookings.length },
-  ];
-
-  const filteredBookings = bookings.filter((booking) => {
-    const status = booking.status?.toLowerCase();
-    // Tab filter
-    if (activeTab === "action-required") {
-      if (!isActionRequired(booking)) return false;
-    }
-
-    if (activeTab === "upcoming") {
-      if (
-        !(
-          [
-            "confirmed",
-            "accepted",
-            "in-progress",
-            "pending payment",
-            "searching",
-          ].includes(status) &&
-          !isActionRequired(booking)
-        )
-      )
-        return false;
-    }
-    if (
-      activeTab === "completed" &&
-      status !== "completed" &&
-      status !== "completed-by-fitter"
-    )
-      return false;
-    if (
-      activeTab === "cancelled" &&
-      !["cancelled", "rejected", "expired"].includes(status)
-    )
-      return false;
-
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      return (
-        booking.reference?.toLowerCase().includes(query) ||
-        booking.vehicle?.toLowerCase().includes(query) ||
-        booking.providerName?.toLowerCase().includes(query) ||
-        booking.service?.toLowerCase().includes(query)
-      );
-    }
-
-    return true;
-  });
 
   const handleViewBooking = (booking) => {
     setSelectedBooking(booking);
@@ -312,73 +250,96 @@ const Bookings = () => {
     navigate("/dashboard/bookings", { replace: true });
   };
 
-  const getEmptyState = () => {
-    if (searchQuery) {
-      return {
-        title: "No matching bookings",
-        description: "Try a different search term.",
-        actionLabel: "Clear Search",
-        onAction: () => setSearchQuery(""),
-      };
+  const handleAcknowledge = async () => {
+    if (!acknowledgeBooking) return;
+    setAcknowledgeLoading(true);
+    try {
+      const res = await bookingService.completeBooking(acknowledgeBooking.id);
+      if (res.success) {
+        addToast({ type: "success", message: "Booking marked as completed. Thank you!" });
+        setAcknowledgeBooking(null);
+        fetchAllBookings();
+      }
+    } catch (err) {
+      addToast({ type: "error", message: "Failed to complete booking. Please try again." });
+    } finally {
+      setAcknowledgeLoading(false);
     }
-
-    if (activeTab === "action-required") {
-      return {
-        title: "No actions required",
-        description:
-          "You're all caught up! No quotes to review or completed services to confirm.",
-        actionLabel: "Request a Quote",
-        onAction: () => navigate("/dashboard/quotes"),
-      };
-    }
-
-    if (bookings.length === 0) {
-      return {
-        title: "No bookings yet",
-        description:
-          "Request a quote from a provider to create your first booking.",
-        actionLabel: "Request a Quote",
-        onAction: () => navigate("/dashboard/quotes"),
-      };
-    }
-
-    if (activeTab === "upcoming") {
-      return {
-        title: "No upcoming bookings",
-        description: "You don't have any scheduled appointments coming up.",
-        actionLabel: "Request a Quote",
-        onAction: () => navigate("/dashboard/quotes"),
-      };
-    }
-
-    if (activeTab === "completed") {
-      return {
-        title: "No completed bookings",
-        description: "Past served bookings will appear here.",
-        actionLabel: null,
-        onAction: null,
-      };
-    }
-
-    if (activeTab === "cancelled") {
-      return {
-        title: "No cancelled bookings",
-        description: "You don't have any cancelled appointments.",
-        actionLabel: null,
-        onAction: null,
-      };
-    }
-
-    return {
-      title: "No bookings found",
-      description: "No bookings in this category.",
-      actionLabel: "Request a Quote",
-      onAction: () => navigate("/dashboard/quotes"),
-    };
   };
 
-  const emptyState = getEmptyState();
+  const handleOpenCancelModal = async (b) => {
+    setCancelBooking(b);
+    setCancelQuoteLoading(true);
+    setCancelQuote(null);
+    try {
+      const resp = await bookingService.getCancellationQuote(b.id);
+      if (resp.success) setCancelQuote(resp.data);
+    } catch (err) {
+      console.error("Failed to fetch cancellation quote:", err);
+    } finally {
+      setCancelQuoteLoading(false);
+    }
+  };
 
+  const handleCancelBooking = async () => {
+    if (!cancelBooking) return;
+    setCancelLoading(true);
+    try {
+      await bookingService.cancelBooking(cancelBooking.id, "Customer requested cancellation");
+      addToast({ type: "success", message: "Booking cancelled successfully" });
+      setCancelBooking(null);
+      setCancelQuote(null);
+      fetchAllBookings();
+    } catch (err) {
+      addToast({ type: "error", message: "Failed to cancel booking" });
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const handleReviewSubmit = async (reviewData) => {
+    setReviewLoading(true);
+    try {
+      const res = await bookingService.addReview(reviewBooking.id, reviewData);
+      if (res.success) {
+        addToast({ type: "success", message: "Review submitted successfully" });
+        setReviewBooking(null);
+        fetchAllBookings();
+      }
+    } catch (error) {
+      addToast({
+        type: "error",
+        message: error.message || "Failed to submit review",
+      });
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  // ── Card callbacks (shared) ──
+  const cardProps = (booking) => ({
+    booking,
+    onClick: () => handleViewBooking(booking),
+    onBookAppointment: handleBookAppointment,
+    onCancel: (b) => handleOpenCancelModal(b),
+    onReschedule: (b) => {
+      navigate(`/dashboard/bookings/${b.id}`, { replace: true });
+    },
+    onInvoice: (b) =>
+      downloadInvoice(b.id, b.reference, (msg, type) =>
+        addToast({ type: type || "error", message: msg }),
+      ),
+    onRate: (b) => {
+      setReviewBooking(b);
+    },
+    onDirections: (b) => {
+      const addr = encodeURIComponent(b.address || "");
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${addr}`, "_blank");
+    },
+    onAcknowledge: (b) => setAcknowledgeBooking(b),
+  });
+
+  // ── Render states ──
   if (isVerifying) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
@@ -393,43 +354,71 @@ const Bookings = () => {
     );
   }
 
-  if (isLoading && bookings.length === 0) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
-        <PageHeader
-          title="My Bookings"
-          subtitle="Track your auto glass appointments"
-        />
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <Tabs
-            tabs={tabs}
-            activeTab={activeTab}
-            onChange={setActiveTab}
-            variant="pills"
-            className="overflow-x-auto"
-          />
-          <Input
-            placeholder="Search bookings..."
-            icon={Search}
-            className="w-full sm:w-64"
-            disabled
-          />
+        <div>
+          <h1 className="font-display text-[1.625rem] font-extrabold text-slate-900 dark:text-white leading-tight tracking-[-0.025em]">
+            My Bookings
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Upcoming and past appointments
+          </p>
         </div>
         <CardSkeleton count={3} />
       </div>
     );
   }
 
+  const hasBookings = allBookings.length > 0;
+
+  // Section config
+  const sections = [
+    {
+      key: "actionRequired",
+      title: "Action Required",
+      badge: true,
+      opacity: false,
+      category: "actionRequired",
+    },
+    {
+      key: "upcoming",
+      title: "Upcoming",
+      badge: false,
+      opacity: false,
+      category: "upcoming",
+    },
+    {
+      key: "completed",
+      title: "Completed",
+      badge: false,
+      opacity: false,
+      category: "completed",
+    },
+    {
+      key: "cancelled",
+      title: "Cancelled",
+      badge: false,
+      opacity: true,
+      category: "cancelled",
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="My Bookings"
-        subtitle="Track your auto glass appointments"
-      />
+      {/* Page Header */}
+      <div>
+        <h1 className="font-display text-[1.625rem] font-extrabold text-slate-900 dark:text-white leading-tight tracking-[-0.025em]">
+          My Bookings
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Upcoming and past appointments
+        </p>
+      </div>
 
       {/* Mismatch Warning */}
       {mismatchEmail && (
-        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl flex items-start gap-3">
+        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl flex items-start gap-3">
           <AlertCircle
             className="text-amber-600 dark:text-amber-400 mt-0.5"
             size={20}
@@ -466,182 +455,148 @@ const Bookings = () => {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <Tabs
-          tabs={tabs}
-          activeTab={activeTab}
-          onChange={setActiveTab}
-          variant="pills"
-          className="overflow-x-auto"
-        />
-        <Input
-          placeholder="Search bookings..."
-          icon={Search}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-64"
-        />
-      </div>
-
-      {/* Bookings List */}
-      {filteredBookings.length === 0 ? (
+      {!hasBookings && (
         <EmptyState
           iconType="bookings"
-          title={emptyState.title}
-          description={emptyState.description}
-          actionLabel={emptyState.actionLabel}
-          onAction={emptyState.onAction}
+          title="No bookings yet"
+          description="Request a quote from a provider to create your first booking."
+          actionLabel="Request a Quote"
+          onAction={() => navigate("/dashboard/quotes")}
         />
-      ) : (
-        <div className="grid gap-4">
-          {filteredBookings.map((booking) => (
-            <Card
-              key={booking.id}
-              className="hover:shadow-card-hover transition-shadow cursor-pointer"
-              onClick={() => handleViewBooking(booking)}
-            >
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-start justify-between lg:justify-start gap-3 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm text-slate-500 dark:text-slate-400">
-                        #{booking.reference}
-                      </span>
-                      <StatusBadge
-                        status={
-                          booking.status?.toLowerCase() === "searching" &&
-                          booking.quotes?.length > 0
-                            ? "awaiting-customer-approval"
-                            : booking.status
-                        }
-                        type="booking"
-                      />
-
-                      <StatusBadge
-                        status={booking.paymentStatus}
-                        type="payment"
-                      />
-                    </div>
-                    {["refunded", "partial refund"].includes(
-                      booking.paymentStatus?.toLowerCase(),
-                    ) &&
-                      booking.refundAmount > 0 && (
-                        <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 font-medium bg-red-50 dark:bg-red-900/10 px-2 py-0.5 rounded-full w-fit">
-                          <RotateCcw size={12} />
-                          <span>
-                            Refunded: {formatCurrency(booking.refundAmount)}
-                          </span>
-                        </div>
-                      )}
-                  </div>
-
-                  <div className="flex flex-col gap-1 items-start">
-                    <ServiceInfoCell row={booking} />
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                      {booking.vehicle}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 dark:text-slate-400">
-                    <span className="font-medium text-slate-700 dark:text-slate-300">
-                      {booking.providerName}
-                    </span>
-                    <span className="text-slate-300 dark:text-slate-700">
-                      •
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Calendar
-                        size={14}
-                        className="text-slate-400 dark:text-slate-500"
-                      />
-                      {formatDate(booking.scheduledDate, "datetime")}
-                    </span>
-                    <span className="text-slate-300 dark:text-slate-700">
-                      •
-                    </span>
-                    <span className="font-bold text-slate-900 dark:text-white">
-                      {formatCurrency(booking.price?.total || 0)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 lg:flex-shrink-0">
-                  {booking.paymentStatus &&
-                    [
-                      "paid",
-                      "refunded",
-                      "partially refunded",
-                      "partially_refunded",
-                    ].includes(booking.paymentStatus.toLowerCase()) && (
-                      <Tooltip
-                        content={
-                          !["completed", "completed-by-fitter"].includes(
-                            booking.status?.toLowerCase(),
-                          ) &&
-                          ![
-                            "refunded",
-                            "partially_refunded",
-                            "partially refunded",
-                          ].includes(booking.paymentStatus?.toLowerCase())
-                            ? "Invoice available once booking is completed"
-                            : ""
-                        }
-                      >
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={
-                            !["completed", "completed-by-fitter"].includes(
-                              booking.status?.toLowerCase(),
-                            ) &&
-                            ![
-                              "refunded",
-                              "partially_refunded",
-                              "partially refunded",
-                            ].includes(booking.paymentStatus?.toLowerCase())
-                          }
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            downloadInvoice(
-                              booking.id,
-                              booking.reference,
-                              (msg, type) =>
-                                addToast({
-                                  type: type || "error",
-                                  message: msg,
-                                }),
-                            );
-                          }}
-                          className="text-primary-600 hover:text-primary-700 font-medium"
-                        >
-                          Invoice
-                        </Button>
-                      </Tooltip>
-                    )}
-                  <Button
-                    variant="secondary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleViewBooking(booking);
-                    }}
-                  >
-                    View Details
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
       )}
+
+      {/* ── Booking Sections ── */}
+      {sections.map(({ key, title, badge, opacity, category }) => {
+        const cat = categories[key];
+        if (cat.items.length === 0) return null;
+
+        const displayed = cat.expanded ? cat.items : cat.items.slice(0, INITIAL_LIMIT);
+        const hasMore = !cat.expanded && cat.total > INITIAL_LIMIT;
+
+        return (
+          <div key={key}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-display text-[1.0625rem] font-bold text-slate-900 dark:text-white">
+                {title}
+              </h2>
+              {badge && (
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold">
+                  {cat.total}
+                </span>
+              )}
+            </div>
+            <div className={`space-y-4${opacity ? " opacity-70" : ""}`}>
+              {displayed.map((b) => (
+                <BookingCard key={b.id} {...cardProps(b)} category={key === "upcoming" ? "upcoming" : undefined} />
+              ))}
+            </div>
+            {hasMore && (
+              <button
+                onClick={() => handleViewAll(category)}
+                className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-xl transition-colors"
+              >
+                View All ({cat.total})
+                <ChevronDown size={16} />
+              </button>
+            )}
+          </div>
+        );
+      })}
 
       {/* Booking Detail Drawer */}
       <BookingDetailDrawer
         booking={selectedBooking}
         isOpen={!!selectedBooking}
         onClose={handleCloseDrawer}
-        onUpdate={fetchBookings}
+        onUpdate={fetchAllBookings}
         initialAction={action}
+      />
+
+      {/* Acknowledge / Complete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!acknowledgeBooking}
+        onClose={() => setAcknowledgeBooking(null)}
+        onConfirm={handleAcknowledge}
+        loading={acknowledgeLoading}
+        title="Confirm Service Completion"
+        message="The fitter has marked your service as completed. Please confirm that the work has been done to your satisfaction. This will finalize your booking."
+        confirmLabel="Yes, Complete Booking"
+        cancelLabel="Not Yet"
+        type="info"
+      />
+
+      {/* Cancel Booking Modal */}
+      <ConfirmModal
+        isOpen={!!cancelBooking}
+        onClose={() => {
+          setCancelBooking(null);
+          setCancelQuote(null);
+        }}
+        onConfirm={handleCancelBooking}
+        title="Cancel this booking?"
+        message={
+          cancelQuoteLoading ? (
+            <div className="flex items-center justify-center p-4">
+              <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+            </div>
+          ) : cancelQuote ? (
+            <div className="text-left mt-2">
+              <p className="mb-4 text-slate-600 dark:text-slate-300">
+                Are you sure you want to cancel this booking?
+              </p>
+              {cancelQuote.isPaid && (
+                <div className="bg-slate-50 dark:bg-slate-800/80 rounded-lg p-3 border border-slate-200 dark:border-slate-700 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-400">Booking Total:</span>
+                    <span className="font-medium text-slate-900 dark:text-slate-100">
+                      {formatCurrency(cancelQuote.bookingTotal)}
+                    </span>
+                  </div>
+                  {cancelQuote.cancellationFee > 0 && (
+                    <div className="flex justify-between text-red-600 dark:text-red-400">
+                      <span>
+                        Cancellation Fee{cancelQuote.wasWithinGracePeriod ? "" : " (Outside Grace Period)"}:
+                      </span>
+                      <span>- {formatCurrency(cancelQuote.cancellationFee)}</span>
+                    </div>
+                  )}
+                  <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between font-bold">
+                    <span className={cancelQuote.refundAmount > 0 ? "text-green-600 dark:text-green-400" : "text-slate-900 dark:text-slate-100"}>
+                      Refund Amount:
+                    </span>
+                    <span className={cancelQuote.refundAmount > 0 ? "text-green-600 dark:text-green-400" : "text-slate-900 dark:text-slate-100"}>
+                      {formatCurrency(cancelQuote.refundAmount)}
+                    </span>
+                  </div>
+                  {cancelQuote.refundAmount > 0 ? (
+                    <p className="text-xs text-slate-500 mt-2 pt-2 text-center italic">
+                      Refunds are processed to your original payment method within 3-5 business days.
+                    </p>
+                  ) : cancelQuote.cancellationFee > 0 ? (
+                    <p className="text-xs text-red-500 mt-2 pt-2 text-center italic">
+                      No refund available. The cancellation fee equals the full booking amount.
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          ) : (
+            "Are you sure you want to cancel this booking? Cancellation may be subject to a fee if outside the grace period."
+          )
+        }
+        confirmLabel="Cancel Booking"
+        cancelLabel="Keep Booking"
+        type="danger"
+        loading={cancelLoading || cancelQuoteLoading}
+      />
+
+      {/* Review Modal (standalone — not inside drawer) */}
+      <ReviewModal
+        isOpen={!!reviewBooking}
+        onClose={() => setReviewBooking(null)}
+        onSubmit={handleReviewSubmit}
+        booking={reviewBooking}
+        isLoading={reviewLoading}
       />
     </div>
   );

@@ -43,14 +43,19 @@ const paymentService = {
 
   /**
    * Initialize Paystack Payment
-   * @param {string} bookingId
+   * @param {Object} params - { bookingId } for direct bookings, or { quoteId, responseId } for quote flow
+   * @param {boolean} coversFees
    * @returns {Object} { success, authorization_url, reference }
    */
-  initializePaystack: (bookingId, coversFees = false) => {
+  initializePaystack: (params, coversFees = false) => {
+    // Backward compat: if params is a string, treat as bookingId
+    const data = typeof params === "string"
+      ? { bookingId: params, coversFees }
+      : { ...params, coversFees };
     return request({
       method: "POST",
       url: "/customer/payments/initialize-paystack",
-      data: { bookingId, coversFees },
+      data,
     });
   },
 

@@ -16,9 +16,8 @@ import {
   MessageSquare,
   Layers,
   RotateCcw,
-  RefreshCw,
-  CheckCircle2,
-  XCircle,
+  CalendarCheck,
+  ArrowRight,
 } from "lucide-react";
 import Drawer, { DrawerFooter } from "../ui/Drawer";
 import StatusBadge from "../ui/StatusBadge";
@@ -29,13 +28,13 @@ import ConfirmModal from "../ui/ConfirmModal";
 import Modal, { ModalActions } from "../ui/Modal";
 import { Player } from "@lottiefiles/react-lottie-player";
 import PaymentModal from "./PaymentModal";
-import SelectSlotModal from "./SelectSlotModal";
 import useDashboardStore, {
   formatDate,
   formatCurrency,
 } from "../../store/useDashboardStore";
 import bookingService from "../../services/bookingService";
 import { downloadInvoice } from "../../utils/invoiceUtils";
+import { NodeURL } from "../../services/api";
 import { useNavigate } from "react-router-dom";
 import ReviewModal from "./ReviewModal";
 
@@ -47,7 +46,7 @@ const BookingDetailDrawer = ({
   initialAction,
 }) => {
   const navigate = useNavigate();
-  const { addToast, acceptProposedSlot, rejectProposedSlot, counterProposeSlot } =
+  const { addToast } =
     useDashboardStore();
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelQuoteLoading, setCancelQuoteLoading] = useState(false);
@@ -59,10 +58,6 @@ const BookingDetailDrawer = ({
   const [previewImage, setPreviewImage] = useState(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [pendingPaymentAmount, setPendingPaymentAmount] = useState(null);
-  const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
-  const [isSlotAction, setIsSlotAction] = useState(false);
-  const [showCounterSlotModal, setShowCounterSlotModal] = useState(false);
-
   const [convertedImages, setConvertedImages] = useState({});
 
   const rawDamageImages =
@@ -162,23 +157,6 @@ const BookingDetailDrawer = ({
     }
   };
 
-  const handleComplete = async () => {
-    setLoading(true);
-    try {
-      const res = await bookingService.completeBooking(booking.id);
-      if (res.success) {
-        addToast({ type: "success", message: "Booking marked as completed" });
-        setIsCompleteModalOpen(false);
-        if (onUpdate) onUpdate();
-      }
-    } catch (error) {
-      console.error("Error completing booking:", error);
-      addToast({ type: "error", message: "Failed to complete booking" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleAcceptQuote = async (providerId) => {
     setLoading(true);
     try {
@@ -247,53 +225,15 @@ const BookingDetailDrawer = ({
     }
   };
 
-  // Slot negotiation handlers (for direct bookings where provider proposes a different time)
-  const handleAcceptSlot = async () => {
-    setIsSlotAction(true);
-    try {
-      const result = await acceptProposedSlot(booking.id);
-      if (result) {
-        addToast({ type: "success", message: "Time slot accepted! Your booking is confirmed." });
-        if (onUpdate) onUpdate();
-      }
-    } finally {
-      setIsSlotAction(false);
-    }
-  };
-
-  const handleRejectSlot = async () => {
-    setIsSlotAction(true);
-    try {
-      const result = await rejectProposedSlot(booking.id);
-      if (result) {
-        addToast({ type: "info", message: "Slot rejected. Booking cancelled." });
-        if (onUpdate) onUpdate();
-        onClose();
-      }
-    } finally {
-      setIsSlotAction(false);
-    }
-  };
-
-  const handleCounterSlot = async (slotData) => {
-    setIsSlotAction(true);
-    try {
-      const result = await counterProposeSlot(booking.id, slotData);
-      if (result) {
-        addToast({ type: "success", message: "Your preferred time has been sent to the provider." });
-        setShowCounterSlotModal(false);
-        if (onUpdate) onUpdate();
-      }
-    } finally {
-      setIsSlotAction(false);
-    }
-  };
-
-  const negotiation = booking?.slotNegotiation;
-  const isProviderProposed = negotiation?.status === "provider-proposed";
-
   const currentStatus = booking?.status?.toLowerCase() || "";
   const currentPaymentStatus = booking?.paymentStatus?.toLowerCase() || "";
+
+  // Derive quoteId for Book Appointment navigation
+  const quoteId =
+    booking?.quote?._id ||
+    (typeof booking?.quote === "string" ? booking.quote : null) ||
+    booking?.quoteId ||
+    booking?.quoteRequestId;
 
   const canCancel = [
     "confirmation",
@@ -309,13 +249,6 @@ const BookingDetailDrawer = ({
       currentStatus,
     ) &&
     !(booking.quote && currentStatus === "awaiting-payment");
-  const canComplete = [
-    "confirmed",
-    "in-progress",
-    "completed-by-fitter",
-  ].includes(currentStatus);
-  const isCompleteEnabled =
-    currentStatus === "in-progress" || currentStatus === "completed-by-fitter";
   const canReview =
     (currentStatus === "completed" || booking?.status === "Completed") &&
     (!booking?.rating || !booking?.rating?.score);
@@ -340,11 +273,9 @@ const BookingDetailDrawer = ({
     if (isOpen && initialAction) {
       if (initialAction === "review" && canReview) {
         setShowReviewModal(true);
-      } else if (initialAction === "acknowledge" && canComplete) {
-        setIsCompleteModalOpen(true);
       }
     }
-  }, [isOpen, initialAction, canReview, canComplete]);
+  }, [isOpen, initialAction, canReview]);
 
   if (!booking) return null;
 
@@ -364,7 +295,9 @@ const BookingDetailDrawer = ({
                 booking.status?.toLowerCase() === "searching" &&
                 booking.quotes?.length > 0
                   ? "awaiting-customer-approval"
-                  : booking.status
+                  : booking.status?.toLowerCase() === "confirmed" && booking.scheduledDate && booking.paymentStatus?.toLowerCase() === "paid"
+                    ? "scheduled"
+                    : booking.status
               }
               type="booking"
               size="md"
@@ -375,6 +308,28 @@ const BookingDetailDrawer = ({
               size="md"
             />
           </div>
+
+          {/* Book Appointment CTA — paid but no schedule yet */}
+          {currentPaymentStatus === "paid" && !booking.scheduledDate && quoteId && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+              <div className="flex items-center gap-3">
+                <CalendarCheck size={20} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="font-semibold text-blue-800 dark:text-blue-200">Schedule Your Appointment</p>
+                  <p className="text-sm text-blue-600 dark:text-blue-400">Payment confirmed. Choose your preferred date and time.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate(`/dashboard/quotes/${quoteId}/book-appointment`)}
+                className="mt-3 w-full py-2.5 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 hover:shadow-lg hover:-translate-y-px transition-all"
+                style={{ background: "linear-gradient(135deg, #2563EB, #1D4ED8)" }}
+              >
+                <CalendarCheck size={16} />
+                Book Your Appointment
+                <ArrowRight size={14} />
+              </button>
+            </div>
+          )}
 
           {/* Payment Pending Banner — quote-based booking awaiting payment */}
           {booking.quote && currentStatus === "awaiting-payment" && (
@@ -409,109 +364,19 @@ const BookingDetailDrawer = ({
             </div>
           )}
 
-          {/* Provider Proposed Slot Banner — direct booking slot negotiation */}
-          {isProviderProposed && (
-            <div className="p-4 bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 rounded-xl space-y-3">
-              <div className="flex items-center gap-2">
-                <RefreshCw
-                  size={18}
-                  className="text-warning-600 dark:text-warning-400"
-                />
-                <h4 className="font-semibold text-warning-800 dark:text-warning-200">
-                  Provider Suggested a Different Time
-                </h4>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="p-2.5 bg-white dark:bg-slate-800 rounded-lg">
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">
-                    Your requested time
-                  </p>
-                  <p className="font-medium text-slate-800 dark:text-slate-200">
-                    {booking.scheduledDate ? formatDate(booking.scheduledDate) : "-"}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {typeof booking.scheduledTimeSlot === "object"
-                      ? `${booking.scheduledTimeSlot.start} - ${booking.scheduledTimeSlot.end}`
-                      : booking.scheduledTimeSlot || "-"}
-                  </p>
-                </div>
-                <div className="p-2.5 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
-                  <p className="text-xs text-primary-600 dark:text-primary-400 mb-1">
-                    Provider's preferred time
-                  </p>
-                  <p className="font-semibold text-primary-800 dark:text-primary-200">
-                    {negotiation?.proposedDate ? formatDate(negotiation.proposedDate) : "-"}
-                  </p>
-                  <p className="text-xs text-primary-600 dark:text-primary-400">
-                    {typeof negotiation?.proposedTimeSlot === "object"
-                      ? `${negotiation.proposedTimeSlot.start} - ${negotiation.proposedTimeSlot.end}`
-                      : negotiation?.proposedTimeSlot || "-"}
-                  </p>
-                </div>
-              </div>
-              {negotiation?.note && (
-                <p className="text-sm text-slate-600 dark:text-slate-400 italic">
-                  "{negotiation.note}"
-                </p>
-              )}
-              <div className="flex items-center gap-2 pt-1">
-                <Button
-                  size="sm"
-                  onClick={handleAcceptSlot}
-                  loading={isSlotAction}
-                  className="flex-1"
-                >
-                  <CheckCircle2 size={14} className="mr-1" />
-                  Accept
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setShowCounterSlotModal(true)}
-                  disabled={isSlotAction}
-                  className="flex-1"
-                >
-                  <RefreshCw size={14} className="mr-1" />
-                  Change Time
-                </Button>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  onClick={handleRejectSlot}
-                  loading={isSlotAction}
-                  className="flex-1"
-                >
-                  <XCircle size={14} className="mr-1" />
-                  Reject
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Service Completed Banner inline */}
+          {/* Service Completed Banner inline — acknowledge handled via BookingCard modal */}
           {currentStatus === "completed-by-fitter" && (
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4 flex items-start gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4 flex items-start gap-4">
               <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center flex-shrink-0 text-green-600 dark:text-green-400">
                 <CheckCircle size={20} />
               </div>
               <div className="flex-1">
                 <h3 className="text-sm font-bold text-green-900 dark:text-green-200">
-                  Service Completed!
+                  Service Completed by Fitter
                 </h3>
                 <p className="text-xs text-green-800 dark:text-green-300 mt-1">
-                  The fitter has marked your service as completed. Please review
-                  and acknowledge the work to finalize your booking.
+                  The fitter has marked your service as completed. Close this panel and tap Acknowledge on the booking card to confirm.
                 </p>
-                <div className="flex gap-4 mt-3">
-                  <Button
-                    variant="primary"
-                    disabled={loading}
-                    size="xs"
-                    onClick={() => handleComplete()}
-                  >
-                    {loading ? "Completing..." : "Complete Booking"}
-                  </Button>
-                </div>
               </div>
             </div>
           )}
@@ -534,9 +399,17 @@ const BookingDetailDrawer = ({
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-primary-600 font-bold text-sm">
-                            {quote.provider.businessName?.charAt(0) || "P"}
-                          </div>
+                          {(() => {
+                            const raw = quote.provider.avatarUrl || quote.provider.personalImageUrl || quote.provider.companyLogoUrl;
+                            const src = raw ? (raw.startsWith("http") || raw.startsWith("data:") ? raw : `${NodeURL}${raw}`) : null;
+                            return src ? (
+                              <img src={src} alt={quote.provider.businessName} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center text-primary-600 font-bold text-sm">
+                                {quote.provider.businessName?.charAt(0) || "P"}
+                              </div>
+                            );
+                          })()}
                           <div>
                             <p className="font-semibold text-slate-900 dark:text-white text-sm">
                               {quote.provider.businessName}
@@ -717,6 +590,11 @@ const BookingDetailDrawer = ({
                     <p className="font-medium text-slate-900 dark:text-white text-sm">
                       {booking.vehicle}
                     </p>
+                    {booking.vehicleRegNumber && (
+                      <span className="inline-block font-mono text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600 mt-1">
+                        {booking.vehicleRegNumber}
+                      </span>
+                    )}
                     {(booking.vehicleData?.hasAdasCamera ||
                       booking.vehicleData?.hasRainSensor) && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
@@ -749,9 +627,44 @@ const BookingDetailDrawer = ({
                       Date & Time
                     </p>
                     <p className="font-medium text-slate-900 dark:text-white">
-                      {booking.formattedScheduledDateTime ||
-                        formatDate(booking.scheduledDate, "datetime")}
+                      {(() => {
+                        if (!booking.scheduledDate) return "-";
+                        const ds = booking.scheduledDate;
+                        let d;
+                        if (typeof ds === "string" && /^\d{4}-\d{2}-\d{2}$/.test(ds)) {
+                          const [y, m, dd] = ds.split("-").map(Number);
+                          d = new Date(y, m - 1, dd);
+                        } else {
+                          d = new Date(ds);
+                        }
+                        if (isNaN(d.getTime())) return formatDate(ds, "short");
+                        const weekday = d.toLocaleDateString("en-GB", { weekday: "short" });
+                        const day = d.getDate();
+                        const month = d.toLocaleDateString("en-GB", { month: "short" });
+                        const year = d.getFullYear();
+                        return `${weekday} ${day} ${month}`;
+                      })()}
                     </p>
+                    {booking.scheduledTimeSlot && (
+                      <p className="text-sm text-slate-700 dark:text-slate-300">
+                        {(() => {
+                          const ts = booking.scheduledTimeSlot;
+                          if (typeof ts === "object" && ts.start) return `${ts.start}${ts.end ? ` – ${ts.end}` : ""}`;
+                          if (typeof ts !== "string") return null;
+                          if (ts.includes("-") || ts.includes("–")) return ts;
+                          const dur = booking.estimatedDuration;
+                          if (dur && dur > 30) {
+                            const slotsNeeded = Math.ceil(dur / 30);
+                            const [h, m] = ts.split(":").map(Number);
+                            const endMins = (h || 0) * 60 + (m || 0) + slotsNeeded * 30;
+                            const endH = String(Math.floor(endMins / 60)).padStart(2, "0");
+                            const endM = String(endMins % 60).padStart(2, "0");
+                            return `${ts} – ${endH}:${endM}`;
+                          }
+                          return ts;
+                        })()}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -949,9 +862,17 @@ const BookingDetailDrawer = ({
                 </h4>
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                      {booking.providerName.charAt(0)}
-                    </div>
+                    {(() => {
+                      const raw = booking.providerAvatarUrl || booking.provider?.avatarUrl || booking.provider?.personalImageUrl || booking.provider?.companyLogoUrl;
+                      const avatarSrc = raw ? (raw.startsWith("http") || raw.startsWith("data:") ? raw : `${NodeURL}${raw}`) : null;
+                      return avatarSrc ? (
+                        <img src={avatarSrc} alt={booking.providerName} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                          {booking.providerName.charAt(0)}
+                        </div>
+                      );
+                    })()}
                     <div>
                       <p className="font-semibold text-slate-900 dark:text-white">
                         {booking.providerName}
@@ -1080,7 +1001,7 @@ const BookingDetailDrawer = ({
                       <span className="text-sm font-bold text-slate-900 dark:text-white">
                         Total Amount
                       </span>
-                      <span className="font-bold text-primary-600 dark:text-primary-400 text-lg">
+                      <span className="font-display font-bold text-primary-600 dark:text-primary-400 text-lg">
                         {formatCurrency(booking.price?.total || 0)}
                       </span>
                     </div>
@@ -1152,7 +1073,6 @@ const BookingDetailDrawer = ({
 
         {/* Actions */}
         {(canPay ||
-          canComplete ||
           canReview ||
           canDownloadInvoice ||
           canCancel) && (
@@ -1162,25 +1082,6 @@ const BookingDetailDrawer = ({
                 <CreditCard size={16} />
                 Confirm & Pay
               </Button>
-            )}
-            {canComplete && (
-              <Tooltip
-                className="w-full"
-                content={
-                  !isCompleteEnabled
-                    ? "Technician will notify you when work is ready for inspection"
-                    : ""
-                }
-              >
-                <Button
-                  onClick={() => setIsCompleteModalOpen(true)}
-                  className="w-full"
-                  disabled={!isCompleteEnabled}
-                >
-                  <CheckCircle size={16} />
-                  Complete Booking
-                </Button>
-              </Tooltip>
             )}
 
             {(canReview || canDownloadInvoice || canCancel) && (
@@ -1347,84 +1248,6 @@ const BookingDetailDrawer = ({
         onClose={() => setIsPaymentModalOpen(false)}
         onSuccess={handlePaymentSuccess}
       />
-
-      {/* Counter-propose slot modal */}
-      <SelectSlotModal
-        isOpen={showCounterSlotModal}
-        onClose={() => setShowCounterSlotModal(false)}
-        onConfirm={handleCounterSlot}
-        provider={
-          booking.provider
-            ? {
-                id: booking.provider?._id || booking.provider?.id || booking.provider,
-                name: booking.provider?.businessName || booking.provider?.name || "Provider",
-              }
-            : null
-        }
-        isLoading={isSlotAction}
-      />
-
-      {/* Complete Booking Modal */}
-      <Modal
-        isOpen={isCompleteModalOpen}
-        onClose={() => setIsCompleteModalOpen(false)}
-        title="Complete Booking"
-        size="md"
-      >
-        <div className="space-y-6">
-          <div className="bg-primary-50 dark:bg-primary-900/10 p-4 rounded-xl border border-primary-100 dark:border-primary-900/20 text-center">
-            <div className="w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-primary-600 dark:text-primary-400">
-              <CheckCircle size={32} />
-            </div>
-            <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">
-              Finish this job?
-            </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Please confirm that the technician has completed the work on your{" "}
-              {booking.vehicle} to your satisfaction.
-            </p>
-          </div>
-
-          <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                <span>Service</span>
-                <span className="font-medium text-slate-900 dark:text-white">
-                  {booking.service}
-                </span>
-              </div>
-              <div className="flex justify-between text-slate-600 dark:text-slate-400">
-                <span>Total Paid</span>
-                <span className="font-medium text-slate-900 dark:text-white">
-                  {formatCurrency(booking.price?.total || 0)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <p className="text-xs text-slate-500 text-center">
-            Once completed, you will be able to leave a review and your invoice
-            will be updated.
-          </p>
-        </div>
-
-        <ModalActions>
-          <Button
-            variant="secondary"
-            onClick={() => setIsCompleteModalOpen(false)}
-            disabled={loading}
-          >
-            Not Yet
-          </Button>
-          <Button
-            onClick={handleComplete}
-            loading={loading}
-            className="min-w-[140px]"
-          >
-            Confirm Completion
-          </Button>
-        </ModalActions>
-      </Modal>
 
       {/* Image Preview Modal */}
       <Modal

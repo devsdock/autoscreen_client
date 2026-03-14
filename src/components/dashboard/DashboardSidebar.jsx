@@ -1,18 +1,17 @@
 import { useState } from "react";
-import { NavLink, Link } from "react-router-dom";
+import { NavLink, Link, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard,
+  LayoutGrid,
+  Car,
   FileText,
   Calendar,
-  CreditCard,
-  Settings,
+  CircleUser,
+  ShieldCheck,
   LogOut,
-  MessageSquare,
   ChevronLeft,
   ChevronRight,
-  Shield,
   X,
-  Search,
+  Plus,
   HelpCircle,
 } from "lucide-react";
 import useDashboardStore from "../../store/useDashboardStore";
@@ -23,23 +22,27 @@ import logoIcon from "../../assets/logo_icon.png";
 import logoWhite from "../../assets/logo_white.png";
 import logoIconWhite from "../../assets/logo_icon_white.png";
 
-const mainMenuItems = [
-  { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", end: true },
-  // { path: "/dashboard/book", icon: Search, label: "Book Now" },
-  { path: "/dashboard/quotes", icon: FileText, label: "Request Quotes" },
-  { path: "/dashboard/bookings", icon: Calendar, label: "My Bookings" },
-  { path: "/dashboard/payments", icon: CreditCard, label: "Payments" },
-  // {
-  //   path: "/dashboard/messages",
-  //   icon: MessageSquare,
-  //   label: "Messages",
-  //   badge: 2,
-  // },
-  { path: "/dashboard/support", icon: HelpCircle, label: "Support" },
+// Top-level nav (no section label)
+const topItems = [
+  { path: "/dashboard", icon: LayoutGrid, label: "Home", end: true },
 ];
 
-const generalItems = [
-  { path: "/dashboard/profile", icon: Settings, label: "Settings" },
+// My AutoScreen section
+const autoScreenItems = [
+  { path: "/dashboard/vehicles", icon: Car, label: "My Vehicles" },
+  { path: "/dashboard/quotes", icon: FileText, label: "Quote Requests" },
+  { path: "/dashboard/bookings", icon: Calendar, label: "My Bookings" },
+];
+
+// Account section
+const accountItems = [
+  { path: "/dashboard/profile", icon: CircleUser, label: "My Profile" },
+  { path: "/dashboard/insurance", icon: ShieldCheck, label: "Insurance" },
+];
+
+// Support section
+const supportItems = [
+  { path: "/dashboard/support", icon: HelpCircle, label: "Support" },
 ];
 
 const DashboardSidebar = () => {
@@ -53,11 +56,11 @@ const DashboardSidebar = () => {
     bookings,
   } = useDashboardStore();
   const logout = useAuthStore((state) => state.logout);
+  const navigate = useNavigate();
   const [hoveredItem, setHoveredItem] = useState(null);
-
   const getBadgeCount = (label) => {
     switch (label) {
-      case "Request Quotes":
+      case "Quote Requests":
         return (
           quotes?.filter(
             (q) =>
@@ -82,6 +85,12 @@ const DashboardSidebar = () => {
     }
   };
 
+  // Badge style: "red" for Quote Requests, "soft" (blue) for My Bookings
+  const getBadgeStyle = (label) => {
+    if (label === "My Bookings") return "soft";
+    return "red";
+  };
+
   const handleMouseEnter = (label, e) => {
     if (!sidebarCollapsed) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -104,6 +113,90 @@ const DashboardSidebar = () => {
     await logout();
   };
 
+  // Render a nav item with HTML-design active style (blue left bar + blue bg)
+  const renderNavItem = ({ path, icon: Icon, label, end }) => {
+    const badgeCount = getBadgeCount(label);
+    const badgeStyle = getBadgeStyle(label);
+
+    return (
+      <li key={path}>
+        <NavLink
+          to={path}
+          end={end}
+          onClick={() => {
+            if (window.innerWidth < 1024) toggleSidebar();
+          }}
+          onMouseEnter={(e) => handleMouseEnter(label, e)}
+          onMouseLeave={handleMouseLeave}
+          className={({ isActive }) => `
+            flex items-center rounded-lg
+            transition-all duration-200 group relative
+            ${
+              isActive
+                ? "bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 font-semibold"
+                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+            }
+            ${sidebarCollapsed ? "justify-center px-3 py-2.5" : "gap-3 px-3 py-2.5"}
+          `}
+        >
+          {({ isActive }) => (
+            <>
+              {/* Active left accent bar */}
+              {isActive && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[22px] bg-primary-600 rounded-r-sm" />
+              )}
+
+              <div className="relative">
+                <Icon size={20} className="flex-shrink-0" />
+                {sidebarCollapsed && badgeCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                  </span>
+                )}
+              </div>
+
+              {!sidebarCollapsed && (
+                <span className="font-medium whitespace-nowrap">{label}</span>
+              )}
+
+              {/* Badge for expanded state */}
+              {!sidebarCollapsed && badgeCount > 0 && (
+                <span
+                  className={`
+                    ml-auto flex h-5 w-auto min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold
+                    ${
+                      badgeStyle === "soft"
+                        ? "bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400"
+                        : "bg-red-500 text-white shadow-sm"
+                    }
+                  `}
+                >
+                  {badgeCount > 99 ? "99+" : badgeCount}
+                </span>
+              )}
+            </>
+          )}
+        </NavLink>
+      </li>
+    );
+  };
+
+  // Render a section with optional label
+  const renderSection = (label, items) => (
+    <div className="mb-4">
+      {label && !sidebarCollapsed && (
+        <p className="px-3 mb-2 text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+          {label}
+        </p>
+      )}
+      {label && sidebarCollapsed && (
+        <div className="mb-2 border-t border-slate-100 dark:border-slate-800 mx-2" />
+      )}
+      <ul className="space-y-0.5">{items.map(renderNavItem)}</ul>
+    </div>
+  );
+
   return (
     <>
       {/* Mobile overlay */}
@@ -121,12 +214,12 @@ const DashboardSidebar = () => {
           bg-white dark:bg-slate-900
           transition-all duration-300 ease-in-out
           flex flex-col
-          ${sidebarCollapsed ? "lg:w-[72px]" : "lg:w-[240px]"}
-          w-[240px]
+          ${sidebarCollapsed ? "lg:w-[72px]" : "lg:w-[260px]"}
+          w-[260px]
           ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           }
-          border-r border-slate-100 dark:border-slate-800
+          border-r border-slate-200 dark:border-slate-800
           overflow-visible
         `}
       >
@@ -199,126 +292,31 @@ const DashboardSidebar = () => {
 
         {/* Navigation */}
         <nav className="flex-1 py-4 px-3 overflow-y-auto overflow-x-hidden">
-          {/* Main Menu Section */}
-          <div className="mb-6">
-            {!sidebarCollapsed && (
-              <p className="px-3 mb-3 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                Main Menu
-              </p>
-            )}
+          {/* Home (no section label) */}
+          {renderSection(null, topItems)}
+
+          {/* My AutoScreen */}
+          {renderSection("My AutoScreen", autoScreenItems)}
+
+          {/* Account */}
+          {renderSection("Account", accountItems)}
+
+          {/* Support & Chat */}
+          {renderSection("Support", supportItems)}
+
+          {/* Logout */}
+          <div className="mt-2">
             {sidebarCollapsed && (
-              <div className="mb-3 border-t border-slate-100 dark:border-slate-800 mx-2" />
+              <div className="mb-2 border-t border-slate-100 dark:border-slate-800 mx-2" />
             )}
-
-            <ul className="space-y-1">
-              {mainMenuItems.map(({ path, icon: Icon, label, end, badge }) => {
-                const badgeCount = badge || getBadgeCount(label);
-
-                return (
-                  <li key={path}>
-                    <NavLink
-                      to={path}
-                      end={end}
-                      onClick={() => {
-                        if (window.innerWidth < 1024) toggleSidebar();
-                      }}
-                      onMouseEnter={(e) => handleMouseEnter(label, e)}
-                      onMouseLeave={handleMouseLeave}
-                      className={({ isActive }) => `
-                        flex items-center rounded-lg
-                        transition-all duration-200 group relative
-                        ${
-                          isActive
-                            ? "bg-primary-600 text-white shadow-sm font-medium"
-                            : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                        }
-                        ${sidebarCollapsed ? "justify-center px-3 py-2.5" : "gap-3 px-3 py-2.5"}
-                      `}
-                    >
-                      <div className="relative">
-                        <Icon size={20} className="flex-shrink-0" />
-                        {sidebarCollapsed && badgeCount > 0 && (
-                          <span className="absolute -top-1.5 -right-1.5 flex h-3 w-3">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                          </span>
-                        )}
-                      </div>
-
-                      {!sidebarCollapsed && (
-                        <span className="font-medium whitespace-nowrap">
-                          {label}
-                        </span>
-                      )}
-
-                      {/* Badge for expanded state */}
-                      {!sidebarCollapsed && badgeCount > 0 && (
-                        <span
-                          className={`
-                            ml-auto flex h-5 w-auto min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold
-                            bg-red-500 text-white shadow-sm
-                          `}
-                        >
-                          {badgeCount > 99 ? "99+" : badgeCount}
-                        </span>
-                      )}
-                    </NavLink>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-
-          {/* General Section */}
-          <div>
-            {!sidebarCollapsed && (
-              <p className="px-3 mb-3 text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                General
-              </p>
-            )}
-            {sidebarCollapsed && (
-              <div className="mb-3 border-t border-slate-100 dark:border-slate-800 mx-2" />
-            )}
-
-            <ul className="space-y-1">
-              {generalItems.map(({ path, icon: Icon, label }) => (
-                <li key={path}>
-                  <NavLink
-                    to={path}
-                    onClick={() => {
-                      if (window.innerWidth < 1024) toggleSidebar();
-                    }}
-                    onMouseEnter={(e) => handleMouseEnter(label, e)}
-                    onMouseLeave={handleMouseLeave}
-                    className={({ isActive }) => `
-                      flex items-center gap-3 px-3 py-2.5 rounded-lg
-                      transition-all duration-200 group relative
-                      ${
-                        isActive
-                          ? "bg-primary-600 text-white shadow-sm font-medium"
-                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      }
-                      ${sidebarCollapsed ? "justify-center" : ""}
-                    `}
-                  >
-                    <Icon size={20} className="flex-shrink-0" />
-                    {!sidebarCollapsed && (
-                      <span className="font-medium whitespace-nowrap">
-                        {label}
-                      </span>
-                    )}
-                  </NavLink>
-                </li>
-              ))}
-
-              {/* Logout */}
+            <ul>
               <li>
                 <button
                   onClick={handleLogout}
                   onMouseEnter={(e) => handleMouseEnter("Log out", e)}
                   onMouseLeave={handleMouseLeave}
                   className={`
-                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg 
+                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
                     text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 group relative
                     ${sidebarCollapsed ? "justify-center" : ""}
                   `}
@@ -334,6 +332,31 @@ const DashboardSidebar = () => {
             </ul>
           </div>
         </nav>
+
+        {/* Get a Quote CTA */}
+        {!sidebarCollapsed && (
+          <div className="p-3">
+            <button
+              onClick={() => navigate("/dashboard/quotes/new")}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-br from-primary-600 to-primary-700 text-white font-bold text-[15px] shadow-md hover:from-primary-500 hover:to-primary-600 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+            >
+              <Plus size={16} />
+              Get a Quote
+            </button>
+          </div>
+        )}
+        {sidebarCollapsed && (
+          <div className="p-2">
+            <button
+              onClick={() => navigate("/dashboard/quotes/new")}
+              onMouseEnter={(e) => handleMouseEnter("Get a Quote", e)}
+              onMouseLeave={handleMouseLeave}
+              className="w-full flex items-center justify-center py-2.5 rounded-xl bg-gradient-to-br from-primary-600 to-primary-700 text-white shadow-md hover:from-primary-500 hover:to-primary-600 transition-all duration-200"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+        )}
 
         {/* Global Floating Tooltip */}
         {hoveredItem && sidebarCollapsed && (
@@ -354,6 +377,7 @@ const DashboardSidebar = () => {
           </div>
         )}
       </aside>
+
     </>
   );
 };

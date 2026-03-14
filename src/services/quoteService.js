@@ -32,11 +32,14 @@ const quoteService = {
 
   /**
    * Get all quotes for customer
+   * @param {Object} params - { status, group, page, limit }
+   *   group: "active" | "completed" | "closed" — backend shortcut
    */
   getQuotes: (params = {}) => {
-    const { status, page = 1, limit = 10 } = params;
+    const { status, group, page = 1, limit = 50 } = params;
     const queryParams = new URLSearchParams();
-    if (status) queryParams.append("status", status);
+    if (group) queryParams.append("group", group);
+    else if (status) queryParams.append("status", status);
     queryParams.append("page", page);
     queryParams.append("limit", limit);
 
@@ -63,17 +66,6 @@ const quoteService = {
     return request({
       method: "GET",
       url: `/customer/quotes/${quoteId}/responses`,
-    });
-  },
-
-  /**
-   * Accept a quote response and create booking
-   */
-  acceptQuoteResponse: (quoteId, responseId, data = {}) => {
-    return request({
-      method: "POST",
-      url: `/customer/quotes/${quoteId}/accept/${responseId}`,
-      data,
     });
   },
 

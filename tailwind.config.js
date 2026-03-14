@@ -57,7 +57,10 @@ export default {
         'sidebar-active': '#3b82f6',
       },
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Inter"', '-apple-system', 'system-ui', 'sans-serif'],
+        display: ['"Plus Jakarta Sans"', '-apple-system', 'sans-serif'],
+        body: ['"Inter"', '-apple-system', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', '"Fira Code"', 'monospace'],
       },
       boxShadow: {
         'card': '0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05)',

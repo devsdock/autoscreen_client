@@ -145,7 +145,8 @@ export const mapBooking = (booking) => {
     if (
       typeof booking.service === "string" &&
       booking.service &&
-      booking.service !== booking.serviceType
+      booking.service !== booking.serviceType &&
+      !/^[a-f\d]{24}$/i.test(booking.service)
     ) {
       // Check if it's already a formatted string or just the type
       const lowerService = booking.service.toLowerCase();
@@ -208,17 +209,23 @@ export const mapBooking = (booking) => {
     if (isQuoteBased) {
       // Quote-based booking timeline
 
-      // 1. Quoted — quote pre-dates booking, no timestamp available in booking doc
+      // 1. Quoted
       stages.push({
         status: "Quoted",
-        date: null,
+        date:
+          (typeof booking.quote === "object" ? booking.quote?.createdAt : null) ||
+          booking.quoteCreatedAt ||
+          null,
         completed: true,
       });
 
-      // 2. Provider Responded — response timestamp not stored in booking
+      // 2. Provider Responded
       stages.push({
         status: "Provider Responded",
-        date: null,
+        date:
+          (typeof booking.quoteResponse === "object" ? booking.quoteResponse?.createdAt : null) ||
+          booking.quoteResponseCreatedAt ||
+          null,
         completed: true,
       });
 
@@ -236,17 +243,25 @@ export const mapBooking = (booking) => {
           booking.actualTimes?.confirmedAt ||
           booking.statusHistory?.find((h) => h.status === "confirmed")
             ?.timestamp,
-        completed: isPaid || currentStatusLevel >= 4,
+        completed: isPaid,
       });
 
-      // 5. In Progress
+      // 5. Appointment Scheduled
+      const hasSchedule = !!booking.scheduledDate;
+      stages.push({
+        status: "Appointment Scheduled",
+        date: booking.actualTimes?.scheduledAt || (hasSchedule ? booking.scheduledDate : null),
+        completed: hasSchedule,
+      });
+
+      // 6. In Progress
       stages.push({
         status: "In Progress",
         date: booking.actualTimes?.startedAt || booking.startedAt,
         completed: currentStatusLevel >= 5,
       });
 
-      // 6. Completed
+      // 7. Completed
       stages.push({
         status: "Completed",
         date: booking.actualTimes?.completedAt || booking.completedAt,
@@ -299,7 +314,7 @@ export const mapBooking = (booking) => {
       stages.push({
         status: "Confirmed",
         date: booking.actualTimes?.confirmedAt || booking.confirmedAt,
-        completed: isPaid || currentStatusLevel >= 4,
+        completed: isPaid,
       });
 
       // 5. In Progress
@@ -390,6 +405,11 @@ export const mapBooking = (booking) => {
       booking.reference ||
       (booking._id || booking.id || "").substring(0, 8).toUpperCase(),
     vehicle: vehicleStr,
+    vehicleRegNumber:
+      (typeof booking.vehicle === "object" ? booking.vehicle?.registrationNumber : null) ||
+      booking.vehicleRegNumber ||
+      booking.registrationNumber ||
+      "",
     vehicleData: {
       hasAdasCamera: booking.vehicle?.hasAdasCamera || false,
       hasRainSensor: booking.vehicle?.hasRainSensor || false,
@@ -449,11 +469,27 @@ export const mapBooking = (booking) => {
         ? booking.suggestions[booking.suggestions.length - 1].note
         : booking.alternateSlotNote,
     timeline: generateTimeline(booking.status, booking.timeline),
-    // Combined date and time for display
-    formattedScheduledDateTime: formatDateTime(
-      booking.scheduledDate,
-      booking.scheduledTimeSlot,
-    ),
+    // Combined date and time for display (duration-aware for new bookings)
+    formattedScheduledDateTime: (() => {
+      const ts = booking.scheduledTimeSlot;
+      const dur = booking.estimatedDuration;
+      // Guard "00:00" slots — show date only
+      if (ts === "00:00" || ts === "00:00 - 00:00") {
+        return formatDateTime(booking.scheduledDate);
+      }
+      if (typeof ts === "object" && ts?.start === "00:00" && (!ts?.end || ts?.end === "00:00")) {
+        return formatDateTime(booking.scheduledDate);
+      }
+      if (ts && typeof ts === "string" && !ts.includes("-") && !ts.includes("–") && dur && dur > 30) {
+        const slotsNeeded = Math.ceil(dur / 30);
+        const [h, m] = ts.split(":").map(Number);
+        const endMins = (h || 0) * 60 + (m || 0) + slotsNeeded * 30;
+        const endH = String(Math.floor(endMins / 60)).padStart(2, "0");
+        const endM = String(endMins % 60).padStart(2, "0");
+        return formatDateTime(booking.scheduledDate, `${ts} – ${endH}:${endM}`);
+      }
+      return formatDateTime(booking.scheduledDate, ts);
+    })(),
     cancellation: booking.cancellation || null,
   };
 };
@@ -496,8 +532,10 @@ export const mapQuote = (quote) => {
         return responseCount > 0 ? "Responses" : "Open";
       case "quoted":
         return "Responses";
+      case "accepting":
       case "accepted":
         return "Accepted";
+      case "closed":
       case "expired":
       case "cancelled":
         return "Closed";
@@ -512,7 +550,8 @@ export const mapQuote = (quote) => {
     }
   };
 
-  const responsesCount = quote.responseCount || quote.responses?.length || 0;
+  const responsesCount = quote.responseCount || quote.responses?.length || quote.responsesCount || 0;
+  const providerCount = quote.broadcastedTo?.length || quote.providerCount || 0;
 
   return {
     ...quote,
@@ -536,10 +575,10 @@ export const mapQuote = (quote) => {
     serviceSelections: quote.serviceSelections || [],
     location: quote.serviceLocation?.address || { city: "N/A" },
     responsesCount: responsesCount,
+    providerCount: providerCount,
     images: processImages(quote.damageImages || quote.images || []),
     status: (() => {
       const computed = normalizeStatus(quote.status, responsesCount);
-      // awaiting-payment means customer accepted — show in Accepted tab
       return computed;
     })(),
     rawStatus: quote.status, // Keep original for debugging

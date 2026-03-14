@@ -199,28 +199,6 @@ const bookingService = {
     });
   },
 
-  // Slot negotiation
-  acceptProposedSlot: (bookingId) => {
-    return request({
-      method: "POST",
-      url: `/customer/booking-requests/${bookingId}/accept-slot`,
-    });
-  },
-
-  rejectProposedSlot: (bookingId) => {
-    return request({
-      method: "POST",
-      url: `/customer/booking-requests/${bookingId}/reject-slot`,
-    });
-  },
-
-  counterProposeSlot: (bookingId, data) => {
-    return request({
-      method: "POST",
-      url: `/customer/booking-requests/${bookingId}/counter-slot`,
-      data,
-    });
-  },
 };
 
 export default bookingService;
