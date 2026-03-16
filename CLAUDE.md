@@ -3,7 +3,7 @@
 > **Project:** AutoScreen Customer Dashboard
 > **Stack:** React + Vite, Zustand, React Router v6, Axios, Socket.IO
 > **Version:** 1.0.0
-> **Last Updated:** 09 March 2026 (Full Documentation Refresh — New Pages, Design Updates, Quote-Only Flow)
+> **Last Updated:** 15 March 2026 (Reschedule Booking Feature — Frontend)
 
 ---
 
@@ -873,6 +873,27 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 - **Documentation**: Updated CLAUDE.md with all new pages (OverviewNew, QuotesNew, NewQuote, QuoteDetailPage, BookAppointment, Vehicles, Insurance), updated route map, component inventory, and file structure to reflect current codebase state.
 - **Pages count**: 22 dashboard pages, 12 dashboard components, 26 UI components, 13 services, 5 stores.
+
+### 15 March 2026 (Reschedule Booking Feature — Frontend)
+
+- **`BookingCard.jsx`**: Added `canReschedule` flag (`isScheduled && category === "upcoming" && scheduledDate > 24h from now`). Renders an amber "Reschedule" button (with `RefreshCw` icon, already imported) between "Book Appointment" and "Cancel" buttons when condition is met.
+- **`BookingDetailDrawer.jsx`**: Added `canReschedule` computed flag (same logic: `confirmed` status, `scheduledDate` present, `paid`, appointment >24h away). Added `RefreshCw` to lucide-react imports. Footer condition expanded to include `canReschedule`. Reschedule button added inside the grid section (before Cancel), navigates to `/dashboard/bookings/:id/reschedule` after closing the drawer.
+- **`App.jsx`**: Added `<Route path="bookings/:id/reschedule" element={<BookAppointment />} />` placed BEFORE `bookings/:id/:action` so it takes priority.
+- **`Bookings.jsx`**: Fixed `onReschedule` callback to navigate to `/dashboard/bookings/${b.id}/reschedule` (was incorrectly using `replace: true` and going to the booking ID without the path segment).
+- **`BookAppointment.jsx`**: Full dual-mode support:
+  - `useLocation` added to detect reschedule mode (`/bookings/*/reschedule` URL pattern).
+  - `isReschedule` and `bookingIdFromUrl` flags derived from URL.
+  - Existing quote-load `useEffect` wrapped with `if (isReschedule) return` guard.
+  - New `useEffect` for reschedule mode: calls `bookingService.getBooking(bookingIdFromUrl)`, builds a minimal quote-like object from booking fields for display compatibility.
+  - `handleConfirm` prioritises `bookingIdFromUrl` so reschedule path always uses the correct booking ID.
+  - Back link, page title, and subtitle conditionally show reschedule copy.
+  - `JourneyProgress` and `ProviderPaidBar` hidden in reschedule mode.
+  - `ConfirmedModal` accepts `isReschedule` prop — shows "Appointment Rescheduled!" title and alternate subtitle.
+  - `AppointmentSummary` accepts `isReschedule` prop — confirm button label changes to "Reschedule Appointment".
+
+**Reschedule eligibility:**
+- Booking status must be `confirmed`, payment status `paid`, and `scheduledDate` must be more than 24 hours in the future.
+- Calls the existing `PUT /customer/bookings/:id/reschedule` endpoint (already in `bookingService.rescheduleBooking`).
 
 ### 9 March 2026 (BookingCard Design Matching Reference HTML + BookAppointment Confirmed Modal + Provider Reschedule Socket & Badge)
 

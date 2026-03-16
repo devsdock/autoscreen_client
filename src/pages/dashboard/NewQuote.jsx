@@ -686,12 +686,13 @@ const NewQuote = () => {
                   value={formData.vehicleMake}
                   options={availableMakes}
                   onChange={(val) => handleChange("vehicleMake", val)}
-                  placeholder="Select make"
+                  placeholder="Search make"
                   error={errors.vehicleMake}
                   isSearchable
                   isCreatable
                   isClearable
                   loading={isFetchingMakes}
+                  hideArrow
                 />
 
                 <PremiumSelect
@@ -715,6 +716,7 @@ const NewQuote = () => {
                       : "No models found"
                   }
                   autoOpen={suggestedField === "vehicleModel"}
+                  hideArrow
                 />
               </div>
 
@@ -724,8 +726,9 @@ const NewQuote = () => {
                   value={formData.vehicleYear}
                   options={years.map(String)}
                   onChange={(val) => handleChange("vehicleYear", val)}
-                  placeholder="Select year"
+                  placeholder="Search year"
                   isSearchable
+                  hideArrow
                 />
               </div>
             </div>

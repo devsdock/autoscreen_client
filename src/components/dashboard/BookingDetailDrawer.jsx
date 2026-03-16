@@ -18,6 +18,7 @@ import {
   RotateCcw,
   CalendarCheck,
   ArrowRight,
+  RefreshCw,
 } from "lucide-react";
 import Drawer, { DrawerFooter } from "../ui/Drawer";
 import StatusBadge from "../ui/StatusBadge";
@@ -243,6 +244,8 @@ const BookingDetailDrawer = ({
     "searching",
     "awaiting-customer-approval",
   ].includes(currentStatus);
+  const canReschedule = currentStatus === "confirmed" && booking?.scheduledDate && currentPaymentStatus === "paid" &&
+    new Date(booking.scheduledDate) - new Date() > 24 * 3600000;
   const canPay =
     currentPaymentStatus === "unpaid" &&
     ["accepted", "confirmed", "pending payment", "awaiting-payment"].includes(
@@ -1075,7 +1078,8 @@ const BookingDetailDrawer = ({
         {(canPay ||
           canReview ||
           canDownloadInvoice ||
-          canCancel) && (
+          canCancel ||
+          canReschedule) && (
           <DrawerFooter className="flex-col gap-3">
             {canPay && (
               <Button onClick={handlePayNow} className="w-full">
@@ -1084,7 +1088,7 @@ const BookingDetailDrawer = ({
               </Button>
             )}
 
-            {(canReview || canDownloadInvoice || canCancel) && (
+            {(canReview || canDownloadInvoice || canReschedule || canCancel) && (
               <div className="grid grid-flow-col auto-cols-fr gap-2 w-full">
                 {canReview && (
                   <Button
@@ -1115,6 +1119,19 @@ const BookingDetailDrawer = ({
                       Invoice
                     </Button>
                   </Tooltip>
+                )}
+                {canReschedule && (
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => {
+                      onClose();
+                      navigate(`/dashboard/bookings/${booking.id || booking._id}/reschedule`);
+                    }}
+                  >
+                    <RefreshCw size={16} />
+                    Reschedule
+                  </Button>
                 )}
                 {canCancel && (
                   <Button

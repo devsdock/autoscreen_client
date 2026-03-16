@@ -323,7 +323,7 @@ const Bookings = () => {
     onBookAppointment: handleBookAppointment,
     onCancel: (b) => handleOpenCancelModal(b),
     onReschedule: (b) => {
-      navigate(`/dashboard/bookings/${b.id}`, { replace: true });
+      navigate(`/dashboard/bookings/${b.id}/reschedule`);
     },
     onInvoice: (b) =>
       downloadInvoice(b.id, b.reference, (msg, type) =>

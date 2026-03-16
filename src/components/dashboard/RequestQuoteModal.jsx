@@ -753,12 +753,13 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                   value={formData.vehicleMake}
                   options={availableMakes}
                   onChange={(val) => handleChange("vehicleMake", val)}
-                  placeholder="Select make"
+                  placeholder="Search make"
                   error={errors.vehicleMake}
                   isSearchable
                   isCreatable
                   isClearable
                   loading={isFetchingMakes}
+                  hideArrow
                 />
 
                 <PremiumSelect
@@ -768,7 +769,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                   options={availableModels}
                   onChange={(val) => handleChange("vehicleModel", val)}
                   placeholder={
-                    !formData.vehicleMake ? "Select make first" : "Search model"
+                    !formData.vehicleMake ? "Search make first" : "Search model"
                   }
                   error={errors.vehicleModel}
                   isSearchable
@@ -782,6 +783,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                       : "No models found"
                   }
                   autoOpen={suggestedField === "vehicleModel"}
+                  hideArrow
                 />
               </div>
 
@@ -791,8 +793,9 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                   value={formData.vehicleYear}
                   options={years.map(String)}
                   onChange={(val) => handleChange("vehicleYear", val)}
-                  placeholder="Select year"
+                  placeholder="Search year"
                   isSearchable
+                  hideArrow
                 />
               </div>
             </div>

@@ -19,6 +19,7 @@ const PremiumSelect = ({
   className = "",
   isCreatable = false,
   isClearable = false,
+  hideArrow = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -239,11 +240,13 @@ const PremiumSelect = ({
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer flex-shrink-0 ml-1"
               />
             )}
-            <ChevronDown
-              size={18}
-              onClick={handleToggle}
-              className={`text-slate-400 transition-transform duration-200 cursor-pointer flex-shrink-0 ml-1 ${isOpen ? "rotate-180 text-primary-500" : ""}`}
-            />
+            {!hideArrow && (
+              <ChevronDown
+                size={18}
+                onClick={handleToggle}
+                className={`text-slate-400 transition-transform duration-200 cursor-pointer flex-shrink-0 ml-1 ${isOpen ? "rotate-180 text-primary-500" : ""}`}
+              />
+            )}
           </div>
         ) : (
           <button
@@ -284,10 +287,12 @@ const PremiumSelect = ({
                   <X size={14} />
                 </span>
               )}
-              <ChevronDown
-                size={18}
-                className={`text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180 text-primary-500" : ""}`}
-              />
+              {!hideArrow && (
+                <ChevronDown
+                  size={18}
+                  className={`text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180 text-primary-500" : ""}`}
+                />
+              )}
             </div>
           </button>
         )}

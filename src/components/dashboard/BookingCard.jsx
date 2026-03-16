@@ -60,6 +60,7 @@ const BookingCard = ({
     booking.quoteRequestId;
 
   const needsAppointment = category === "upcoming" && isPaid && !hasSchedule && quoteId;
+  const canReschedule = isScheduled && category === "upcoming" && new Date(booking.scheduledDate) - new Date() > 24 * 3600000;
 
   // Format time slot with duration-aware end time (only for new single-point slots like "09:00")
   const timeSlotStr = (() => {
@@ -261,6 +262,18 @@ const BookingCard = ({
               <CalendarCheck size={13} />
               Book Appointment
               <ArrowRight size={12} />
+            </button>
+          )}
+
+          {/* Reschedule — scheduled booking >24h away */}
+          {canReschedule && onReschedule && (
+            <button
+              onClick={() => onReschedule(booking)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:shadow-md hover:-translate-y-px"
+              style={{ background: "linear-gradient(135deg, #F59E0B, #D97706)" }}
+            >
+              <RefreshCw size={13} />
+              Reschedule
             </button>
           )}
 

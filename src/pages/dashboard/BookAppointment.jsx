@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
@@ -546,6 +546,7 @@ const AppointmentSummary = ({
   isConfirming,
   estimatedDuration = 60,
   slotsNeeded = 2,
+  isReschedule = false,
 }) => {
   const slotDuration = slotsNeeded * 30;
   const endTime = selectedSlot && slotsNeeded > 1
@@ -623,7 +624,7 @@ const AppointmentSummary = ({
         ) : (
           <Calendar size={16} />
         )}
-        {isConfirming ? "Confirming..." : "Confirm Appointment"}
+        {isConfirming ? "Confirming..." : isReschedule ? "Reschedule Appointment" : "Confirm Appointment"}
       </button>
     </div>
   );
@@ -631,7 +632,7 @@ const AppointmentSummary = ({
 
 // ─── Confirmed Modal ──────────────────────────────────────────────────────────
 
-const ConfirmedModal = ({ isOpen, bookingReference, selectedDate, selectedSlot, onViewBookings, slotsNeeded = 2 }) => {
+const ConfirmedModal = ({ isOpen, bookingReference, selectedDate, selectedSlot, onViewBookings, slotsNeeded = 2, isReschedule = false }) => {
   if (!isOpen) return null;
 
   // "Thursday 9 Jan, 09:00 — 10:30" format
@@ -670,10 +671,12 @@ const ConfirmedModal = ({ isOpen, bookingReference, selectedDate, selectedSlot, 
             className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-1"
             style={{ fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif" }}
           >
-            You&apos;re all booked!
+            {isReschedule ? "Appointment Rescheduled!" : "You\u2019re all booked!"}
           </h2>
           <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed mb-3">
-            Your appointment is confirmed. The provider will contact you to confirm the exact arrival window.
+            {isReschedule
+              ? "Your appointment has been rescheduled. The provider has been notified of the change."
+              : "Your appointment is confirmed. The provider will contact you to confirm the exact arrival window."}
           </p>
 
           {/* Booking reference */}
@@ -734,6 +737,10 @@ const BookAppointment = () => {
   const { id: quoteId } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  // Detect reschedule mode: URL is /dashboard/bookings/:id/reschedule
+  const isReschedule = location.pathname.includes("/bookings/") && location.pathname.endsWith("/reschedule");
+  const bookingIdFromUrl = isReschedule ? quoteId : null; // quoteId param captures the :id
 
   const { quotes, fetchQuoteDetails, fetchQuotes, fetchBookings, addToast } = useDashboardStore();
 
@@ -757,8 +764,9 @@ const BookAppointment = () => {
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
   const [paymentReference, setPaymentReference] = useState("");
 
-  // ── Load quote on mount ──
+  // ── Load quote on mount (skip in reschedule mode) ──
   useEffect(() => {
+    if (isReschedule) return;
     const load = async () => {
       setIsLoadingQuote(true);
       let q = quotes.find((item) => item.id === quoteId);
@@ -782,6 +790,44 @@ const BookAppointment = () => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quoteId]);
+
+  // ── Load booking directly for reschedule mode ──
+  useEffect(() => {
+    if (!isReschedule || !bookingIdFromUrl) return;
+    const loadBooking = async () => {
+      setIsLoadingQuote(true);
+      try {
+        const res = await bookingService.getBooking(bookingIdFromUrl);
+        if (res.success && res.data) {
+          const b = res.data;
+          setBooking(b);
+          // Build a minimal quote-like object for display fields
+          setQuote({
+            id: b.quote?._id || b.quote || bookingIdFromUrl,
+            vehicleFormatted: b.vehicleYear
+              ? `${b.vehicleMake || ""} ${b.vehicleModel || ""} - ${b.vehicleYear}`
+              : `${b.vehicleMake || ""} ${b.vehicleModel || ""}`.trim(),
+            vehicle: { registrationNumber: b.vehicleRegNumber || "" },
+            serviceSelections: b.serviceSelections,
+            serviceType: b.service,
+            location: b.location,
+            booking: b,
+            responses: [],
+          });
+        } else {
+          addToast({ type: "error", message: "Booking not found." });
+          navigate("/dashboard/bookings", { replace: true });
+        }
+      } catch (err) {
+        addToast({ type: "error", message: "Failed to load booking." });
+        navigate("/dashboard/bookings", { replace: true });
+      } finally {
+        setIsLoadingQuote(false);
+      }
+    };
+    loadBooking();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingIdFromUrl, isReschedule]);
 
   // ── Verify Paystack payment if ?reference= is present ──
   useEffect(() => {
@@ -1016,8 +1062,9 @@ const BookAppointment = () => {
   const handleConfirm = async () => {
     if (!selectedDate || !selectedSlot) return;
 
-    // Find booking ID
+    // Find booking ID — in reschedule mode use the URL param directly
     const bookingId =
+      bookingIdFromUrl ||
       (booking?._id || booking?.id) ||
       (quote?.booking?._id || quote?.booking?.id || quote?.bookingId);
 
@@ -1083,34 +1130,38 @@ const BookAppointment = () => {
     <div>
       {/* Back link */}
       <button
-        onClick={() => navigate("/dashboard/quotes")}
+        onClick={() => navigate(isReschedule ? "/dashboard/bookings" : "/dashboard/quotes")}
         className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors mb-5 self-start"
       >
         <ArrowLeft size={16} />
-        Back to Quotes
+        {isReschedule ? "Back to Bookings" : "Back to Quotes"}
       </button>
 
       {/* Page title */}
       <div className="mb-5">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-          Book Your Appointment
+          {isReschedule ? "Reschedule Appointment" : "Book Your Appointment"}
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Your payment is confirmed — choose a date and time that suits you.
+          {isReschedule
+            ? "Choose a new date and time for your appointment."
+            : "Your payment is confirmed — choose a date and time that suits you."}
         </p>
       </div>
 
-      {/* Journey progress */}
-      <JourneyProgress />
+      {/* Journey progress — hidden in reschedule mode */}
+      {!isReschedule && <JourneyProgress />}
 
-      {/* Provider paid bar */}
-      <ProviderPaidBar
-        providerName={providerName}
-        service={serviceStr}
-        vehicle={vehicleStr}
-        amount={totalAmount}
-        avatarUrl={providerAvatarUrl}
-      />
+      {/* Provider paid bar — hidden in reschedule mode */}
+      {!isReschedule && (
+        <ProviderPaidBar
+          providerName={providerName}
+          service={serviceStr}
+          vehicle={vehicleStr}
+          amount={totalAmount}
+          avatarUrl={providerAvatarUrl}
+        />
+      )}
 
       {/* Provider ID warning */}
       {!providerId && (
@@ -1160,6 +1211,7 @@ const BookAppointment = () => {
               isConfirming={isConfirming}
               estimatedDuration={estimatedDuration}
               slotsNeeded={slotsNeeded}
+              isReschedule={isReschedule}
             />
           )}
         </div>
@@ -1214,6 +1266,7 @@ const BookAppointment = () => {
         selectedSlot={selectedSlot}
         onViewBookings={() => navigate("/dashboard/bookings")}
         slotsNeeded={slotsNeeded}
+        isReschedule={isReschedule}
       />
     </div>
   );
