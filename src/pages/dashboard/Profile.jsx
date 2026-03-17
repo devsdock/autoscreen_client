@@ -136,6 +136,7 @@ const Profile = () => {
     isDefault: false,
   });
   const [deleteAddressId, setDeleteAddressId] = useState(null);
+  const [addressErrors, setAddressErrors] = useState({});
 
   // Notification preferences
   const [notifications, setNotifications] = useState({
@@ -491,10 +492,19 @@ const Profile = () => {
         isDefault: false,
       });
     }
+    setAddressErrors({});
     setAddressModal({ open: true, address });
   };
 
   const handleSaveAddress = async () => {
+    const newErrors = {};
+    if (!addressForm.street?.trim()) newErrors.street = "Street address is required";
+    if (!addressForm.city?.trim()) newErrors.city = "City is required";
+    if (Object.keys(newErrors).length > 0) {
+      setAddressErrors(newErrors);
+      return;
+    }
+    setAddressErrors({});
     setIsSaving(true);
     try {
       const addressData = {
@@ -1276,10 +1286,12 @@ const Profile = () => {
             label="Street Address"
             placeholder="123 Main Road"
             value={addressForm.street}
-            onChange={(e) =>
-              setAddressForm((prev) => ({ ...prev, street: e.target.value }))
-            }
+            onChange={(e) => {
+              setAddressForm((prev) => ({ ...prev, street: e.target.value }));
+              setAddressErrors((prev) => ({ ...prev, street: '' }));
+            }}
             required
+            error={addressErrors.street}
           />
           <div className="grid grid-cols-2 gap-4">
             <Input
@@ -1294,10 +1306,12 @@ const Profile = () => {
               label="City"
               options={cities}
               value={addressForm.city}
-              onChange={(val) =>
-                setAddressForm((prev) => ({ ...prev, city: val }))
-              }
+              onChange={(val) => {
+                setAddressForm((prev) => ({ ...prev, city: val }));
+                setAddressErrors((prev) => ({ ...prev, city: '' }));
+              }}
               searchable
+              error={addressErrors.city}
             />
           </div>
           <Input

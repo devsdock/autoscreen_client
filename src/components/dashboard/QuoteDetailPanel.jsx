@@ -355,6 +355,18 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                 {quote.location?.addressLine1 && (
                   <p className="text-[13px] text-white/65 mt-0.5">{quote.location.addressLine1}</p>
                 )}
+                {/* Service Mode Badge */}
+                {quote?.serviceLocation?.type && quote.serviceLocation.type !== "any" && (
+                  <span
+                    className="inline-flex items-center gap-1 mt-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
+                    style={{
+                      backgroundColor: quote.serviceLocation.type === "mobile" ? "rgba(219,234,254,0.9)" : "rgba(254,243,199,0.9)",
+                      color: quote.serviceLocation.type === "mobile" ? "#1d4ed8" : "#92400e",
+                    }}
+                  >
+                    {quote.serviceLocation.type === "mobile" ? "Mobile" : "Workshop"}
+                  </span>
+                )}
               </div>
             </div>
 

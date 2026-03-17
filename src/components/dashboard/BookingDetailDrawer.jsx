@@ -292,7 +292,7 @@ const BookingDetailDrawer = ({
       >
         <div className="space-y-6 mb-6">
           {/* Status Badges */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <StatusBadge
               status={
                 booking.status?.toLowerCase() === "searching" &&
@@ -310,6 +310,17 @@ const BookingDetailDrawer = ({
               type="payment"
               size="md"
             />
+            {booking?.serviceLocationType && booking.serviceLocationType !== "any" && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold"
+                style={{
+                  backgroundColor: booking.serviceLocationType === "mobile" ? "#dbeafe" : "#fef3c7",
+                  color: booking.serviceLocationType === "mobile" ? "#1d4ed8" : "#92400e",
+                }}
+              >
+                {booking.serviceLocationType === "mobile" ? "Mobile" : "Workshop"}
+              </span>
+            )}
           </div>
 
           {/* Book Appointment CTA — paid but no schedule yet */}
@@ -691,6 +702,43 @@ const BookingDetailDrawer = ({
                   </div>
                 </div>
               </div>
+
+              {/* Workshop Location — show provider workshop address for workshop bookings */}
+              {booking?.serviceLocationType === "workshop" &&
+                booking?.provider?.serviceArea?.workshopAddress && (
+                  <div className="flex items-start gap-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center flex-shrink-0">
+                      <MapPin
+                        size={16}
+                        className="text-amber-600 dark:text-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                        Workshop Location
+                      </p>
+                      <p className="font-medium text-slate-900 dark:text-white text-sm mt-0.5">
+                        {booking.provider.serviceArea.workshopAddress.addressLine1}
+                      </p>
+                      {booking.provider.serviceArea.workshopAddress.suburb && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {booking.provider.serviceArea.workshopAddress.suburb}
+                        </p>
+                      )}
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {booking.provider.serviceArea.workshopAddress.city}
+                        {booking.provider.serviceArea.workshopAddress.province
+                          ? `, ${booking.provider.serviceArea.workshopAddress.province}`
+                          : ""}
+                      </p>
+                      {booking.provider.serviceArea.workshopAddress.postalCode && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {booking.provider.serviceArea.workshopAddress.postalCode}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
 

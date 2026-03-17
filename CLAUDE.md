@@ -1000,5 +1000,44 @@ Customer pays → booking: confirmed → NOW visible in Bookings page (Upcoming 
 
 ---
 
+### 18 March 2026 (Service Mode Toggle Hidden for Go-Live)
+
+- **Service mode selector hidden** in `NewQuote.jsx` Step 3. The Mobile/Workshop toggle cards are commented out. Default `serviceMode: "mobile"` is still sent in the payload. All address fields (Street, Suburb, Postcode) are always shown.
+- **Validation updated**: `validateStep` and `validate()` always require `addressLine1` (removed `serviceMode !== "workshop"` conditional).
+- **Future re-enable**: Uncomment the service mode selector block in Step 3 and restore the `formData.serviceMode !== "workshop"` conditionals for address field visibility and validation.
+
+### 17 March 2026 (Address Modal Inline Validation)
+
+#### Profile.jsx — Address Modal Inline Errors (C-016)
+- **Inline validation**: Added `addressErrors` state. `handleSaveAddress` validates `street` and `city` before API call — sets inline errors and short-circuits if empty. Errors cleared when modal opens (`openAddressModal`) and on field change.
+- **Error props**: Street Address `Input` and City `PremiumSelect` now receive `error={addressErrors.street}` / `error={addressErrors.city}` — both components already support the `error` prop for red border + error text display.
+
+### 17 March 2026 (Post-Implementation Fix — Service Mode Label + Icons)
+
+- **`NewQuote.jsx` — Step 3 label renamed**: Changed "Service Type" to "Service Mode" to avoid label clash with Step 2's "Service Type" (which means service category like Glass Replacement/Repair).
+- **`NewQuote.jsx` — Emoji replaced with Lucide icons**: Mobile card `🚐` → `<Truck size={24} />`, Workshop card `🏭` → `<Building2 size={24} />`. Added `Truck, Building2` to lucide-react imports. Dark mode classes applied.
+
+### 17 March 2026 (Phase 5 — Service Mode Toggle)
+
+- **`NewQuote.jsx` — Service Mode selector added**: Step 3 (Location) now shows a two-card toggle ("Mobile" / "Workshop") before the address fields. Default is `"mobile"`. State held in `formData.serviceMode`.
+- **Conditional address fields**: When `serviceMode === "workshop"`, the Street Address, Suburb, and Postcode fields are hidden — only City / Area is required. Street Address (`addressLine1`) is required only for mobile mode (validated in both `validateStep` and the final `validate()` function).
+- **Submit payload updated**: `serviceLocation.type` now uses `formData.serviceMode || "mobile"` instead of the hardcoded `"mobile"` string.
+- **Dark mode support**: Toggle cards follow the existing `dark:` Tailwind class pattern used throughout the portal.
+
+### 17 March 2026 (Phase 8 — Customer-Facing Service Mode Display)
+
+- **`QuoteDetailPanel.jsx` — Service Mode badge in context bar**: Added a service mode badge ("Mobile" / "Workshop") in the Location column of the dark gradient context bar. Conditionally rendered when `quote.serviceLocation.type` is set and not `"any"`. Blue tint for mobile, amber tint for workshop. Uses inline `style` for colors (consistent with existing context bar inline-style pattern on a dark background).
+- **`BookingDetailDrawer.jsx` — Service mode indicator near status badges**: Added a service mode pill ("Mobile" / "Workshop") alongside the booking and payment StatusBadges at the top of the drawer. Conditionally rendered when `booking.serviceLocationType` is set and not `"any"`. Status badges wrapper changed from `flex` to `flex flex-wrap` to accommodate the extra pill without overflow.
+- **`BookingDetailDrawer.jsx` — Workshop address section**: Added a new info row below the Location row in Service Details. Conditionally rendered when `booking.serviceLocationType === "workshop"` and `booking.provider.serviceArea.workshopAddress` is present. Shows `addressLine1`, optional `suburb`, `city + province`, and optional `postalCode`. Uses an amber `MapPin` icon to visually distinguish it from the customer's service address.
+
+### 17 March 2026 (Phase 4 — Geolocation)
+
+- **`NewQuote.jsx` — `geocodeAddress` helper added**: Module-level async function that calls `nominatim.openstreetmap.org/search` with `countrycodes=za` and `User-Agent: AutoScreen/1.0`. Returns `{ lat, lng }` or `null` on failure.
+- **`NewQuote.jsx` — `handleUseMyLocation` handler added**: Uses `navigator.geolocation.getCurrentPosition`, stores GPS coordinates in `formData.coordinates`, then reverse-geocodes via Nominatim to auto-fill `city`, `suburb`, `addressLine1`, and `postcode` fields.
+- **`NewQuote.jsx` — "Use My Location" button added in Step 3**: Appears right-aligned above the City/Area PremiumSelect. Styled with `text-primary-600`, `border-primary-300`, dark mode variants.
+- **`NewQuote.jsx` — submit geocoding updated**: Replaced `geocodingService.getCoordinates` fallback with Nominatim `geocodeAddress` call. Condition tightened to `!finalCoordinates?.lat` to avoid unnecessary API calls when coordinates were set via "Use My Location".
+
+---
+
 _This is the master workflow reference for the AutoScreen Customer Portal._
 _For extended booking flow details, see [`docs/BOOK_A_SERVICE_WORKFLOW.md`](./docs/BOOK_A_SERVICE_WORKFLOW.md)._

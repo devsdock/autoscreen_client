@@ -10,6 +10,8 @@ import {
   Shield,
   Clock,
   Users,
+  Truck,
+  Building2,
 } from "lucide-react";
 import useDashboardStore from "../../store/useDashboardStore";
 import vehicleService from "../../services/vehicleService";
@@ -19,6 +21,25 @@ import React, { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PremiumSelect from "../../components/ui/PremiumSelect";
 import { CITIES } from "../../data/cities";
+
+// Geocode an address string via Nominatim (free, no API key)
+const geocodeAddress = async (address) => {
+  try {
+    const query = encodeURIComponent(address);
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&countrycodes=za&limit=1`,
+      { headers: { "User-Agent": "AutoScreen/1.0" } }
+    );
+    const data = await response.json();
+    if (data && data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+    return null;
+  } catch (err) {
+    console.error("Geocoding failed:", err);
+    return null;
+  }
+};
 
 const TOTAL_STEPS = 3;
 
@@ -50,6 +71,7 @@ const NewQuote = () => {
     suburb: "",
     hasAdasCamera: false,
     hasRainSensor: false,
+    serviceMode: "mobile",
   });
 
   const [errors, setErrors] = useState({});
@@ -238,6 +260,48 @@ const NewQuote = () => {
     }
   };
 
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setFormData((prev) => ({
+          ...prev,
+          coordinates: { lat: latitude, lng: longitude },
+        }));
+        // Reverse geocode to fill in address fields
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { "User-Agent": "AutoScreen/1.0" } }
+          );
+          const data = await response.json();
+          if (data?.address) {
+            setFormData((prev) => ({
+              ...prev,
+              city:
+                data.address.city ||
+                data.address.town ||
+                data.address.village ||
+                prev.city,
+              suburb: data.address.suburb || prev.suburb,
+              addressLine1: data.address.road
+                ? `${data.address.house_number || ""} ${data.address.road}`.trim()
+                : prev.addressLine1,
+              postcode: data.address.postcode || prev.postcode,
+              coordinates: { lat: latitude, lng: longitude },
+            }));
+          }
+        } catch (err) {
+          console.error("Reverse geocoding failed:", err);
+        }
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+      }
+    );
+  };
+
   const handleToggleService = (serviceName) => {
     setFormData((prev) => {
       const currentServices = prev.serviceTypes || [];
@@ -405,6 +469,9 @@ const NewQuote = () => {
 
     if (step === 3) {
       if (!formData.city) newErrors.city = "City is required";
+      // SERVICE MODE DISABLED FOR GO-LIVE (18 March 2026) — always require addressLine1
+      if (!formData.addressLine1.trim())
+        newErrors.addressLine1 = "Street address is required";
     }
 
     setErrors(newErrors);
@@ -425,6 +492,9 @@ const NewQuote = () => {
     if (!formData.glassTypes || formData.glassTypes.length === 0)
       newErrors.glassType = "Glass type is required";
     if (!formData.city) newErrors.city = "City is required";
+    // SERVICE MODE DISABLED FOR GO-LIVE (18 March 2026) — always require addressLine1
+    if (!formData.addressLine1 || !formData.addressLine1.trim())
+      newErrors.addressLine1 = "Street address is required";
     if (!formData.images || formData.images.length === 0)
       newErrors.images = "At least one photo is required";
 
@@ -461,14 +531,16 @@ const NewQuote = () => {
 
     try {
       let finalCoordinates = formData.coordinates;
-      if (!finalCoordinates && formData.city) {
+      if (!finalCoordinates?.lat && formData.city) {
         try {
-          const fullAddress = `${formData.addressLine1 || ""}, ${
-            formData.city
-          }, ${formData.postcode || ""}, South Africa`
-            .replace(/^, /, "")
-            .replace(/, ,/g, ",");
-          finalCoordinates = await geocodingService.getCoordinates(fullAddress);
+          const addressStr = [
+            formData.addressLine1,
+            formData.suburb,
+            formData.city,
+          ]
+            .filter(Boolean)
+            .join(", ");
+          finalCoordinates = await geocodeAddress(addressStr + ", South Africa");
         } catch (err) {
           console.error("Geocoding failed for quote", err);
         }
@@ -522,7 +594,7 @@ const NewQuote = () => {
         }),
         serviceSelections: formData.serviceSelections,
         serviceLocation: {
-          type: "mobile",
+          type: formData.serviceMode || "mobile",
           address: {
             addressLine1: formData.addressLine1,
             suburb: formData.suburb,
@@ -1035,6 +1107,67 @@ const NewQuote = () => {
                 Where should we perform the service?
               </p>
 
+              {/* DISABLED FOR GO-LIVE (18 March 2026) — Service Mode Selector hidden.
+                  Most providers haven't configured offersMobileService/offersWorkshopService yet.
+                  Default serviceMode: "mobile" is still sent in the payload.
+                  To re-enable: uncomment this block and restore the serviceMode !== "workshop"
+                  conditionals for address field visibility and validation.
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                  Service Mode
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleChange("serviceMode", "mobile")}
+                    className={`relative p-4 rounded-xl border text-left transition-all ${
+                      formData.serviceMode === "mobile"
+                        ? "border-primary-600 bg-primary-50 dark:bg-primary-900/20 ring-2 ring-primary-600/20 dark:ring-primary-400/20"
+                        : "border-slate-200 dark:border-slate-700 hover:border-primary-400/50 hover:bg-slate-50 dark:hover:border-primary-600/50 dark:hover:bg-slate-800/50"
+                    }`}
+                  >
+                    {formData.serviceMode === "mobile" && (
+                      <div className="absolute top-3 right-3 w-5 h-5 bg-primary-600 text-white rounded-full flex items-center justify-center">
+                        <Check size={12} strokeWidth={3} />
+                      </div>
+                    )}
+                    <div className="mb-1.5"><Truck size={24} className="text-primary-600 dark:text-primary-400" /></div>
+                    <div className="font-semibold text-[14px] text-slate-900 dark:text-white">Mobile</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">We come to you</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleChange("serviceMode", "workshop")}
+                    className={`relative p-4 rounded-xl border text-left transition-all ${
+                      formData.serviceMode === "workshop"
+                        ? "border-primary-600 bg-primary-50 dark:bg-primary-900/20 ring-2 ring-primary-600/20 dark:ring-primary-400/20"
+                        : "border-slate-200 dark:border-slate-700 hover:border-primary-400/50 hover:bg-slate-50 dark:hover:border-primary-600/50 dark:hover:bg-slate-800/50"
+                    }`}
+                  >
+                    {formData.serviceMode === "workshop" && (
+                      <div className="absolute top-3 right-3 w-5 h-5 bg-primary-600 text-white rounded-full flex items-center justify-center">
+                        <Check size={12} strokeWidth={3} />
+                      </div>
+                    )}
+                    <div className="mb-1.5"><Building2 size={24} className="text-primary-600 dark:text-primary-400" /></div>
+                    <div className="font-semibold text-[14px] text-slate-900 dark:text-white">Workshop</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Visit a workshop</div>
+                  </button>
+                </div>
+              </div>
+              */}
+
+              {/* Use My Location */}
+              <div className="flex justify-end mb-1">
+                <button
+                  type="button"
+                  onClick={handleUseMyLocation}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary-600 dark:text-primary-400 border border-primary-300 dark:border-primary-700 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all"
+                >
+                  <MapPin size={14} /> Use My Location
+                </button>
+              </div>
+
               <div className="mb-4">
                 <PremiumSelect
                   label="City / Area"
@@ -1048,56 +1181,64 @@ const NewQuote = () => {
                 />
               </div>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                  Street Address{" "}
-                  <span className="text-slate-400 dark:text-slate-500 font-normal">
-                    (optional)
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.addressLine1}
-                  onChange={(e) =>
-                    handleChange("addressLine1", e.target.value)
-                  }
-                  placeholder="e.g. 14 Sandton Drive"
-                  className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 text-slate-700 dark:text-slate-200"
-                />
-              </div>
+              {/* SERVICE MODE DISABLED FOR GO-LIVE — always show address fields */}
+                <>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                      Street Address{" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.addressLine1}
+                      onChange={(e) =>
+                        handleChange("addressLine1", e.target.value)
+                      }
+                      placeholder="e.g. 14 Sandton Drive"
+                      className={`w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 text-slate-700 dark:text-slate-200 ${
+                        errors.addressLine1
+                          ? "border-red-400"
+                          : "border-slate-200 dark:border-slate-700"
+                      }`}
+                    />
+                    {errors.addressLine1 && (
+                      <p className="mt-1 text-xs text-red-500">{errors.addressLine1}</p>
+                    )}
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                    Suburb{" "}
-                    <span className="text-slate-400 dark:text-slate-500 font-normal">
-                      (optional)
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.suburb}
-                    onChange={(e) => handleChange("suburb", e.target.value)}
-                    placeholder="e.g. Sandton"
-                    className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 text-slate-700 dark:text-slate-200"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                    Postcode{" "}
-                    <span className="text-slate-400 dark:text-slate-500 font-normal">
-                      (optional)
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.postcode}
-                    onChange={(e) => handleChange("postcode", e.target.value)}
-                    placeholder="e.g. 2196"
-                    className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 text-slate-700 dark:text-slate-200"
-                  />
-                </div>
-              </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                        Suburb{" "}
+                        <span className="text-slate-400 dark:text-slate-500 font-normal">
+                          (optional)
+                        </span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.suburb}
+                        onChange={(e) => handleChange("suburb", e.target.value)}
+                        placeholder="e.g. Sandton"
+                        className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 text-slate-700 dark:text-slate-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                        Postcode{" "}
+                        <span className="text-slate-400 dark:text-slate-500 font-normal">
+                          (optional)
+                        </span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.postcode}
+                        onChange={(e) => handleChange("postcode", e.target.value)}
+                        placeholder="e.g. 2196"
+                        className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 text-slate-700 dark:text-slate-200"
+                      />
+                    </div>
+                  </div>
+                </>
             </div>
           )}
         </div>

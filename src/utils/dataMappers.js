@@ -34,6 +34,8 @@ const formatBookingStatus = (status) => {
       return "Awaiting Payment";
     case "confirmed":
       return "Confirmed";
+    case "arrived":
+      return "Arrived";
     case "in-progress":
       return "In Progress";
     case "completed":
@@ -190,9 +192,10 @@ export const mapBooking = (booking) => {
       accepted: 2,
       "awaiting-payment": 3,
       confirmed: 4,
-      "in-progress": 5,
-      "completed-by-fitter": 6,
-      completed: 7,
+      arrived: 5,
+      "in-progress": 6,
+      "completed-by-fitter": 7,
+      completed: 8,
       cancelled: -1,
       expired: -1,
       rejected: -1,
@@ -254,21 +257,28 @@ export const mapBooking = (booking) => {
         completed: hasSchedule,
       });
 
-      // 6. In Progress
+      // 6. Arrived at Location
       stages.push({
-        status: "In Progress",
-        date: booking.actualTimes?.startedAt || booking.startedAt,
+        status: "Arrived at Location",
+        date: booking.actualTimes?.arrivedAt || null,
         completed: currentStatusLevel >= 5,
       });
 
-      // 7. Completed
+      // 7. In Progress
       stages.push({
-        status: "Completed",
-        date: booking.actualTimes?.completedAt || booking.completedAt,
+        status: "In Progress",
+        date: booking.actualTimes?.startedAt || booking.startedAt,
         completed: currentStatusLevel >= 6,
       });
 
-      // 7. Refund (Special Case)
+      // 8. Completed
+      stages.push({
+        status: "Completed",
+        date: booking.actualTimes?.completedAt || booking.completedAt,
+        completed: currentStatusLevel >= 7,
+      });
+
+      // Refund (Special Case)
       if (
         currentStatus === "cancelled" &&
         (booking.cancellation?.refundAmount > 0 ||
@@ -317,21 +327,28 @@ export const mapBooking = (booking) => {
         completed: isPaid,
       });
 
-      // 5. In Progress
+      // 5. Arrived at Location
       stages.push({
-        status: "In Progress",
-        date: booking.actualTimes?.startedAt || booking.startedAt,
+        status: "Arrived at Location",
+        date: booking.actualTimes?.arrivedAt || null,
         completed: currentStatusLevel >= 5,
       });
 
-      // 6. Completed
+      // 6. In Progress
       stages.push({
-        status: "Completed",
-        date: booking.actualTimes?.completedAt || booking.completedAt,
+        status: "In Progress",
+        date: booking.actualTimes?.startedAt || booking.startedAt,
         completed: currentStatusLevel >= 6,
       });
 
-      // 7. Refund (Special Case)
+      // 7. Completed
+      stages.push({
+        status: "Completed",
+        date: booking.actualTimes?.completedAt || booking.completedAt,
+        completed: currentStatusLevel >= 7,
+      });
+
+      // Refund (Special Case)
       if (
         currentStatus === "cancelled" &&
         (booking.cancellation?.refundAmount > 0 ||
