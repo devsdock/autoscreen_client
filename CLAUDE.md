@@ -1000,6 +1000,12 @@ Customer pays → booking: confirmed → NOW visible in Bookings page (Upcoming 
 
 ---
 
+### 18 March 2026 (Reschedule Page Crash Fix — Vehicle & Location)
+
+- **`BookAppointment.jsx` — Reschedule vehicle field access fixed (C-030)**: Raw booking API returns `vehicle` as a subdocument (`b.vehicle.make`, `b.vehicle.model`, `b.vehicle.year`, `b.vehicle.registrationNumber`), but reschedule `loadBooking` used `dataMappers`-style flat names (`b.vehicleMake`, `b.vehicleModel`, etc.) which are `undefined` on raw data. `vehicleFormatted` became empty, fallback `quote.vehicle` was the raw object `{ registrationNumber }`, rendered as React child → crash. Fixed all field access to `b.vehicle?.make` etc.
+- **`BookAppointment.jsx` — Reschedule location fixed**: `location: b.location` set on the quote-like object, but Booking model has no `location` field (it's `serviceAddress`). Changed to `location: b.serviceAddress || b.location`.
+- **`BookAppointment.jsx` — `vehicleStr` safety guard**: Added `typeof quote?.vehicle === "string"` check so an object can never be rendered as a React child.
+
 ### 18 March 2026 (Service Mode Toggle Hidden for Go-Live)
 
 - **Service mode selector hidden** in `NewQuote.jsx` Step 3. The Mobile/Workshop toggle cards are commented out. Default `serviceMode: "mobile"` is still sent in the payload. All address fields (Street, Suburb, Postcode) are always shown.

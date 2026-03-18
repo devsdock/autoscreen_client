@@ -804,13 +804,13 @@ const BookAppointment = () => {
           // Build a minimal quote-like object for display fields
           setQuote({
             id: b.quote?._id || b.quote || bookingIdFromUrl,
-            vehicleFormatted: b.vehicleYear
-              ? `${b.vehicleMake || ""} ${b.vehicleModel || ""} - ${b.vehicleYear}`
-              : `${b.vehicleMake || ""} ${b.vehicleModel || ""}`.trim(),
-            vehicle: { registrationNumber: b.vehicleRegNumber || "" },
+            vehicleFormatted: b.vehicle?.year
+              ? `${b.vehicle?.make || ""} ${b.vehicle?.model || ""} - ${b.vehicle.year}`
+              : `${b.vehicle?.make || ""} ${b.vehicle?.model || ""}`.trim(),
+            vehicle: { registrationNumber: b.vehicle?.registrationNumber || "" },
             serviceSelections: b.serviceSelections,
             serviceType: b.service,
-            location: b.location,
+            location: b.serviceAddress || b.location,
             booking: b,
             responses: [],
           });
@@ -926,7 +926,7 @@ const BookAppointment = () => {
   })();
 
   // ── Derive display fields ──
-  const vehicleStr = quote?.vehicleFormatted || quote?.vehicle || "";
+  const vehicleStr = quote?.vehicleFormatted || (typeof quote?.vehicle === "string" ? quote.vehicle : "") || "";
 
   // Build service lines — supports multi-service (serviceSelections) and legacy single
   const serviceLines = (() => {
