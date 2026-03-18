@@ -314,7 +314,7 @@ const BookingDetailDrawer = ({
               <span
                 className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold"
                 style={{
-                  backgroundColor: booking.serviceLocationType === "mobile" ? "#dbeafe" : "#fef3c7",
+                  backgroundColor: booking.serviceLocationType === "mobile" ? "var(--color-blue-light)" : "var(--color-amber-light)",
                   color: booking.serviceLocationType === "mobile" ? "#1d4ed8" : "#92400e",
                 }}
               >
