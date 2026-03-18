@@ -1000,6 +1000,12 @@ Customer pays → booking: confirmed → NOW visible in Bookings page (Upcoming 
 
 ---
 
+### 18 March 2026 (Staff-Aware Availability — Service-Type Capacity)
+
+- **`quoteService.js` — `getProviderAvailability` accepts `serviceTypes` + `glassTypes`**: Third and fourth optional parameters (string arrays). Appended as `&serviceTypes=replacement,repair&glassTypes=windscreen,quarter-glass` query params. Backend uses these to filter eligible staff (by both service type AND glass type sub-services) and compute concurrent slot capacity.
+- **`BookAppointment.jsx` — passes `serviceTypes` + `glassTypes` to availability API**: Derives `bookingServiceTypes` from `booking.serviceTypes`, `serviceSelections[].serviceType`, or `serviceType` (legacy). Derives `bookingGlassTypes` from `booking.glassTypes`, `serviceSelections` flatMap, or `glassType` (legacy). Both passed to `fetchSlotsForDate` and `prefetchMonth`.
+- **Impact**: Business providers with 3 "replacement + windscreen" staff now show 10:00 as "available" even when 1 booking exists at that time (capacity=3). Staff who only handle "quarter-glass" won't count toward "windscreen" capacity. Individual providers unchanged. Staff with no subServices configured = handles all glass types (backward compat).
+
 ### 18 March 2026 (Reschedule Flow — Client Awareness)
 
 - **`socketService.js` — `booking_rescheduled` listener added**: Client socket now refreshes bookings store when `booking_rescheduled` notification is received. Previously only the provider portal listened for this event — the client portal required a manual page reload to see updated dates after reschedule.

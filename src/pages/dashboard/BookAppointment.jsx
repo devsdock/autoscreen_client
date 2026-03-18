@@ -971,6 +971,30 @@ const BookAppointment = () => {
   const estimatedDuration = booking?.estimatedDuration || 60;
   const slotsNeeded = Math.ceil(estimatedDuration / 30);
 
+  // Derive service types + glass types for staff-aware availability (business providers)
+  const bookingServiceTypes = (() => {
+    const src = booking || quote || {};
+    if (src.serviceTypes?.length > 0) return src.serviceTypes;
+    if (src.serviceSelections?.length > 0) {
+      return src.serviceSelections
+        .map((s) => s.serviceType)
+        .filter(Boolean);
+    }
+    if (src.serviceType) return [src.serviceType];
+    return [];
+  })();
+  const bookingGlassTypes = (() => {
+    const src = booking || quote || {};
+    if (src.glassTypes?.length > 0) return src.glassTypes;
+    if (src.serviceSelections?.length > 0) {
+      return [...new Set(
+        src.serviceSelections.flatMap((s) => s.glassTypes || [])
+      )];
+    }
+    if (src.glassType) return [src.glassType];
+    return [];
+  })();
+
   // ── Fetch availability on date change ──
   const fetchSlotsForDate = useCallback(
     async (dateStr) => {
@@ -981,7 +1005,7 @@ const BookAppointment = () => {
       }
       setIsFetchingSlots(true);
       try {
-        const result = await quoteService.getProviderAvailability(providerId, dateStr);
+        const result = await quoteService.getProviderAvailability(providerId, dateStr, bookingServiceTypes, bookingGlassTypes);
         if (result.success && result.data) {
           const slots = result.data.slots || [];
           setAvailabilityCache((prev) => ({ ...prev, [dateStr]: { slots } }));
@@ -996,7 +1020,7 @@ const BookAppointment = () => {
         setIsFetchingSlots(false);
       }
     },
-    [providerId, availabilityCache]
+    [providerId, availabilityCache, bookingServiceTypes, bookingGlassTypes]
   );
 
   const handleDateSelect = (dateStr) => {
@@ -1025,7 +1049,7 @@ const BookAppointment = () => {
         const dateStr = formatLocalDate(dateObj);
         if (availabilityCache[dateStr]) continue; // already cached
         try {
-          const result = await quoteService.getProviderAvailability(providerId, dateStr);
+          const result = await quoteService.getProviderAvailability(providerId, dateStr, bookingServiceTypes, bookingGlassTypes);
           if (result.success && result.data) {
             const slots = result.data.slots || [];
             setAvailabilityCache((prev) => ({ ...prev, [dateStr]: { slots } }));
@@ -1039,7 +1063,7 @@ const BookAppointment = () => {
         await new Promise((r) => setTimeout(r, 80));
       }
     },
-    [providerId, availabilityCache],
+    [providerId, availabilityCache, bookingServiceTypes, bookingGlassTypes],
   );
 
   // Prefetch current month on mount
