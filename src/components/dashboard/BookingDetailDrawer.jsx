@@ -299,7 +299,7 @@ const BookingDetailDrawer = ({
                 booking.quotes?.length > 0
                   ? "awaiting-customer-approval"
                   : booking.status?.toLowerCase() === "confirmed" && booking.scheduledDate && booking.paymentStatus?.toLowerCase() === "paid"
-                    ? "scheduled"
+                    ? (booking.rescheduledAt ? "rescheduled" : "scheduled")
                     : booking.status
               }
               type="booking"

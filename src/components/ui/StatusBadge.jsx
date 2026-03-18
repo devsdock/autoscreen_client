@@ -86,6 +86,12 @@ const bookingStatusConfig = {
     dot: "bg-blue-700 dark:bg-blue-400",
     label: "Scheduled",
   },
+  rescheduled: {
+    color:
+      "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400",
+    dot: "bg-amber-600 dark:bg-amber-400",
+    label: "Rescheduled",
+  },
   Arrived: {
     color:
       "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",

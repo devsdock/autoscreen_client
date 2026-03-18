@@ -143,9 +143,13 @@ const BookingCard = ({
           {isScheduled ? (
             <span
               className="inline-flex items-center gap-1.5 px-2.5 py-[3px] text-xs font-semibold rounded-full"
-              style={{ background: "rgba(255,255,255,.15)", color: "#fff" }}
+              style={booking.rescheduledAt
+                ? { background: "rgba(251,191,36,.2)", color: "#fbbf24" }
+                : { background: "rgba(255,255,255,.15)", color: "#fff" }
+              }
             >
-              Scheduled
+              {booking.rescheduledAt && <RefreshCw size={11} />}
+              {booking.rescheduledAt ? "Rescheduled" : "Scheduled"}
             </span>
           ) : (
             <StatusBadge

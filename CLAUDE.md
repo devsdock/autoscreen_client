@@ -3,7 +3,7 @@
 > **Project:** AutoScreen Customer Dashboard
 > **Stack:** React + Vite, Zustand, React Router v6, Axios, Socket.IO
 > **Version:** 1.0.0
-> **Last Updated:** 15 March 2026 (Reschedule Booking Feature — Frontend)
+> **Last Updated:** 18 March 2026 (Reschedule Flow — Client Awareness)
 
 ---
 
@@ -999,6 +999,13 @@ Customer pays → booking: confirmed → NOW visible in Bookings page (Upcoming 
 - Maintenance mode support
 
 ---
+
+### 18 March 2026 (Reschedule Flow — Client Awareness)
+
+- **`socketService.js` — `booking_rescheduled` listener added**: Client socket now refreshes bookings store when `booking_rescheduled` notification is received. Previously only the provider portal listened for this event — the client portal required a manual page reload to see updated dates after reschedule.
+- **`BookingCard.jsx` — "Rescheduled" amber pill**: When `booking.rescheduledAt` is truthy, an amber pill with `RefreshCw` icon and "Rescheduled" text is shown in the card header (between status badge and reference number). Uses semi-transparent amber background matching the scheduled card's white-on-dark style.
+- **`BookingDetailDrawer.jsx` — "Rescheduled" badge**: When `booking.rescheduledAt` is truthy, an amber badge with `RefreshCw` icon appears alongside the status/payment badges at the top of the drawer. Styled consistently with the existing service mode pill pattern (`backgroundColor: #fef3c7`, `color: #92400e`).
+- **Backend dependency**: Requires `rescheduledAt` field on `Booking.js` model (added in same session). Field is set by `rescheduleBooking` controller only when `oldDate` exists (reschedule, not first-time scheduling).
 
 ### 18 March 2026 (Reschedule Page Crash Fix — Vehicle & Location)
 
