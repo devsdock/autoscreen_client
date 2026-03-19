@@ -55,6 +55,118 @@ h1, h2, h3, h4, h5, h6 {
   background: #94a3b8;
 }
 
+/* ═══ DARK MODE DESIGN SYSTEM ═══ */
+:root {
+  --color-card: #ffffff;
+  --color-card-alt: #f8fafc;
+  --color-card-muted: #fafafa;
+  --color-card-accent: #f5f5f5;
+  --color-blue-tint: #eff6ff;
+  --color-orange-tint: #fff7ed;
+  --color-amber-tint: #fffbeb;
+  --color-red-tint: #fef2f2;
+  --color-green-tint: #f0fdf4;
+  --color-blue-light: #dbeafe;
+  --color-green-light: #dcfce7;
+  --color-amber-light: #fef3c7;
+  --color-red-light: #fee2e2;
+  --color-slate-light: #e2e8f0;
+  --color-slate-bg: #f1f5f9;
+  --color-border: #e5e7eb;
+  --color-border-dashed: #d4d4d8;
+  --color-border-subtle: #f1f5f9;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-tertiary: #475569;
+  --color-text-muted: #64748b;
+  --color-text-subtle: #525252;
+  --color-text-dim: #737373;
+  --color-text-faint: #a3a3a3;
+  --color-text-heading: #171717;
+  --color-amber-text: #92400e;
+  --color-red-text: #991b1b;
+  --color-green-text: #166534;
+  --color-toggle-track: #d4d4d8;
+}
+
+.dark {
+  /* Surfaces — blue-gray tinted for depth */
+  --color-card: #1a1d24;
+  --color-card-alt: #13161c;
+  --color-card-muted: #161920;
+  --color-card-accent: #1e2129;
+  --color-blue-tint: rgba(37, 99, 235, 0.10);
+  --color-orange-tint: rgba(234, 88, 12, 0.10);
+  --color-amber-tint: rgba(245, 158, 11, 0.10);
+  --color-red-tint: rgba(239, 68, 68, 0.10);
+  --color-green-tint: rgba(34, 197, 94, 0.10);
+  --color-blue-light: rgba(37, 99, 235, 0.14);
+  --color-green-light: rgba(34, 197, 94, 0.14);
+  --color-amber-light: rgba(245, 158, 11, 0.14);
+  --color-red-light: rgba(239, 68, 68, 0.14);
+  --color-slate-light: #2a2e36;
+  --color-slate-bg: #1e2129;
+  --color-border: #2a2e36;
+  --color-border-dashed: #3a3f4a;
+  --color-border-subtle: #22262e;
+  --color-text-primary: #e8ecf2;
+  --color-text-secondary: #b0b8c8;
+  --color-text-tertiary: #8891a0;
+  --color-text-muted: #8891a0;
+  --color-text-subtle: #7a8494;
+  --color-text-dim: #6b7585;
+  --color-text-faint: #525c6c;
+  --color-text-heading: #f0f3f7;
+  --color-amber-text: #fbbf24;
+  --color-red-text: #fca5a5;
+  --color-green-text: #86efac;
+  --color-toggle-track: #2a2e36;
+}
+
+.dark body {
+  background: #0d1017;
+  color: var(--color-text-primary);
+}
+
+/* ═══ DARK MODE — FORM INPUTS ═══ */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+.dark textarea,
+.dark select {
+  color: #e2e8f0 !important;
+  background-color: #141820 !important;
+  border-color: #2a2e36 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) inset;
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #525c6c !important;
+}
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 1px 2px rgba(0, 0, 0, 0.2) inset !important;
+}
+.dark input:disabled,
+.dark textarea:disabled,
+.dark select:disabled {
+  background-color: #0d1017 !important;
+  color: #3a3f4a !important;
+  border-color: #1e2129 !important;
+  box-shadow: none !important;
+}
+
+/* ═══ DARK MODE — SCROLLBAR ═══ */
+.dark ::-webkit-scrollbar-track {
+  background: #0d1017;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #2a2e36;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #3a3f4a;
+}
+
 /* Focus visible for accessibility */
 :focus-visible {
   outline: 2px solid #2563EB;
