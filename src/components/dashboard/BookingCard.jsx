@@ -8,6 +8,7 @@ import {
   RefreshCw,
   CheckCircle,
   Phone,
+  Navigation,
 } from "lucide-react";
 import { formatCurrency } from "../../store/useDashboardStore";
 import StatusBadge from "../ui/StatusBadge";
@@ -45,6 +46,7 @@ const BookingCard = ({
   onRate,
   onReschedule,
   onAcknowledge,
+  onDirections,
 }) => {
   const category = getCategory(booking);
   const isPaid = booking.paymentStatus?.toLowerCase() === "paid";
@@ -61,6 +63,9 @@ const BookingCard = ({
 
   const needsAppointment = category === "upcoming" && isPaid && !hasSchedule && quoteId;
   const canReschedule = isScheduled && category === "upcoming" && new Date(booking.scheduledDate) - new Date() > 24 * 3600000;
+  const isWorkshop = booking.serviceLocationType === "workshop" || booking.locationType === "In-Store";
+  const hasWorkshopAddress = !!booking.workshopAddress?.addressLine1;
+  const canGetDirections = isWorkshop && hasWorkshopAddress && category === "upcoming" && isPaid;
 
   // Format time slot with duration-aware end time (only for new single-point slots like "09:00")
   const timeSlotStr = (() => {
@@ -278,6 +283,17 @@ const BookingCard = ({
             >
               <RefreshCw size={13} />
               Reschedule
+            </button>
+          )}
+
+          {/* Directions — workshop bookings with provider workshop address */}
+          {canGetDirections && onDirections && (
+            <button
+              onClick={() => onDirections(booking)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+            >
+              <Navigation size={12} />
+              Directions
             </button>
           )}
 

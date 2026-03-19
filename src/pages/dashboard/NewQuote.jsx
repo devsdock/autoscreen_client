@@ -260,6 +260,21 @@ const NewQuote = () => {
     }
   };
 
+  // Match a raw city name from Nominatim to the nearest option in the cities list
+  const matchCityToList = (rawCity, cityList) => {
+    if (!rawCity) return "";
+    const lower = rawCity.toLowerCase();
+    const getVal = (c) => (typeof c === "string" ? c : c.value || c.label || "");
+    const exact = cityList.find((c) => getVal(c).toLowerCase() === lower);
+    if (exact) return getVal(exact);
+    const partial = cityList.find((c) => {
+      const v = getVal(c).toLowerCase();
+      return v.includes(lower) || lower.includes(v);
+    });
+    if (partial) return getVal(partial);
+    return rawCity;
+  };
+
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
@@ -277,13 +292,11 @@ const NewQuote = () => {
           );
           const data = await response.json();
           if (data?.address) {
+            const rawCity = data.address.city || data.address.town || data.address.village || "";
+            const matchedCity = matchCityToList(rawCity, cities);
             setFormData((prev) => ({
               ...prev,
-              city:
-                data.address.city ||
-                data.address.town ||
-                data.address.village ||
-                prev.city,
+              city: matchedCity || prev.city,
               suburb: data.address.suburb || prev.suburb,
               addressLine1: data.address.road
                 ? `${data.address.house_number || ""} ${data.address.road}`.trim()
@@ -291,6 +304,15 @@ const NewQuote = () => {
               postcode: data.address.postcode || prev.postcode,
               coordinates: { lat: latitude, lng: longitude },
             }));
+            // Warn if matched city has no providers
+            if (matchedCity) {
+              const cityOpt = cities.find((c) => (typeof c === "string" ? c : c.value) === matchedCity);
+              if (cityOpt && typeof cityOpt === "object" && cityOpt.disabled) {
+                setErrors((prev) => ({ ...prev, city: "No providers available in this area yet" }));
+              } else {
+                setErrors((prev) => ({ ...prev, city: "" }));
+              }
+            }
           }
         } catch (err) {
           console.error("Reverse geocoding failed:", err);
@@ -469,8 +491,7 @@ const NewQuote = () => {
 
     if (step === 3) {
       if (!formData.city) newErrors.city = "City is required";
-      // SERVICE MODE DISABLED FOR GO-LIVE (18 March 2026) — always require addressLine1
-      if (!formData.addressLine1.trim())
+      if (formData.serviceMode !== "workshop" && !formData.addressLine1.trim())
         newErrors.addressLine1 = "Street address is required";
     }
 
@@ -492,8 +513,7 @@ const NewQuote = () => {
     if (!formData.glassTypes || formData.glassTypes.length === 0)
       newErrors.glassType = "Glass type is required";
     if (!formData.city) newErrors.city = "City is required";
-    // SERVICE MODE DISABLED FOR GO-LIVE (18 March 2026) — always require addressLine1
-    if (!formData.addressLine1 || !formData.addressLine1.trim())
+    if (formData.serviceMode !== "workshop" && (!formData.addressLine1 || !formData.addressLine1.trim()))
       newErrors.addressLine1 = "Street address is required";
     if (!formData.images || formData.images.length === 0)
       newErrors.images = "At least one photo is required";
@@ -1107,11 +1127,6 @@ const NewQuote = () => {
                 Where should we perform the service?
               </p>
 
-              {/* DISABLED FOR GO-LIVE (18 March 2026) — Service Mode Selector hidden.
-                  Most providers haven't configured offersMobileService/offersWorkshopService yet.
-                  Default serviceMode: "mobile" is still sent in the payload.
-                  To re-enable: uncomment this block and restore the serviceMode !== "workshop"
-                  conditionals for address field visibility and validation.
               <div className="mb-6">
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
                   Service Mode
@@ -1155,7 +1170,6 @@ const NewQuote = () => {
                   </button>
                 </div>
               </div>
-              */}
 
               {/* Use My Location */}
               <div className="flex justify-end mb-1">
@@ -1181,7 +1195,7 @@ const NewQuote = () => {
                 />
               </div>
 
-              {/* SERVICE MODE DISABLED FOR GO-LIVE — always show address fields */}
+              {formData.serviceMode !== "workshop" && (
                 <>
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-slate-600 dark:text-slate-400 mb-1.5">
@@ -1239,6 +1253,7 @@ const NewQuote = () => {
                     </div>
                   </div>
                 </>
+              )}
             </div>
           )}
         </div>

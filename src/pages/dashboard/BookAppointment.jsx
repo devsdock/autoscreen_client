@@ -417,7 +417,7 @@ const TimeSlotsPanel = ({ selectedDate, selectedSlot, onSlotSelect, slots, isLoa
 
   // Check if slotTime is a valid start (enough consecutive available slots exist)
   const isValidStart = (slotTime) => {
-    if (slotStatusMap[slotTime] === "taken") return false;
+    if (slotStatusMap[slotTime] === "taken" || slotStatusMap[slotTime] === "buffer") return false;
     const idx = slotTimes.indexOf(slotTime);
     if (idx === -1) return false;
     if (idx + slotsNeeded > slotTimes.length) return false;
@@ -426,7 +426,7 @@ const TimeSlotsPanel = ({ selectedDate, selectedSlot, onSlotSelect, slots, isLoa
       const expectedTime = minsToTime(startMins + i * 30);
       const candidateTime = slotTimes[idx + i];
       if (candidateTime !== expectedTime) return false; // gap (e.g. lunch break)
-      if (slotStatusMap[candidateTime] === "taken") return false;
+      if (slotStatusMap[candidateTime] === "taken" || slotStatusMap[candidateTime] === "buffer") return false;
     }
     return true;
   };
@@ -485,12 +485,13 @@ const TimeSlotsPanel = ({ selectedDate, selectedSlot, onSlotSelect, slots, isLoa
           {slots.map((slot) => {
             const slotTime = typeof slot === "string" ? slot : slot.time;
             const isTaken = slotStatusMap[slotTime] === "taken";
-            const validStart = !isTaken && isValidStart(slotTime);
+            const isBuffer = slotStatusMap[slotTime] === "buffer";
+            const validStart = !isTaken && !isBuffer && isValidStart(slotTime);
             const isSelectedStart = selectedSlot === slotTime;
             const isHighlighted = !isSelectedStart && coveredSlots.has(slotTime);
             const isLastSlot = slotTime === lastCoveredSlot;
-            const cantStart = !isTaken && !validStart;
-            const isDisabled = isTaken || cantStart;
+            const cantStart = !isTaken && !isBuffer && !validStart;
+            const isDisabled = isTaken || isBuffer || cantStart;
 
             return (
               <button
@@ -501,6 +502,8 @@ const TimeSlotsPanel = ({ selectedDate, selectedSlot, onSlotSelect, slots, isLoa
                   "px-2 py-2.5 rounded-lg border-[1.5px] text-center transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
                   isTaken
                     ? "bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60"
+                    : isBuffer
+                      ? "bg-slate-50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 border-dashed border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-50"
                     : isSelectedStart || isHighlighted
                       ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/25"
                         : cantStart
@@ -515,13 +518,15 @@ const TimeSlotsPanel = ({ selectedDate, selectedSlot, onSlotSelect, slots, isLoa
                   "text-[10px] mt-0.5",
                   isTaken
                     ? "text-slate-400 dark:text-slate-500"
+                    : isBuffer
+                      ? "text-slate-400 dark:text-slate-500"
                     : isSelectedStart || isHighlighted
                       ? "text-white/70"
                         : cantStart
                           ? "text-slate-400 dark:text-slate-500"
                           : "opacity-70",
                 ].join(" ")}>
-                  {isTaken ? "Taken" : isSelectedStart ? "Start" : isHighlighted ? "Included" : cantStart ? "Unavailable" : "Available"}
+                  {isTaken ? "Taken" : isBuffer ? "Buffer" : isSelectedStart ? "Start" : isHighlighted ? "Included" : cantStart ? "Unavailable" : "Available"}
                 </div>
               </button>
             );
@@ -995,6 +1000,14 @@ const BookAppointment = () => {
     return [];
   })();
 
+  // Derive customer coordinates for distance-based travel buffer
+  const custCoords = (() => {
+    const src = booking || quote || {};
+    // booking.serviceAddress.coordinates or quote.location.coordinates
+    const c = src.serviceAddress?.coordinates || src.location?.coordinates;
+    return c?.lat && c?.lng ? c : null;
+  })();
+
   // ── Fetch availability on date change ──
   const fetchSlotsForDate = useCallback(
     async (dateStr) => {
@@ -1005,7 +1018,7 @@ const BookAppointment = () => {
       }
       setIsFetchingSlots(true);
       try {
-        const result = await quoteService.getProviderAvailability(providerId, dateStr, bookingServiceTypes, bookingGlassTypes);
+        const result = await quoteService.getProviderAvailability(providerId, dateStr, bookingServiceTypes, bookingGlassTypes, custCoords?.lat, custCoords?.lng);
         if (result.success && result.data) {
           const slots = result.data.slots || [];
           setAvailabilityCache((prev) => ({ ...prev, [dateStr]: { slots } }));
@@ -1020,7 +1033,7 @@ const BookAppointment = () => {
         setIsFetchingSlots(false);
       }
     },
-    [providerId, availabilityCache, bookingServiceTypes, bookingGlassTypes]
+    [providerId, availabilityCache, bookingServiceTypes, bookingGlassTypes, custCoords]
   );
 
   const handleDateSelect = (dateStr) => {
@@ -1049,7 +1062,7 @@ const BookAppointment = () => {
         const dateStr = formatLocalDate(dateObj);
         if (availabilityCache[dateStr]) continue; // already cached
         try {
-          const result = await quoteService.getProviderAvailability(providerId, dateStr, bookingServiceTypes, bookingGlassTypes);
+          const result = await quoteService.getProviderAvailability(providerId, dateStr, bookingServiceTypes, bookingGlassTypes, custCoords?.lat, custCoords?.lng);
           if (result.success && result.data) {
             const slots = result.data.slots || [];
             setAvailabilityCache((prev) => ({ ...prev, [dateStr]: { slots } }));

@@ -1019,11 +1019,17 @@ Customer pays → booking: confirmed → NOW visible in Bookings page (Upcoming 
 - **`BookAppointment.jsx` — Reschedule location fixed**: `location: b.location` set on the quote-like object, but Booking model has no `location` field (it's `serviceAddress`). Changed to `location: b.serviceAddress || b.location`.
 - **`BookAppointment.jsx` — `vehicleStr` safety guard**: Added `typeof quote?.vehicle === "string"` check so an object can never be rendered as a React child.
 
+### 19 March 2026 (Service Mode Toggle Re-enabled)
+
+- **Service mode selector restored** in `NewQuote.jsx` Step 3. The Mobile/Workshop toggle cards are now live JSX (no longer commented out).
+- **Address fields conditional**: Street Address, Suburb, and Postcode fields are now conditionally rendered — hidden when `serviceMode === "workshop"`, shown for `"mobile"`.
+- **Validation restored**: `validateStep` and `validate()` only require `addressLine1` when `formData.serviceMode !== "workshop"` (these lines were already updated on 18 March and were not changed).
+
 ### 18 March 2026 (Service Mode Toggle Hidden for Go-Live)
 
 - **Service mode selector hidden** in `NewQuote.jsx` Step 3. The Mobile/Workshop toggle cards are commented out. Default `serviceMode: "mobile"` is still sent in the payload. All address fields (Street, Suburb, Postcode) are always shown.
 - **Validation updated**: `validateStep` and `validate()` always require `addressLine1` (removed `serviceMode !== "workshop"` conditional).
-- **Future re-enable**: Uncomment the service mode selector block in Step 3 and restore the `formData.serviceMode !== "workshop"` conditionals for address field visibility and validation.
+- **Re-enabled 19 March 2026** — see entry above.
 
 ### 17 March 2026 (Address Modal Inline Validation)
 

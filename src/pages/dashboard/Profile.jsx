@@ -7,6 +7,7 @@ import {
   Calendar,
   Car,
   MapPin,
+  Navigation,
   Plus,
   Edit2,
   Trash2,
@@ -137,6 +138,7 @@ const Profile = () => {
   });
   const [deleteAddressId, setDeleteAddressId] = useState(null);
   const [addressErrors, setAddressErrors] = useState({});
+  const [locatingAddress, setLocatingAddress] = useState(false);
 
   // Notification preferences
   const [notifications, setNotifications] = useState({
@@ -494,6 +496,56 @@ const Profile = () => {
     }
     setAddressErrors({});
     setAddressModal({ open: true, address });
+  };
+
+  // Match a raw city name from Nominatim to the nearest option in the cities list
+  const matchCityToList = (rawCity, cityList) => {
+    if (!rawCity) return "";
+    const lower = rawCity.toLowerCase();
+    const getVal = (c) => (typeof c === "string" ? c : c.value || c.label || "");
+    const exact = cityList.find((c) => getVal(c).toLowerCase() === lower);
+    if (exact) return getVal(exact);
+    const partial = cityList.find((c) => {
+      const v = getVal(c).toLowerCase();
+      return v.includes(lower) || lower.includes(v);
+    });
+    if (partial) return getVal(partial);
+    return rawCity;
+  };
+
+  const handleUseMyLocationAddress = () => {
+    if (!navigator.geolocation) return;
+    setLocatingAddress(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { "User-Agent": "AutoScreen/1.0" } }
+          );
+          const data = await response.json();
+          if (data?.address) {
+            const rawCity = data.address.city || data.address.town || data.address.village || "";
+            const matchedCity = matchCityToList(rawCity, cities);
+            setAddressForm((prev) => ({
+              ...prev,
+              street: data.address.road
+                ? `${data.address.house_number || ""} ${data.address.road}`.trim()
+                : prev.street,
+              suburb: data.address.suburb || prev.suburb,
+              city: matchedCity || prev.city,
+              postalCode: data.address.postcode || prev.postalCode,
+            }));
+            setAddressErrors({});
+          }
+        } catch (err) {
+          console.error("Reverse geocoding failed:", err);
+        }
+        setLocatingAddress(false);
+      },
+      () => setLocatingAddress(false)
+    );
   };
 
   const handleSaveAddress = async () => {
@@ -1274,6 +1326,17 @@ const Profile = () => {
         size="md"
       >
         <div className="space-y-4">
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleUseMyLocationAddress}
+              disabled={locatingAddress}
+              className="inline-flex items-center gap-1 text-[0.75rem] font-medium text-primary-600 border border-primary-300 rounded-[8px] px-2.5 py-1 hover:bg-primary-50 transition-colors disabled:opacity-50"
+            >
+              <Navigation size={12} className={locatingAddress ? "animate-spin" : ""} />
+              {locatingAddress ? "Locating..." : "Use My Location"}
+            </button>
+          </div>
           <PremiumSelect
             label="Label"
             options={addressLabels}

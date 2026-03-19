@@ -82,13 +82,16 @@ const quoteService = {
   /**
    * Get provider availability for a specific date
    */
-  getProviderAvailability: (providerId, date, serviceTypes, glassTypes) => {
+  getProviderAvailability: (providerId, date, serviceTypes, glassTypes, customerLat, customerLng) => {
     let url = `/customer/quotes/providers/${providerId}/availability?date=${date}`;
     if (serviceTypes && serviceTypes.length > 0) {
       url += `&serviceTypes=${serviceTypes.join(",")}`;
     }
     if (glassTypes && glassTypes.length > 0) {
       url += `&glassTypes=${glassTypes.join(",")}`;
+    }
+    if (customerLat && customerLng) {
+      url += `&customerLat=${customerLat}&customerLng=${customerLng}`;
     }
     return request({
       method: "GET",

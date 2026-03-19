@@ -333,8 +333,12 @@ const Bookings = () => {
       setReviewBooking(b);
     },
     onDirections: (b) => {
-      const addr = encodeURIComponent(b.address || "");
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${addr}`, "_blank");
+      const ws = b.workshopAddress;
+      const addr = ws
+        ? [ws.addressLine1, ws.suburb, ws.city, ws.province, ws.postalCode].filter(Boolean).join(", ")
+        : b.address || "";
+      if (!addr) return;
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`, "_blank");
     },
     onAcknowledge: (b) => setAcknowledgeBooking(b),
   });
