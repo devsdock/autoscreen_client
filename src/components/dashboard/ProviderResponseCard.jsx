@@ -518,7 +518,7 @@ const ProviderResponseCard = ({
                 transition: "all 150ms cubic-bezier(.4,0,.2,1)",
                 whiteSpace: "nowrap",
               }}
-              className="w-full hover:shadow-lg hover:-translate-y-px"
+              className="w-full flex items-center justify-center hover:shadow-lg hover:-translate-y-px"
             >
               Accept &amp; Pay
             </button>

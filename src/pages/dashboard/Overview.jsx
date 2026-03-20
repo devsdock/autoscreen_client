@@ -320,7 +320,7 @@ const Overview = () => {
 
       {/* Main Booking Card */}
       {latestBooking && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Left - Booking Info */}
             <div className="flex-1">
@@ -459,7 +459,7 @@ const Overview = () => {
 
       {/* Route Section */}
       {latestBooking && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
               Recent Booking
@@ -641,7 +641,7 @@ const Overview = () => {
       )}
 
       {/* History Section */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
             History
@@ -665,8 +665,8 @@ const Overview = () => {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
+        {/* Table — desktop */}
+        <div className="overflow-x-auto hidden lg:block">
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-100 dark:border-slate-800">
@@ -813,6 +813,43 @@ const Overview = () => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile card list */}
+        <div className="lg:hidden space-y-3">
+          {filteredBookings.slice(0, 5).map((booking) => (
+            <div
+              key={booking.id}
+              onClick={() => handleViewBooking(booking.id)}
+              className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-slate-800 dark:text-white">
+                  {booking.reference}
+                </span>
+                <StatusBadge
+                  status={booking.statusLabel || booking.status}
+                  type="booking"
+                />
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                <div className="flex justify-between">
+                  <span>
+                    <ServiceInfoCell row={booking} />
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">{booking.providerName}</span>
+                  <span className="font-medium text-slate-800 dark:text-white">
+                    {formatCurrency(booking.price?.total || 0)}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-400">
+                  {formatDate(booking.scheduledDate)}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
 
         {filteredBookings.length === 0 && (

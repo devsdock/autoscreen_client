@@ -87,7 +87,7 @@ const Messages = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col space-y-4">
+    <div className="h-[calc(100dvh-140px)] flex flex-col space-y-4" style={{ height: 'calc(100dvh - 140px)' }}>
       <div className="flex-shrink-0">
         <PageHeader
           title="Messages"
@@ -281,7 +281,7 @@ const Messages = () => {
                       className={`flex ${isMe ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`max-w-[80%] sm:max-w-[70%] ${
+                        className={`max-w-[85%] sm:max-w-[75%] md:max-w-[70%] ${
                           isMe ? "order-1" : "order-2"
                         }`}
                       >
@@ -325,7 +325,7 @@ const Messages = () => {
                     </button>
                     <button
                       type="button"
-                      className="p-2 text-slate-400 hover:text-primary-600 transition-colors"
+                      className="hidden sm:block p-2 text-slate-400 hover:text-primary-600 transition-colors"
                     >
                       <ImageIcon size={20} />
                     </button>

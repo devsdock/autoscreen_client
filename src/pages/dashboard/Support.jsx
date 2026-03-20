@@ -377,7 +377,7 @@ const Support = () => {
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
                   className={`
-                      border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer
+                      border-2 border-dashed rounded-xl p-4 sm:p-6 text-center transition-all cursor-pointer
                       ${
                         isDragging
                           ? "border-primary-500 bg-primary-50/50 dark:bg-primary-900/10"

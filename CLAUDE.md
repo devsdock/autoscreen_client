@@ -3,7 +3,7 @@
 > **Project:** AutoScreen Customer Dashboard
 > **Stack:** React + Vite, Zustand, React Router v6, Axios, Socket.IO
 > **Version:** 1.0.0
-> **Last Updated:** 18 March 2026 (Reschedule Flow — Client Awareness)
+> **Last Updated:** 20 March 2026 (Mobile Responsiveness Audit & Fix)
 
 ---
 
@@ -828,6 +828,39 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 ---
 
 ## Changelog
+
+### 20 March 2026 (Mobile Responsiveness Audit & Fix — Full Portal)
+
+Design-only Tailwind class changes across 15 files. No logic, API, or functionality changes.
+
+**Shared UI Components (Phase 1):**
+- **`Card.jsx`**: Default padding `p-6` → `p-4 sm:p-6` for better 320px viewport fit.
+- **`Modal.jsx` — `ModalActions`**: Buttons now stack vertically on mobile (`flex-col-reverse sm:flex-row`) — primary action on top, cancel below.
+- **`Drawer.jsx` — `DrawerFooter`**: Buttons stack vertically on mobile (`flex-col sm:flex-row`).
+- **`Tabs.jsx`**: Outer container wrapped in `overflow-x-auto` with `-webkit-overflow-scrolling: touch` for horizontal tab scrolling on mobile. Tab buttons get `flex-shrink-0`.
+- **`StatCard.jsx`**: Value text `text-3xl` → `text-2xl sm:text-3xl`.
+
+**Dashboard Components (Phase 2):**
+- **`BookingDetailDrawer.jsx`**: Image grids (`damageImages`, `afterImages`) changed from `grid-cols-3 sm:grid-cols-4` → `grid-cols-2 sm:grid-cols-3 md:grid-cols-4`. Footer action button grid changed from `grid-flow-col auto-cols-fr` → `grid-cols-1 sm:grid-cols-2` to stack on mobile.
+
+**Dashboard Pages (Phase 3):**
+- **`OverviewNew.jsx`**: Hero padding `py-8 px-10` → `py-6 sm:py-8 px-4 sm:px-10`. Action buttons stack vertically on mobile (`flex-col sm:flex-row`).
+- **`Overview.jsx`**: History table hidden on mobile (`hidden lg:block`), replaced with mobile card list (`lg:hidden`). All custom card divs padding `p-6` → `p-4 sm:p-6`.
+- **`QuotesNew.jsx`**: Quote card footer `flex items-center justify-between` → `flex-col sm:flex-row sm:items-center sm:justify-between gap-2`.
+- **`Profile.jsx`**: Gradient header padding `p-7` → `p-5 sm:p-7`. Address modal suburb/city grid `grid-cols-2` → `grid-cols-1 sm:grid-cols-2`. Vehicle modal year/body-type grid same fix.
+- **`Vehicles.jsx`**: Vehicle modal year/body-type grid `grid-cols-2` → `grid-cols-1 sm:grid-cols-2`. Card header height `h-[140px]` → `h-[100px] sm:h-[140px]`.
+- **`Messages.jsx`**: Container height uses `100dvh` (dynamic viewport height) for mobile browser chrome. Image attach button hidden on mobile (`hidden sm:block`). Message bubble max-width `max-w-[85%] sm:max-w-[75%] md:max-w-[70%]`.
+- **`Support.jsx`**: Drag-drop zone padding `p-6` → `p-4 sm:p-6`.
+
+### 20 March 2026 (BookingCard Mobile Responsive + Button Centering + Modal Z-Index)
+
+- **`BookingCard.jsx`**: Footer restructured for mobile — price and buttons now stack vertically on mobile (`flex-col sm:flex-row`). Button container changed from horizontal-only `flex items-center gap-2` to `flex flex-col sm:flex-row` with `w-full sm:w-auto` on each button. All buttons get `justify-center` for centered text/icons when full-width. Handles 3-button scenarios (workshop bookings: Reschedule + Directions + Cancel, or Book Appointment + Directions + Cancel).
+- **`OverviewNew.jsx`**: Hero buttons get `justify-center` for centered content when stacked full-width on mobile.
+- **`QuotesNew.jsx`**: "View Quotes" footer span gets `justify-center`.
+- **`ProviderResponseCard.jsx`**: "Accept & Pay" button gets `flex items-center justify-center` Tailwind classes (was only centered via inline styles).
+- **`QuoteDetailPanel.jsx`**: "Book Appointment" and "View Booking" buttons get Tailwind centering classes.
+- **`SupportChatPopup.jsx`**: Z-index lowered from `z-50` to `z-40` so modals/drawers (`z-50`) properly overlay the chat icon.
+- **`Toast.jsx`**: Z-index raised from `z-50` to `z-[60]` so toast notifications remain visible above modals.
 
 ### 12 March 2026 (Dead Code Cleanup — Old Quote Acceptance Flow)
 

@@ -48,12 +48,13 @@ const Tabs = ({
   const style = variants[variant];
   
   return (
-    <div className={`flex ${style.container} ${className}`}>
+    <div className={`overflow-x-auto ${className}`} style={{ WebkitOverflowScrolling: 'touch' }}>
+    <div className={`flex ${style.container}`}>
       {tabs.map((tab) => (
         <button
           key={tab.value}
           onClick={() => onChange(tab.value)}
-          className={`${style.tab(activeTab === tab.value)} ${sizes[size]} whitespace-nowrap`}
+          className={`${style.tab(activeTab === tab.value)} ${sizes[size]} whitespace-nowrap flex-shrink-0`}
         >
           {tab.icon && <tab.icon size={16} className="inline mr-1.5" />}
           {tab.label}
@@ -68,6 +69,7 @@ const Tabs = ({
           )}
         </button>
       ))}
+    </div>
     </div>
   );
 };

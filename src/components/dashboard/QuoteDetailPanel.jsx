@@ -635,7 +635,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
         {bookingIsConfirmed && !booking?.scheduledDate && (
           <button
             onClick={() => navigate(`/dashboard/quotes/${quote.id}/book-appointment`)}
-            className="w-full sm:max-w-md sm:mx-auto hover:shadow-lg hover:-translate-y-px"
+            className="w-full sm:max-w-md sm:mx-auto flex items-center justify-center gap-2 hover:shadow-lg hover:-translate-y-px"
             style={{
               padding: "1rem",
               borderRadius: "1rem",
@@ -696,7 +696,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                 gap: ".375rem",
                 flexShrink: 0,
               }}
-              className="w-full sm:w-auto hover:brightness-110"
+              className="w-full sm:w-auto flex items-center justify-center hover:brightness-110"
             >
               View Booking <ArrowRight size={14} />
             </button>

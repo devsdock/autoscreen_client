@@ -3,7 +3,7 @@ const Card = ({ children, className = '', padding = true }) => {
     <div
       className={`
         bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-transparent dark:border-slate-800
-        ${padding ? 'p-6' : ''}
+        ${padding ? 'p-4 sm:p-6' : ''}
         ${className}
       `}
     >

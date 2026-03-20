@@ -108,7 +108,7 @@ const Modal = ({
 };
 
 export const ModalActions = ({ children, className = '' }) => (
-  <div className={`flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 mt-4 ${className}`}>
+  <div className={`flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 mt-4 ${className}`}>
     {children}
   </div>
 );

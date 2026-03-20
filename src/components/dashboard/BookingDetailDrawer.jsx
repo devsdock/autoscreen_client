@@ -858,7 +858,7 @@ const BookingDetailDrawer = ({
               <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
                 Uploaded Images
               </h4>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                 {damageImages.map((img, index) => (
                   <div
                     key={index}
@@ -895,7 +895,7 @@ const BookingDetailDrawer = ({
               <h4 className="font-semibold text-slate-900 dark:text-white mb-3">
                 Completed Work Images
               </h4>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                 {booking.afterImages.map((img, index) => (
                   <div
                     key={index}
@@ -1160,7 +1160,7 @@ const BookingDetailDrawer = ({
             )}
 
             {(canReview || canDownloadInvoice || canReschedule || canCancel) && (
-              <div className="grid grid-flow-col auto-cols-fr gap-2 w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
                 {canReview && (
                   <Button
                     variant="secondary"

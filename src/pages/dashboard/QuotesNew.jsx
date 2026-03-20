@@ -178,7 +178,7 @@ const QuoteCard = ({ quote, onClick }) => {
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-3 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
+      <div className="px-5 py-3 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         {(() => {
           if (paymentDue) {
             return (
@@ -232,7 +232,7 @@ const QuoteCard = ({ quote, onClick }) => {
             </div>
           );
         })()}
-        <span className="inline-flex items-center gap-1 px-4 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-[13px] font-bold rounded-lg transition-colors">
+        <span className="inline-flex items-center justify-center gap-1 px-4 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-[13px] font-bold rounded-lg transition-colors">
           View Quotes <ChevronRight size={14} />
         </span>
       </div>

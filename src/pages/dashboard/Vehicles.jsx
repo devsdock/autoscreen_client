@@ -398,7 +398,7 @@ const Vehicles = () => {
             placeholder={!vehicleForm.make ? "Select make first" : "Search or select model"}
             emptyMessage={!vehicleForm.make ? "Please select a make first" : "No models found"}
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <PremiumSelect
               label="Year"
               options={yearOptions.map(String)}
@@ -503,7 +503,7 @@ const VehicleCard = ({ vehicle, onEdit, onDelete, onGetQuote, onSetPrimary }) =>
     >
       {/* Visual header */}
       <div
-        className={`h-[140px] relative rounded-t-2xl overflow-hidden flex items-center justify-center ${
+        className={`h-[100px] sm:h-[140px] relative rounded-t-2xl overflow-hidden flex items-center justify-center ${
           isPrimary
             ? "bg-gradient-to-br from-primary-900 to-primary-800"
             : "bg-gradient-to-br from-slate-800 to-slate-700"

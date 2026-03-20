@@ -244,7 +244,7 @@ const BookingCard = ({
       </div>
 
       {/* ── Footer ── */}
-      <div className="flex items-center justify-between px-5 py-3.5 sm:px-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-3.5 sm:px-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800">
         {/* Price */}
         <div className="flex items-baseline gap-2">
           <span className="font-display text-[1.125rem] font-extrabold text-slate-900 dark:text-white">
@@ -260,12 +260,12 @@ const BookingCard = ({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
           {/* Book Appointment — paid but no schedule */}
           {needsAppointment && (
             <button
               onClick={() => onBookAppointment?.(booking)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:shadow-md hover:-translate-y-px"
+              className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:shadow-md hover:-translate-y-px"
               style={{ background: "linear-gradient(135deg, #2563EB, #1D4ED8)" }}
             >
               <CalendarCheck size={13} />
@@ -278,7 +278,7 @@ const BookingCard = ({
           {canReschedule && onReschedule && (
             <button
               onClick={() => onReschedule(booking)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:shadow-md hover:-translate-y-px"
+              className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:shadow-md hover:-translate-y-px"
               style={{ background: "linear-gradient(135deg, #F59E0B, #D97706)" }}
             >
               <RefreshCw size={13} />
@@ -290,7 +290,7 @@ const BookingCard = ({
           {canGetDirections && onDirections && (
             <button
               onClick={() => onDirections(booking)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
             >
               <Navigation size={12} />
               Directions
@@ -301,7 +301,7 @@ const BookingCard = ({
           {category === "upcoming" && !isCompletedByFitter && onCancel && (
             <button
               onClick={() => onCancel(booking)}
-              className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              className="inline-flex items-center justify-center gap-1 w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-semibold hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
               style={{ color: "#DC2626" }}
             >
               Cancel
@@ -312,7 +312,7 @@ const BookingCard = ({
           {isCompletedByFitter && (
             <button
               onClick={() => onAcknowledge?.(booking)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:shadow-md"
+              className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:shadow-md"
               style={{ background: "linear-gradient(135deg, #16A34A, #15803D)" }}
             >
               <CheckCircle size={13} />
@@ -326,7 +326,7 @@ const BookingCard = ({
               {onInvoice && (
                 <button
                   onClick={() => onInvoice(booking)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+                  className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
                 >
                   <Download size={12} />
                   Invoice
@@ -335,7 +335,7 @@ const BookingCard = ({
               {onRate && !booking.rating?.score && (
                 <button
                   onClick={() => onRate(booking)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:shadow-md hover:-translate-y-px"
+                  className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:shadow-md hover:-translate-y-px"
                   style={{ background: "linear-gradient(135deg, #F59E0B, #D97706)" }}
                 >
                   <Star size={12} />
@@ -349,7 +349,7 @@ const BookingCard = ({
           {category === "cancelled" && (
             <button
               onClick={() => onClick?.()}
-              className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+              className="inline-flex items-center justify-center gap-1 w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
             >
               View
             </button>

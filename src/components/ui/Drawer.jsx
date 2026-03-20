@@ -111,7 +111,7 @@ const Drawer = ({
 };
 
 export const DrawerFooter = ({ children, className = '' }) => (
-  <div className={`flex items-center gap-3 p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 ${className}`}>
+  <div className={`flex flex-col sm:flex-row sm:items-center gap-3 p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 ${className}`}>
     {children}
   </div>
 );

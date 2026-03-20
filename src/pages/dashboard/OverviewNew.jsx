@@ -118,7 +118,7 @@ const OverviewNew = () => {
   return (
     <div className="space-y-7">
       {/* ── Hero CTA ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-800 to-primary-900 dark:from-primary-900 dark:to-slate-900 py-8 px-10">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-800 to-primary-900 dark:from-primary-900 dark:to-slate-900 py-6 sm:py-8 px-4 sm:px-10">
         {/* Decorative circles */}
         <div className="absolute -right-[60px] -top-[60px] w-[240px] h-[240px] rounded-full bg-white/[.04]" />
         <div className="absolute right-[80px] -bottom-[80px] w-[180px] h-[180px] rounded-full bg-white/[.03]" />
@@ -138,17 +138,17 @@ const OverviewNew = () => {
               hassle.
             </p>
 
-            <div className="flex flex-wrap gap-3 mt-5">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-5">
               <button
                 onClick={() => navigate("/dashboard/quotes/new")}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white text-primary-700 font-bold text-[15px] shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-white text-primary-700 font-bold text-[15px] shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200"
               >
                 <Plus size={16} />
                 Get a Quote
               </button>
               <button
                 onClick={() => navigate("/dashboard/bookings")}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/[.12] text-white font-bold text-[15px] border border-white/20 hover:bg-white/[.18] transition-all duration-200"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-white/[.12] text-white font-bold text-[15px] border border-white/20 hover:bg-white/[.18] transition-all duration-200"
               >
                 <Calendar size={16} />
                 My Bookings

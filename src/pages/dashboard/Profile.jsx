@@ -760,7 +760,7 @@ const Profile = () => {
 
       {/* Gradient Profile Header Card */}
       <div
-        className="relative overflow-hidden rounded-2xl p-7 flex items-center gap-6 shadow-lg"
+        className="relative overflow-hidden rounded-2xl p-5 sm:p-7 flex items-center gap-6 shadow-lg"
         style={{
           background:
             "linear-gradient(135deg, var(--tw-gradient-stops))",
@@ -1233,7 +1233,7 @@ const Profile = () => {
                 : "No models found"
             }
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <PremiumSelect
               label="Year"
               options={yearOptions.map(String)}
@@ -1356,7 +1356,7 @@ const Profile = () => {
             required
             error={addressErrors.street}
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Suburb/Area (optional)"
               placeholder="e.g., Sandton"

@@ -19,7 +19,7 @@ const StatCard = ({
     <div className={`bg-white dark:bg-slate-900 rounded-2xl border-t-4 ${borderColor} p-5 shadow-sm hover:shadow-md border border-transparent dark:border-slate-800 transition-all ${className}`}>
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="text-3xl font-bold text-slate-900 dark:text-white">{value}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">{value}</p>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{label}</p>
           {subValue && (
             <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{subValue}</p>
