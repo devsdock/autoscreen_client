@@ -168,7 +168,7 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-const CalendarPicker = ({ selectedDate, onDateSelect, availabilityCache, onMonthChange }) => {
+const CalendarPicker = ({ selectedDate, onDateSelect, availabilityCache, onMonthChange, isPrefetching }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -279,7 +279,17 @@ const CalendarPicker = ({ selectedDate, onDateSelect, availabilityCache, onMonth
         </div>
       </div>
 
-      <div className="p-4 pt-3">
+      <div className="p-4 pt-3 relative">
+        {/* Loading overlay while prefetching availability */}
+        {isPrefetching && Object.keys(availabilityCache).length === 0 && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 dark:bg-slate-900/80 rounded-b-2xl">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 size={24} className="animate-spin text-blue-600" />
+              <span className="text-xs text-slate-500 dark:text-slate-400">Loading availability...</span>
+            </div>
+          </div>
+        )}
+
         {/* Day name headers */}
         <div className="grid grid-cols-7 mb-2">
           {DAY_NAMES.map((name) => (
@@ -759,6 +769,7 @@ const BookAppointment = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
   const [availabilityCache, setAvailabilityCache] = useState({});
+  const [isPrefetching, setIsPrefetching] = useState(false);
   const [isFetchingSlots, setIsFetchingSlots] = useState(false);
   const [currentSlots, setCurrentSlots] = useState([]);
 
@@ -1052,28 +1063,33 @@ const BookAppointment = () => {
       if (prefetchedMonthsRef.current.has(key)) return;
       prefetchedMonthsRef.current.add(key);
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      setIsPrefetching(true);
+      try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dateObj = new Date(year, month, d);
-        if (dateObj <= today) continue; // skip past & today
-        const dateStr = formatLocalDate(dateObj);
-        if (availabilityCache[dateStr]) continue; // already cached
-        try {
-          const result = await quoteService.getProviderAvailability(providerId, dateStr, bookingServiceTypes, bookingGlassTypes, custCoords?.lat, custCoords?.lng);
-          if (result.success && result.data) {
-            const slots = result.data.slots || [];
-            setAvailabilityCache((prev) => ({ ...prev, [dateStr]: { slots } }));
-          } else {
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dateObj = new Date(year, month, d);
+          if (dateObj <= today) continue; // skip past & today
+          const dateStr = formatLocalDate(dateObj);
+          if (availabilityCache[dateStr]) continue; // already cached
+          try {
+            const result = await quoteService.getProviderAvailability(providerId, dateStr, bookingServiceTypes, bookingGlassTypes, custCoords?.lat, custCoords?.lng);
+            if (result.success && result.data) {
+              const slots = result.data.slots || [];
+              setAvailabilityCache((prev) => ({ ...prev, [dateStr]: { slots } }));
+            } else {
+              setAvailabilityCache((prev) => ({ ...prev, [dateStr]: { slots: [] } }));
+            }
+          } catch {
             setAvailabilityCache((prev) => ({ ...prev, [dateStr]: { slots: [] } }));
           }
-        } catch {
-          setAvailabilityCache((prev) => ({ ...prev, [dateStr]: { slots: [] } }));
+          // Small delay to avoid hammering the API
+          await new Promise((r) => setTimeout(r, 80));
         }
-        // Small delay to avoid hammering the API
-        await new Promise((r) => setTimeout(r, 80));
+      } finally {
+        setIsPrefetching(false);
       }
     },
     [providerId, availabilityCache, bookingServiceTypes, bookingGlassTypes],
@@ -1219,6 +1235,7 @@ const BookAppointment = () => {
             onDateSelect={handleDateSelect}
             availabilityCache={availabilityCache}
             onMonthChange={handleMonthChange}
+            isPrefetching={isPrefetching}
           />
         </div>
 

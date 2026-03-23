@@ -832,8 +832,19 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 ### 23 March 2026 (Quote Image Upload — FormData Fix, C-036)
 
 - **`NewQuote.jsx` + `RequestQuoteModal.jsx` — Images uploaded as files instead of base64**: Quote submission previously embedded all images as base64 data URLs in the JSON body. This caused Nginx 413 errors even for small images (base64 adds ~33%, 3 images easily exceeded Nginx's default 1MB `client_max_body_size`). Now uploads images via FormData to `POST /api/public/upload-quote-images` first, then submits the quote with file URLs.
-- **`ImageUploadSlot.jsx` — Stores original File object**: `onUpload` callback now includes `file` alongside the base64 `data` (still used for preview display).
+- **`ImageUploadSlot.jsx` — Stores original File object**: `onUpload` callback now includes `file` alongside the base64 `data` (still used for preview display). Frontend 5MB per-file validation added with toast error on oversized files.
 - **`quoteService.js` — `uploadImages()` added**: New method that creates FormData from File array and posts to the public upload endpoint. Existing `uploadDamageImages` (authenticated) retained for backward compat.
+
+### 23 March 2026 (City Validation Restored — C-031)
+
+- **`NewQuote.jsx` — Step 3 + final validation blocks disabled/unknown cities**: Both `validateStep` (step 3) and `validate()` now check if the selected city exists in the cities list AND is not disabled (no providers). Previously only checked `!formData.city` (empty string). Non-SA cities and "coming soon" cities are now rejected with "No providers available in this area yet".
+- **`NewQuote.jsx` — "Use My Location" no longer sets disabled/unknown cities**: After reverse geocoding, if the matched city has no providers or isn't in the SA city list, `formData.city` is set to empty string instead of the invalid city name. Error messages: "No providers available in this area yet" (disabled SA city) or "Could not determine a serviceable city from your location" (non-SA/unmatched).
+
+### 23 March 2026 (BookAppointment Calendar — Prefetch Loading Fix)
+
+- **`BookAppointment.jsx` — Calendar loading overlay**: Added `isPrefetching` state to track when `prefetchMonth` is fetching availability data. CalendarPicker now shows a spinner overlay ("Loading availability...") while prefetch is running and cache is empty. Prevents the "no dates available" appearance on first load before availability data arrives.
+- **`BookAppointment.jsx` — `prefetchMonth` wrapped in try/finally**: `setIsPrefetching(true)` at start, `setIsPrefetching(false)` in `finally` block — ensures cleanup even on errors.
+- **Root cause**: On first page visit, `providerId` is derived from quote data loaded async. Calendar rendered immediately after quote load but before the ~1.5s prefetch completed, showing empty dots. On refresh, Zustand cache provided quote instantly, masking the race condition.
 
 ### 23 March 2026 (Categorized Vehicle Image Upload)
 

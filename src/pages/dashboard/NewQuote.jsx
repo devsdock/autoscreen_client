@@ -301,9 +301,11 @@ const NewQuote = () => {
           if (data?.address) {
             const rawCity = data.address.city || data.address.town || data.address.village || "";
             const matchedCity = matchCityToList(rawCity, cities);
+            const cityOpt = matchedCity ? cities.find((c) => (typeof c === "string" ? c : c.value) === matchedCity) : null;
+            const isCityValid = cityOpt && (typeof cityOpt === "string" || !cityOpt.disabled);
             setFormData((prev) => ({
               ...prev,
-              city: matchedCity || prev.city,
+              city: isCityValid ? matchedCity : "",
               suburb: data.address.suburb || prev.suburb,
               addressLine1: data.address.road
                 ? `${data.address.house_number || ""} ${data.address.road}`.trim()
@@ -311,14 +313,15 @@ const NewQuote = () => {
               postcode: data.address.postcode || prev.postcode,
               coordinates: { lat: latitude, lng: longitude },
             }));
-            // Warn if matched city has no providers
-            if (matchedCity) {
-              const cityOpt = cities.find((c) => (typeof c === "string" ? c : c.value) === matchedCity);
-              if (cityOpt && typeof cityOpt === "object" && cityOpt.disabled) {
-                setErrors((prev) => ({ ...prev, city: "No providers available in this area yet" }));
-              } else {
-                setErrors((prev) => ({ ...prev, city: "" }));
-              }
+            if (!isCityValid) {
+              setErrors((prev) => ({
+                ...prev,
+                city: matchedCity
+                  ? "No providers available in this area yet"
+                  : "Could not determine a serviceable city from your location",
+              }));
+            } else {
+              setErrors((prev) => ({ ...prev, city: "" }));
             }
           }
         } catch (err) {
@@ -499,7 +502,14 @@ const NewQuote = () => {
     }
 
     if (step === 3) {
-      if (!formData.city) newErrors.city = "City is required";
+      if (!formData.city) {
+        newErrors.city = "City is required";
+      } else {
+        const cityOpt = cities.find((c) => (typeof c === "string" ? c : c.value) === formData.city);
+        if (!cityOpt || (typeof cityOpt === "object" && cityOpt.disabled)) {
+          newErrors.city = "No providers available in this area yet";
+        }
+      }
       if (formData.serviceMode !== "workshop" && !formData.addressLine1.trim())
         newErrors.addressLine1 = "Street address is required";
     }
@@ -521,7 +531,14 @@ const NewQuote = () => {
       newErrors.serviceType = "Service type is required";
     if (!formData.glassTypes || formData.glassTypes.length === 0)
       newErrors.glassType = "Glass type is required";
-    if (!formData.city) newErrors.city = "City is required";
+    if (!formData.city) {
+      newErrors.city = "City is required";
+    } else {
+      const cityOpt = cities.find((c) => (typeof c === "string" ? c : c.value) === formData.city);
+      if (!cityOpt || (typeof cityOpt === "object" && cityOpt.disabled)) {
+        newErrors.city = "No providers available in this area yet";
+      }
+    }
     if (formData.serviceMode !== "workshop" && (!formData.addressLine1 || !formData.addressLine1.trim()))
       newErrors.addressLine1 = "Street address is required";
     if (!formData.vehicleImages.frontView) newErrors.frontView = "Front of vehicle photo is required";
