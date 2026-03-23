@@ -446,7 +446,7 @@ export const mapBooking = (booking) => {
     locationType:
       booking.serviceLocationType === "shop" ||
       booking.serviceLocationType === "workshop"
-        ? "In-Store"
+        ? "Workshop"
         : "Mobile Service",
     statusLabel: formatBookingStatus(booking.status),
     paymentStatus: normalizedPaymentStatus,

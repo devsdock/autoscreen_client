@@ -63,7 +63,7 @@ const BookingCard = ({
 
   const needsAppointment = category === "upcoming" && isPaid && !hasSchedule && quoteId;
   const canReschedule = isScheduled && category === "upcoming" && new Date(booking.scheduledDate) - new Date() > 24 * 3600000;
-  const isWorkshop = booking.serviceLocationType === "workshop" || booking.locationType === "In-Store";
+  const isWorkshop = booking.serviceLocationType === "workshop" || booking.locationType === "Workshop";
   const hasWorkshopAddress = !!booking.workshopAddress?.addressLine1;
   const canGetDirections = isWorkshop && hasWorkshopAddress && category === "upcoming" && isPaid;
 
@@ -232,7 +232,7 @@ const BookingCard = ({
             {booking.locationType || "Mobile"}
           </div>
           <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-            {booking.locationType === "In-Store" ? "Drop vehicle off" : "Comes to you"}
+            {booking.locationType === "Workshop" ? "Drop vehicle off" : "Comes to you"}
           </div>
         </div>
 

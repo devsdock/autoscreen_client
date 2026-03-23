@@ -703,6 +703,22 @@ const BookingDetailDrawer = ({
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           {[booking.workshopAddress.addressLine1, booking.workshopAddress.suburb, booking.workshopAddress.city].filter(Boolean).join(", ")}
                         </p>
+                        <button
+                          onClick={() => {
+                            const ws = booking.workshopAddress;
+                            const addr = [ws.addressLine1, ws.suburb, ws.city, ws.province, ws.postalCode].filter(Boolean).join(", ");
+                            if (addr) window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`, "_blank");
+                          }}
+                          className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                          style={{
+                            backgroundColor: "#eff6ff",
+                            border: "1px solid #bfdbfe",
+                            color: "#2563eb",
+                          }}
+                        >
+                          <Navigation size={12} />
+                          Get Directions
+                        </button>
                       </>
                     ) : (
                       <>
@@ -716,86 +732,8 @@ const BookingDetailDrawer = ({
                     )}
                   </div>
                 </div>
-                {/* Directions button under address for workshop bookings */}
-                {booking?.serviceLocationType === "workshop" && booking?.workshopAddress?.addressLine1 && (
-                  <button
-                    onClick={() => {
-                      const ws = booking.workshopAddress;
-                      const addr = [ws.addressLine1, ws.suburb, ws.city, ws.province, ws.postalCode].filter(Boolean).join(", ");
-                      if (addr) window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`, "_blank");
-                    }}
-                    className="mt-2 ml-11 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-                    style={{
-                      backgroundColor: "#eff6ff",
-                      borderColor: "#bfdbfe",
-                      border: "1px solid #bfdbfe",
-                      color: "#2563eb",
-                    }}
-                  >
-                    <Navigation size={12} />
-                    Get Directions
-                  </button>
-                )}
               </div>
 
-              {/* Workshop Location — show provider workshop address for workshop bookings */}
-              {booking?.serviceLocationType === "workshop" &&
-                booking?.provider?.serviceArea?.workshopAddress && (() => {
-                  const ws = booking.provider.serviceArea.workshopAddress;
-                  const workshopAddr = [ws.addressLine1, ws.suburb, ws.city, ws.province, ws.postalCode].filter(Boolean).join(", ");
-                  return (
-                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center flex-shrink-0">
-                          <MapPin
-                            size={16}
-                            className="text-amber-600 dark:text-amber-400"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                            Workshop Location
-                          </p>
-                          <p className="font-medium text-slate-900 dark:text-white text-sm mt-0.5">
-                            {ws.addressLine1}
-                          </p>
-                          {ws.suburb && (
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                              {ws.suburb}
-                            </p>
-                          )}
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {ws.city}
-                            {ws.province ? `, ${ws.province}` : ""}
-                          </p>
-                          {ws.postalCode && (
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                              {ws.postalCode}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      {/* Get Directions button */}
-                      <button
-                        onClick={() =>
-                          window.open(
-                            `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(workshopAddr)}`,
-                            "_blank"
-                          )
-                        }
-                        className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors"
-                        style={{
-                          backgroundColor: "#eff6ff",
-                          borderColor: "#bfdbfe",
-                          color: "#2563eb",
-                        }}
-                      >
-                        <Navigation size={13} />
-                        Get Directions
-                      </button>
-                    </div>
-                  );
-                })()}
             </div>
           </div>
 
