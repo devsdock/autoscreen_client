@@ -524,6 +524,26 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
           v.year?.toString() === formData.vehicleYear,
       );
 
+      // Upload images as files first (avoids base64-in-JSON payload size issues)
+      const imageFiles = [
+        formData.vehicleImages.frontView?.file,
+        formData.vehicleImages.vinLicenceDisc?.file,
+        ...formData.vehicleImages.damagePhotos.map((img) => img.file),
+      ].filter(Boolean);
+
+      const quoteService = (await import("../../services/quoteService"))
+        .default;
+
+      let damageImageUrls = [];
+      if (imageFiles.length > 0) {
+        const uploadRes = await quoteService.uploadImages(imageFiles);
+        if (uploadRes?.success && uploadRes.data?.images) {
+          damageImageUrls = uploadRes.data.images;
+        } else {
+          throw new Error("Failed to upload images. Please try again.");
+        }
+      }
+
       const quotePayload = {
         vehicle: {
           make: formData.vehicleMake,
@@ -574,15 +594,8 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
         preferredDate: null,
         preferredTimeSlot: null,
         customerNotes: formData.notes,
-        damageImages: [
-          formData.vehicleImages.frontView?.data,
-          formData.vehicleImages.vinLicenceDisc?.data,
-          ...formData.vehicleImages.damagePhotos.map((img) => img.data),
-        ].filter(Boolean),
+        damageImages: damageImageUrls,
       };
-
-      const quoteService = (await import("../../services/quoteService"))
-        .default;
 
       const response = await quoteService.createQuote(quotePayload);
 

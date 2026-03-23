@@ -1,5 +1,8 @@
 import { useRef } from "react";
 import { Trash2 } from "lucide-react";
+import useDashboardStore from "../../store/useDashboardStore";
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export default function ImageUploadSlot({
   icon: Icon,
@@ -19,12 +22,20 @@ export default function ImageUploadSlot({
     const files = Array.from(e.target.files);
     files.forEach((file) => {
       if (file.type.startsWith("image/")) {
+        if (file.size > MAX_FILE_SIZE) {
+          useDashboardStore.getState().addToast({
+            type: "error",
+            message: `"${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum size is 5MB.`,
+          });
+          return;
+        }
         const reader = new FileReader();
         reader.onloadend = () => {
           onUpload({
             id: Date.now() + Math.random(),
             data: reader.result,
             name: file.name,
+            file,
           });
         };
         reader.readAsDataURL(file);

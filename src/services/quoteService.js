@@ -17,7 +17,7 @@ const quoteService = {
   },
 
   /**
-   * Upload damage images
+   * Upload damage images (legacy — authenticated endpoint)
    */
   uploadDamageImages: (formData) => {
     return request({
@@ -27,6 +27,22 @@ const quoteService = {
       headers: {
         "Content-Type": "multipart/form-data",
       },
+    });
+  },
+
+  /**
+   * Upload damage/vehicle images via FormData (public endpoint)
+   * @param {File[]} files - Array of File objects
+   * @returns {Promise<Object>} { success, data: { images: ['/uploads/damages/...'] } }
+   */
+  uploadImages: (files) => {
+    const fd = new FormData();
+    files.forEach((file) => fd.append("images", file));
+    return request({
+      method: "POST",
+      url: "/public/upload-quote-images",
+      data: fd,
+      headers: { "Content-Type": "multipart/form-data" },
     });
   },
 

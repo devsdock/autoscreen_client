@@ -829,6 +829,12 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 23 March 2026 (Quote Image Upload — FormData Fix, C-036)
+
+- **`NewQuote.jsx` + `RequestQuoteModal.jsx` — Images uploaded as files instead of base64**: Quote submission previously embedded all images as base64 data URLs in the JSON body. This caused Nginx 413 errors even for small images (base64 adds ~33%, 3 images easily exceeded Nginx's default 1MB `client_max_body_size`). Now uploads images via FormData to `POST /api/public/upload-quote-images` first, then submits the quote with file URLs.
+- **`ImageUploadSlot.jsx` — Stores original File object**: `onUpload` callback now includes `file` alongside the base64 `data` (still used for preview display).
+- **`quoteService.js` — `uploadImages()` added**: New method that creates FormData from File array and posts to the public upload endpoint. Existing `uploadDamageImages` (authenticated) retained for backward compat.
+
 ### 23 March 2026 (Categorized Vehicle Image Upload)
 
 - **`NewQuote.jsx` + `RequestQuoteModal.jsx` — Categorized image upload**: Replaced the single generic "Upload Photos" drag zone with 3 categorized upload slots: **Front of Vehicle** (single, `Car` icon), **VIN / Licence Disc** (single, `ScanLine` icon), and **Damaged Area** (multi, `Camera` icon). All 3 categories required before submission.
