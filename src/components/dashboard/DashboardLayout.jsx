@@ -180,9 +180,8 @@ const DashboardLayout = () => {
       {/* Main area */}
       <div
         className={`
-          min-h-screen flex flex-col
-          transition-all duration-300
-          ${sidebarCollapsed ? "lg:ml-[72px]" : "lg:ml-[260px]"}
+          transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
+          ${sidebarCollapsed ? "lg:pl-[var(--sidebar-collapsed-w)]" : "lg:pl-[var(--sidebar-w)]"}
           ${SHOW_RIGHT_SIDEBAR ? "xl:mr-[320px]" : ""}
         `}
       >
@@ -190,7 +189,7 @@ const DashboardLayout = () => {
         <DashboardTopBar />
 
         {/* Content */}
-        <main className="flex-1 px-4 sm:px-8 py-4 sm:py-6">
+        <main className="px-4 py-5 sm:px-5 sm:py-7 lg:px-8 min-h-0 overflow-y-auto">
           <Outlet />
         </main>
       </div>
