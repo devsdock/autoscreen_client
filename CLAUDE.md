@@ -3,7 +3,7 @@
 > **Project:** AutoScreen Customer Dashboard
 > **Stack:** React + Vite, Zustand, React Router v6, Axios, Socket.IO
 > **Version:** 1.0.0
-> **Last Updated:** 20 March 2026 (Mobile Responsiveness Audit & Fix)
+> **Last Updated:** 23 March 2026 (Categorized Vehicle Image Upload)
 
 ---
 
@@ -839,6 +839,15 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 - **`BookAppointment.jsx` — Calendar loading overlay**: Added `isPrefetching` state to track when `prefetchMonth` is fetching availability data. CalendarPicker now shows a spinner overlay ("Loading availability...") while prefetch is running and cache is empty. Prevents the "no dates available" appearance on first load before availability data arrives.
 - **`BookAppointment.jsx` — `prefetchMonth` wrapped in try/finally**: `setIsPrefetching(true)` at start, `setIsPrefetching(false)` in `finally` block — ensures cleanup even on errors.
 - **Root cause**: On first page visit, `providerId` is derived from quote data loaded async. Calendar rendered immediately after quote load but before the ~1.5s prefetch completed, showing empty dots. On refresh, Zustand cache provided quote instantly, masking the race condition.
+
+### 23 March 2026 (Categorized Vehicle Image Upload)
+
+- **`NewQuote.jsx` + `RequestQuoteModal.jsx` — Categorized image upload**: Replaced the single generic "Upload Photos" drag zone with 3 categorized upload slots: **Front of Vehicle** (single, `Car` icon), **VIN / Licence Disc** (single, `ScanLine` icon), and **Damaged Area** (multi, `Camera` icon). All 3 categories required before submission.
+- **New component `ImageUploadSlot.jsx`**: Reusable upload slot component at `components/ui/ImageUploadSlot.jsx`. Supports single-image mode (with replace/remove) and multi-image mode (with thumbnail grid). Dark mode compatible.
+- **State change**: `formData.images[]` replaced with `formData.vehicleImages: { frontView, vinLicenceDisc, damagePhotos[] }`.
+- **Zero backend risk**: All categories are flattened into the existing `damageImages[]` array on submission. No backend, admin, or provider portal changes needed.
+- **Validation**: Per-category error messages instead of generic "At least one photo is required".
+- **Modal reset**: `RequestQuoteModal` properly resets `vehicleImages` on open and after submission.
 
 ### 20 March 2026 (Mobile Responsiveness Audit & Fix — Full Portal)
 

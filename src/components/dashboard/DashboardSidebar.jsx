@@ -8,8 +8,8 @@ import {
   CircleUser,
   ShieldCheck,
   LogOut,
-  ChevronLeft,
-  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
   X,
   Plus,
   HelpCircle,
@@ -58,6 +58,7 @@ const DashboardSidebar = () => {
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
   const [hoveredItem, setHoveredItem] = useState(null);
+  const [collapseTooltip, setCollapseTooltip] = useState(null);
   const getBadgeCount = (label) => {
     switch (label) {
       case "Quote Requests":
@@ -202,7 +203,7 @@ const DashboardSidebar = () => {
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-20 lg:hidden backdrop-blur-sm"
+          className="fixed inset-0 bg-black/50 z-[39] lg:hidden backdrop-blur-sm"
           onClick={toggleSidebar}
         />
       )}
@@ -210,9 +211,9 @@ const DashboardSidebar = () => {
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 z-30 h-screen
+          fixed top-0 left-0 z-40 h-screen
           bg-white dark:bg-slate-900
-          transition-all duration-300 ease-in-out
+          transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
           flex flex-col
           ${sidebarCollapsed ? "lg:w-[72px]" : "lg:w-[260px]"}
           w-[260px]
@@ -273,19 +274,28 @@ const DashboardSidebar = () => {
           {/* Collapse toggle for desktop */}
           <button
             onClick={toggleSidebarCollapse}
+            onMouseEnter={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              setCollapseTooltip({
+                label: sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar",
+                top: rect.top,
+                left: rect.right,
+                height: rect.height,
+              });
+            }}
+            onMouseLeave={() => setCollapseTooltip(null)}
             className={`
-              hidden lg:flex p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors
-              ${
-                sidebarCollapsed
-                  ? "absolute -right-3 top-1/2 -translate-y-1/2 bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 z-50 rounded-full w-6 h-6 items-center justify-center"
-                  : ""
+              hidden lg:flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg transition-all duration-200
+              ${sidebarCollapsed
+                ? "absolute -right-3 top-1/2 -translate-y-1/2 bg-white dark:bg-slate-800 shadow-card border border-slate-200 dark:border-slate-700 z-50 rounded-full w-6 h-6"
+                : "ml-auto p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"
               }
             `}
           >
             {sidebarCollapsed ? (
-              <ChevronRight size={14} />
+              <PanelLeftOpen size={14} />
             ) : (
-              <ChevronLeft size={18} />
+              <PanelLeftClose size={18} />
             )}
           </button>
         </div>
@@ -358,7 +368,21 @@ const DashboardSidebar = () => {
           </div>
         )}
 
-        {/* Global Floating Tooltip */}
+        {/* Collapse Toggle Tooltip */}
+        {collapseTooltip && (
+          <div
+            className="fixed z-[200] px-2.5 py-1.5 bg-slate-800 dark:bg-slate-700 text-white text-sm rounded-lg shadow-lg whitespace-nowrap pointer-events-none"
+            style={{
+              top: collapseTooltip.top + collapseTooltip.height / 2 - 16,
+              left: collapseTooltip.left + 8,
+            }}
+          >
+            {collapseTooltip.label}
+            <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 border-4 border-transparent border-r-slate-800 dark:border-r-slate-700" />
+          </div>
+        )}
+
+        {/* Collapsed Nav Tooltip */}
         {hoveredItem && sidebarCollapsed && (
           <div
             className="fixed z-50 px-2.5 py-1.5 bg-slate-800 dark:bg-slate-700 text-white text-sm rounded-lg shadow-lg whitespace-nowrap pointer-events-none flex items-center gap-2"
