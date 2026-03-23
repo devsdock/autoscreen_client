@@ -16,8 +16,12 @@ import useDashboardStore from "../../store/useDashboardStore";
 import vehicleService from "../../services/vehicleService";
 import geocodingService from "../../services/geocodingService";
 import publicSettingsService from "../../services/publicSettingsService";
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import PremiumSelect from "../ui/PremiumSelect";
+import ImageUploadSlot from "../ui/ImageUploadSlot";
+import { BsCarFrontFill } from "react-icons/bs";
+import { HiIdentification } from "react-icons/hi2";
+import { MdPhotoCamera } from "react-icons/md";
 
 import { CITIES } from "../../data/cities";
 
@@ -26,7 +30,6 @@ const TOTAL_STEPS = 3;
 const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
   const { createQuote, user, vehicles, addresses, quotes } =
     useDashboardStore();
-  const fileInputRef = useRef(null);
 
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -44,7 +47,11 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
     preferredDate: null,
     preferredTimeSlot: null,
     notes: "",
-    images: [],
+    vehicleImages: {
+      frontView: null,
+      vinLicenceDisc: null,
+      damagePhotos: [],
+    },
     suburb: "",
     hasAdasCamera: false,
     hasRainSensor: false,
@@ -82,7 +89,11 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
         preferredDate: null,
         preferredTimeSlot: null,
         notes: "",
-        images: [],
+        vehicleImages: {
+          frontView: null,
+          vinLicenceDisc: null,
+          damagePhotos: [],
+        },
         suburb: "",
         hasAdasCamera: false,
         hasRainSensor: false,
@@ -368,38 +379,39 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
     fetchModels();
   }, [formData.vehicleMake]);
 
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-
-    files.forEach((file) => {
-      if (file.type.startsWith("image/")) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setFormData((prev) => ({
-            ...prev,
-            images: [
-              ...prev.images,
-              {
-                id: Date.now() + Math.random(),
-                data: reader.result,
-                name: file.name,
-              },
-            ],
-          }));
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const removeImage = (imageId) => {
+  const handleSingleImageUpload = (category, imageObj) => {
     setFormData((prev) => ({
       ...prev,
-      images: prev.images.filter((img) => img.id !== imageId),
+      vehicleImages: { ...prev.vehicleImages, [category]: imageObj },
+    }));
+    if (errors[category]) setErrors((prev) => ({ ...prev, [category]: null }));
+  };
+
+  const removeSingleImage = (category) => {
+    setFormData((prev) => ({
+      ...prev,
+      vehicleImages: { ...prev.vehicleImages, [category]: null },
+    }));
+  };
+
+  const handleDamagePhotoUpload = (imageObj) => {
+    setFormData((prev) => ({
+      ...prev,
+      vehicleImages: {
+        ...prev.vehicleImages,
+        damagePhotos: [...prev.vehicleImages.damagePhotos, imageObj],
+      },
+    }));
+    if (errors.damagePhotos) setErrors((prev) => ({ ...prev, damagePhotos: null }));
+  };
+
+  const removeDamagePhoto = (imageId) => {
+    setFormData((prev) => ({
+      ...prev,
+      vehicleImages: {
+        ...prev.vehicleImages,
+        damagePhotos: prev.vehicleImages.damagePhotos.filter((img) => img.id !== imageId),
+      },
     }));
   };
 
@@ -421,8 +433,9 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
         newErrors.serviceType = "Service type is required";
       if (!formData.glassTypes || formData.glassTypes.length === 0)
         newErrors.glassType = "Glass type is required";
-      if (!formData.images || formData.images.length === 0)
-        newErrors.images = "At least one photo is required";
+      if (!formData.vehicleImages.frontView) newErrors.frontView = "Front of vehicle photo is required";
+      if (!formData.vehicleImages.vinLicenceDisc) newErrors.vinLicenceDisc = "VIN / Licence disc photo is required";
+      if (!formData.vehicleImages.damagePhotos.length) newErrors.damagePhotos = "At least one damage photo is required";
     }
 
     if (step === 3) {
@@ -447,8 +460,9 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
     if (!formData.glassTypes || formData.glassTypes.length === 0)
       newErrors.glassType = "Glass type is required";
     if (!formData.city) newErrors.city = "City is required";
-    if (!formData.images || formData.images.length === 0)
-      newErrors.images = "At least one photo is required";
+    if (!formData.vehicleImages.frontView) newErrors.frontView = "Front of vehicle photo is required";
+    if (!formData.vehicleImages.vinLicenceDisc) newErrors.vinLicenceDisc = "VIN / Licence disc photo is required";
+    if (!formData.vehicleImages.damagePhotos.length) newErrors.damagePhotos = "At least one damage photo is required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -474,7 +488,9 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
       } else if (
         errors.serviceType ||
         errors.glassType ||
-        errors.images
+        errors.frontView ||
+        errors.vinLicenceDisc ||
+        errors.damagePhotos
       ) {
         setCurrentStep(2);
       } else if (errors.city) {
@@ -558,7 +574,11 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
         preferredDate: null,
         preferredTimeSlot: null,
         customerNotes: formData.notes,
-        damageImages: formData.images.map((img) => img.data),
+        damageImages: [
+          formData.vehicleImages.frontView?.data,
+          formData.vehicleImages.vinLicenceDisc?.data,
+          ...formData.vehicleImages.damagePhotos.map((img) => img.data),
+        ].filter(Boolean),
       };
 
       const quoteService = (await import("../../services/quoteService"))
@@ -592,7 +612,11 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
         preferredDate: null,
         preferredTimeSlot: null,
         notes: "",
-        images: [],
+        vehicleImages: {
+          frontView: null,
+          vinLicenceDisc: null,
+          damagePhotos: [],
+        },
       });
       setModelSearchQuery("");
       setCurrentStep(1);
@@ -1012,71 +1036,51 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                 </div>
               )}
 
-              {/* Photo Upload */}
+              {/* Vehicle Photos */}
               <div className="mb-5">
                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1 mb-1">
                   <Upload
                     size={13}
                     className="text-slate-400 dark:text-slate-500"
                   />
-                  Upload Photos{" "}
+                  Vehicle Photos{" "}
                   <span className="text-red-500">*</span>
                 </label>
                 <p className="text-[13px] text-slate-400 dark:text-slate-500 mb-3">
-                  Add photos of the damage to help providers give accurate
-                  quotes. (PNG, JPG up to 5MB each)
+                  Upload required photos to verify your vehicle. (PNG, JPG up to 5MB each)
                 </p>
 
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-[1.5px] border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-6 text-center cursor-pointer hover:border-primary-400 dark:hover:border-primary-500 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-all"
-                >
-                  <div className="w-11 h-11 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3">
-                    <Upload
-                      size={20}
-                      className="text-slate-400 dark:text-slate-500"
-                    />
-                  </div>
-                  <p className="text-[15px] font-semibold text-slate-700 dark:text-slate-300">
-                    Click to upload damage photos
-                  </p>
-                  <p className="text-[13px] text-slate-400 dark:text-slate-500 mt-1">
-                    PNG, JPG up to 5MB each
-                  </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                  <ImageUploadSlot
+                    icon={BsCarFrontFill}
+                    label="Front of Vehicle"
+                    description="Clear front view of your car"
+                    image={formData.vehicleImages.frontView}
+                    onUpload={(img) => handleSingleImageUpload("frontView", img)}
+                    onRemove={() => removeSingleImage("frontView")}
+                    error={errors.frontView}
+                  />
+                  <ImageUploadSlot
+                    icon={HiIdentification}
+                    label="VIN / Licence Disc"
+                    description="Photo of your licence disc or VIN plate"
+                    image={formData.vehicleImages.vinLicenceDisc}
+                    onUpload={(img) => handleSingleImageUpload("vinLicenceDisc", img)}
+                    onRemove={() => removeSingleImage("vinLicenceDisc")}
+                    error={errors.vinLicenceDisc}
+                  />
                 </div>
 
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
+                <ImageUploadSlot
+                  icon={MdPhotoCamera}
+                  label="Damaged Area"
+                  description="Photos of the damage — upload at least one"
+                  images={formData.vehicleImages.damagePhotos}
+                  onUpload={handleDamagePhotoUpload}
+                  onRemove={removeDamagePhoto}
+                  error={errors.damagePhotos}
                   multiple
-                  onChange={handleImageUpload}
-                  className="hidden"
                 />
-
-                {formData.images.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {formData.images.map((img) => (
-                      <div key={img.id} className="relative group">
-                        <img
-                          src={img.data}
-                          alt={img.name}
-                          className="w-16 h-16 object-cover rounded-lg border-[1.5px] border-slate-200 dark:border-slate-700"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(img.id)}
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Trash2 size={10} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {errors.images && (
-                  <p className="text-sm text-red-500 mt-2">{errors.images}</p>
-                )}
               </div>
 
               {/* Notes */}
