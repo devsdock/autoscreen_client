@@ -472,8 +472,10 @@ export const mapBooking = (booking) => {
       booking.provider?.reviewCount || booking.provider?.totalReviews || 0,
     providerPhone: booking.provider?.phone || booking.providerPhone,
     providerEmail: booking.provider?.email || booking.providerEmail,
-    serviceLocationType: booking.serviceLocationType,
+    serviceLocationType: booking.serviceLocationType || booking.quote?.serviceLocation?.type || "mobile",
     workshopAddress: booking.provider?.serviceArea?.workshopAddress || null,
+    estimatedDuration: booking.estimatedDuration || null,
+    bookedDuration: booking.bookedDuration || null,
     suggestions: (booking.suggestions || []).map((s) => ({
       ...s,
       providerName: s.provider?.businessName || s.provider?.name || "Provider",
@@ -500,9 +502,10 @@ export const mapBooking = (booking) => {
         return formatDateTime(booking.scheduledDate);
       }
       if (ts && typeof ts === "string" && !ts.includes("-") && !ts.includes("–") && dur && dur > 30) {
-        const slotsNeeded = Math.ceil(dur / 30);
+        const svcLocType = booking.serviceLocationType || booking.quote?.serviceLocation?.type || "mobile";
+        const totalMin = booking.bookedDuration || (Math.ceil(dur / 30) * 30 + (svcLocType === "workshop" ? 30 : 0));
         const [h, m] = ts.split(":").map(Number);
-        const endMins = (h || 0) * 60 + (m || 0) + slotsNeeded * 30;
+        const endMins = (h || 0) * 60 + (m || 0) + totalMin;
         const endH = String(Math.floor(endMins / 60)).padStart(2, "0");
         const endM = String(endMins % 60).padStart(2, "0");
         return formatDateTime(booking.scheduledDate, `${ts} – ${endH}:${endM}`);

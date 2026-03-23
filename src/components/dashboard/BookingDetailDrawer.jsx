@@ -668,10 +668,11 @@ const BookingDetailDrawer = ({
                           if (typeof ts !== "string") return null;
                           if (ts.includes("-") || ts.includes("–")) return ts;
                           const dur = booking.estimatedDuration;
-                          if (dur && dur > 30) {
-                            const slotsNeeded = Math.ceil(dur / 30);
+                          const totalMin = booking.bookedDuration
+                            || (dur ? Math.ceil(dur / 30) * 30 + (booking.serviceLocationType === "workshop" ? 30 : 0) : 0);
+                          if (totalMin && totalMin > 30) {
                             const [h, m] = ts.split(":").map(Number);
-                            const endMins = (h || 0) * 60 + (m || 0) + slotsNeeded * 30;
+                            const endMins = (h || 0) * 60 + (m || 0) + totalMin;
                             const endH = String(Math.floor(endMins / 60)).padStart(2, "0");
                             const endM = String(endMins % 60).padStart(2, "0");
                             return `${ts} – ${endH}:${endM}`;
@@ -694,14 +695,47 @@ const BookingDetailDrawer = ({
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       Location
                     </p>
-                    <p className="font-medium text-slate-900 dark:text-white">
-                      {booking.locationType}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {booking.address}
-                    </p>
+                    {booking?.serviceLocationType === "workshop" && booking?.workshopAddress?.addressLine1 ? (
+                      <>
+                        <p className="font-medium text-slate-900 dark:text-white">
+                          Workshop
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {[booking.workshopAddress.addressLine1, booking.workshopAddress.suburb, booking.workshopAddress.city].filter(Boolean).join(", ")}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-medium text-slate-900 dark:text-white">
+                          {booking.locationType}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {booking.address}
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
+                {/* Directions button under address for workshop bookings */}
+                {booking?.serviceLocationType === "workshop" && booking?.workshopAddress?.addressLine1 && (
+                  <button
+                    onClick={() => {
+                      const ws = booking.workshopAddress;
+                      const addr = [ws.addressLine1, ws.suburb, ws.city, ws.province, ws.postalCode].filter(Boolean).join(", ");
+                      if (addr) window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`, "_blank");
+                    }}
+                    className="mt-2 ml-11 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                    style={{
+                      backgroundColor: "#eff6ff",
+                      borderColor: "#bfdbfe",
+                      border: "1px solid #bfdbfe",
+                      color: "#2563eb",
+                    }}
+                  >
+                    <Navigation size={12} />
+                    Get Directions
+                  </button>
+                )}
               </div>
 
               {/* Workshop Location — show provider workshop address for workshop bookings */}

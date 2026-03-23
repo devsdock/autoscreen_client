@@ -349,12 +349,42 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
               {/* Location */}
               <div className="w-full sm:flex-1 sm:min-w-0">
                 <p className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-1">Location</p>
-                <p className="font-display text-[15px] font-bold text-white leading-snug">
-                  {quote.location?.city || "—"}
-                </p>
-                {quote.location?.addressLine1 && (
-                  <p className="text-[13px] text-white/65 mt-0.5">{quote.location.addressLine1}</p>
-                )}
+                {(() => {
+                  const isWorkshopQuote = quote?.serviceLocation?.type === "workshop";
+                  const acceptedResp = findAcceptedResponse();
+                  const workshopAddr = acceptedResp?.provider?.serviceArea?.workshopAddress;
+
+                  if (isWorkshopQuote && bookingIsConfirmed && workshopAddr?.addressLine1) {
+                    // Workshop + paid/confirmed: show provider's workshop address
+                    return (
+                      <>
+                        <p className="font-display text-[15px] font-bold text-white leading-snug">
+                          {workshopAddr.city || quote.location?.city || "—"}
+                        </p>
+                        <p className="text-[13px] text-white/65 mt-0.5">{workshopAddr.addressLine1}</p>
+                      </>
+                    );
+                  } else if (isWorkshopQuote) {
+                    // Workshop + before payment: show city only, hide street address
+                    return (
+                      <p className="font-display text-[15px] font-bold text-white leading-snug">
+                        {quote.location?.city || "—"}
+                      </p>
+                    );
+                  } else {
+                    // Mobile / any: show full customer address
+                    return (
+                      <>
+                        <p className="font-display text-[15px] font-bold text-white leading-snug">
+                          {quote.location?.city || "—"}
+                        </p>
+                        {quote.location?.addressLine1 && (
+                          <p className="text-[13px] text-white/65 mt-0.5">{quote.location.addressLine1}</p>
+                        )}
+                      </>
+                    );
+                  }
+                })()}
                 {/* Service Mode Badge */}
                 {quote?.serviceLocation?.type && quote.serviceLocation.type !== "any" && (
                   <span

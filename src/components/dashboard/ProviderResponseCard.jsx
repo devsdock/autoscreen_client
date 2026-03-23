@@ -82,8 +82,10 @@ const ProviderResponseCard = ({
     : provider.name || "Provider";
 
   const isBest = response._bestValue;
-  const locType = serviceType === "workshop" ? "Workshop" : "Mobile";
-  const locShort = serviceType === "workshop" ? "WS" : "MOB";
+  const quoteServiceMode = quoteData?.serviceLocation?.type;
+  const isWorkshopService = quoteServiceMode === "workshop" || serviceType === "workshop";
+  const locType = isWorkshopService ? "Workshop" : "Mobile";
+  const locShort = isWorkshopService ? "WS" : "MOB";
 
   // Service lines from glass details or customer quote
   const svcLines = [];

@@ -79,12 +79,13 @@ const BookingCard = ({
     if (ts === "00:00" || ts === "00:00 - 00:00") return null;
     // Old bookings have range format like "10:00 - 12:00" — return as-is
     if (ts.includes("-") || ts.includes("–")) return ts;
-    // New bookings: single time point with estimatedDuration
+    // New bookings: use bookedDuration (includes buffer) if available, else compute
     const dur = booking.estimatedDuration;
-    if (dur && dur > 30) {
-      const slotsNeeded = Math.ceil(dur / 30);
+    const totalMin = booking.bookedDuration
+      || (dur ? Math.ceil(dur / 30) * 30 + (isWorkshop ? 30 : 0) : 0);
+    if (totalMin && totalMin > 30) {
       const [h, m] = ts.split(":").map(Number);
-      const endMins = (h || 0) * 60 + (m || 0) + slotsNeeded * 30;
+      const endMins = (h || 0) * 60 + (m || 0) + totalMin;
       const endH = String(Math.floor(endMins / 60)).padStart(2, "0");
       const endM = String(endMins % 60).padStart(2, "0");
       return `${ts} – ${endH}:${endM}`;
@@ -100,8 +101,14 @@ const BookingCard = ({
     return booking.service || "Auto Glass Service";
   })();
 
-  // Location
+  // Location — show workshop address for workshop bookings, customer address for mobile
   const locationParts = (() => {
+    if (isWorkshop && booking.workshopAddress?.addressLine1) {
+      const ws = booking.workshopAddress;
+      const line1 = ws.addressLine1;
+      const sub = [ws.suburb, ws.city, ws.province].filter(Boolean).join(", ");
+      return { line1, sub };
+    }
     const addr = booking.address || "";
     if (!addr || addr === "Location not specified") return { line1: "—", sub: "" };
     const parts = addr.split(",").map((p) => p.trim());

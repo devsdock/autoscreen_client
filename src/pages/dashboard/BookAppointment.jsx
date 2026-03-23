@@ -394,7 +394,7 @@ const formatDuration = (mins) => {
 
 // ─── TimeSlotsPanel ──────────────────────────────────────────────────────────
 
-const TimeSlotsPanel = ({ selectedDate, selectedSlot, onSlotSelect, slots, isLoading, slotsNeeded = 2, estimatedDuration = 60 }) => {
+const TimeSlotsPanel = ({ selectedDate, selectedSlot, onSlotSelect, slots, isLoading, slotsNeeded = 2, estimatedDuration = 60, isWorkshop = false }) => {
   if (!selectedDate) {
     return (
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 flex flex-col items-center justify-center min-h-[240px] text-center">
@@ -471,7 +471,10 @@ const TimeSlotsPanel = ({ selectedDate, selectedSlot, onSlotSelect, slots, isLoa
         <div className="flex items-center gap-2 px-3 py-2 mb-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
           <Clock size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
           <p className="text-xs text-blue-700 dark:text-blue-300">
-            Service duration: <span className="font-semibold">{formatDuration(estimatedDuration)}</span> ({slotsNeeded} consecutive slots needed)
+            Service duration: <span className="font-semibold">{formatDuration(slotsNeeded * 30)}</span>
+            {isWorkshop
+              ? " (includes 30min setup/cleanup)"
+              : ` (${slotsNeeded} consecutive slots needed)`}
           </p>
         </div>
       )}
@@ -500,6 +503,8 @@ const TimeSlotsPanel = ({ selectedDate, selectedSlot, onSlotSelect, slots, isLoa
             const isSelectedStart = selectedSlot === slotTime;
             const isHighlighted = !isSelectedStart && coveredSlots.has(slotTime);
             const isLastSlot = slotTime === lastCoveredSlot;
+            // For workshop: the last selected slot is the buffer (setup/cleanup)
+            const isSelectedBuffer = isWorkshop && isLastSlot && isHighlighted;
             const cantStart = !isTaken && !isBuffer && !validStart;
             const isDisabled = isTaken || isBuffer || cantStart;
 
@@ -536,7 +541,7 @@ const TimeSlotsPanel = ({ selectedDate, selectedSlot, onSlotSelect, slots, isLoa
                           ? "text-slate-400 dark:text-slate-500"
                           : "opacity-70",
                 ].join(" ")}>
-                  {isTaken ? "Taken" : isBuffer ? "Buffer" : isSelectedStart ? "Start" : isHighlighted ? "Included" : cantStart ? "Unavailable" : "Available"}
+                  {isTaken ? "Taken" : isBuffer ? "Buffer" : isSelectedStart ? "Start" : isSelectedBuffer ? "Setup/Cleanup" : isHighlighted ? "Included" : cantStart ? "Unavailable" : "Available"}
                 </div>
               </button>
             );
@@ -562,13 +567,14 @@ const AppointmentSummary = ({
   estimatedDuration = 60,
   slotsNeeded = 2,
   isReschedule = false,
+  isWorkshop = false,
 }) => {
   const slotDuration = slotsNeeded * 30;
-  const endTime = selectedSlot && slotsNeeded > 1
+  const endTime = selectedSlot
     ? computeEndTime(selectedSlot, slotDuration)
     : null;
   const timeDisplay = selectedSlot && endTime
-    ? `${selectedSlot} — ${endTime} (${formatDuration(slotDuration)})`
+    ? `${selectedSlot} — ${endTime} (${formatDuration(slotDuration)}${isWorkshop ? " incl. setup/cleanup" : ""})`
     : selectedSlot;
 
   const rows = [
@@ -647,7 +653,7 @@ const AppointmentSummary = ({
 
 // ─── Confirmed Modal ──────────────────────────────────────────────────────────
 
-const ConfirmedModal = ({ isOpen, bookingReference, selectedDate, selectedSlot, onViewBookings, slotsNeeded = 2, isReschedule = false }) => {
+const ConfirmedModal = ({ isOpen, bookingReference, selectedDate, selectedSlot, onViewBookings, slotsNeeded = 2, isReschedule = false, isWorkshop = false }) => {
   if (!isOpen) return null;
 
   // "Thursday 9 Jan, 09:00 — 10:30" format
@@ -660,9 +666,7 @@ const ConfirmedModal = ({ isOpen, bookingReference, selectedDate, selectedSlot, 
     const weekday = date.toLocaleDateString("en-GB", { weekday: "long" });
     const day = date.getDate();
     const month = date.toLocaleDateString("en-GB", { month: "short" });
-    const endTime = slotsNeeded > 1
-      ? computeEndTime(selectedSlot, slotDuration)
-      : null;
+    const endTime = computeEndTime(selectedSlot, slotDuration);
     const timeStr = endTime
       ? `${selectedSlot} — ${endTime}`
       : selectedSlot;
@@ -961,9 +965,22 @@ const BookAppointment = () => {
   const serviceStr = serviceLines[0] || "Auto Glass Service";
   const locationStr = (() => {
     const src = booking || quote || {};
-    const isMobile =
-      src.serviceLocationType !== "shop" && src.serviceLocationType !== "workshop";
+    const isWorkshop =
+      src.serviceLocationType === "shop" || src.serviceLocationType === "workshop" ||
+      quote?.serviceLocation?.type === "workshop";
 
+    if (isWorkshop) {
+      // Show provider workshop address for workshop bookings
+      const ws = booking?.provider?.serviceArea?.workshopAddress ||
+                 booking?.workshopAddress;
+      if (ws?.addressLine1) {
+        const addr = [ws.addressLine1, ws.suburb, ws.city].filter(Boolean).join(", ");
+        return `Workshop — ${addr}`;
+      }
+      return "Workshop";
+    }
+
+    // Mobile: show customer address
     let address = "";
     if (booking?.address) {
       address = booking.address;
@@ -976,7 +993,7 @@ const BookAppointment = () => {
       }
     }
 
-    return isMobile && address ? `Mobile — ${address}` : address;
+    return address ? `Mobile — ${address}` : address;
   })();
   const totalAmount = booking?.price?.total || booking?.totalAmount || 0;
 
@@ -985,7 +1002,13 @@ const BookAppointment = () => {
 
   // Duration-aware slot selection
   const estimatedDuration = booking?.estimatedDuration || 60;
-  const slotsNeeded = Math.ceil(estimatedDuration / 30);
+
+  // Workshop mode — includes 30min buffer (15 before + 15 after)
+  const isWorkshop = booking?.serviceLocationType === "workshop" ||
+    quote?.serviceLocation?.type === "workshop";
+
+  // Workshop: add 1 extra slot for 30min buffer (setup/cleanup)
+  const slotsNeeded = Math.ceil(estimatedDuration / 30) + (isWorkshop ? 1 : 0);
 
   // Derive service types + glass types for staff-aware availability (business providers)
   const bookingServiceTypes = (() => {
@@ -1249,6 +1272,7 @@ const BookAppointment = () => {
             isLoading={isFetchingSlots}
             slotsNeeded={slotsNeeded}
             estimatedDuration={estimatedDuration}
+            isWorkshop={isWorkshop}
           />
 
           {/* Appointment summary — appears below slots when both date and slot are selected */}
@@ -1266,6 +1290,7 @@ const BookAppointment = () => {
               estimatedDuration={estimatedDuration}
               slotsNeeded={slotsNeeded}
               isReschedule={isReschedule}
+              isWorkshop={isWorkshop}
             />
           )}
         </div>
@@ -1321,6 +1346,7 @@ const BookAppointment = () => {
         onViewBookings={() => navigate("/dashboard/bookings")}
         slotsNeeded={slotsNeeded}
         isReschedule={isReschedule}
+        isWorkshop={isWorkshop}
       />
     </div>
   );
