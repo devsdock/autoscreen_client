@@ -1,8 +1,22 @@
 import { useRef } from "react";
 import { Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
+import heic2any from "heic2any";
 import useDashboardStore from "../../store/useDashboardStore";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_EXTENSIONS = /\.(jpe?g|png|heic|heif)$/i;
+const ALLOWED_MIME_TYPES = /^image\/(jpeg|png|heic|heif)$/i;
+const HEIC_EXTENSIONS = /\.(heic|heif)$/i;
+const HEIC_MIME_TYPES = /^image\/(heic|heif)$/i;
+
+function isAllowedFile(file) {
+  return ALLOWED_EXTENSIONS.test(file.name) || ALLOWED_MIME_TYPES.test(file.type);
+}
+
+function isHeicFile(file) {
+  return HEIC_EXTENSIONS.test(file.name) || HEIC_MIME_TYPES.test(file.type);
+}
 
 export default function ImageUploadSlot({
   icon: Icon,
@@ -13,34 +27,81 @@ export default function ImageUploadSlot({
   images,
   onUpload,
   onRemove,
+  onConversionStateChange,
   error,
   multiple = false,
 }) {
   const inputRef = useRef(null);
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const files = Array.from(e.target.files);
-    files.forEach((file) => {
-      if (file.type.startsWith("image/")) {
-        if (file.size > MAX_FILE_SIZE) {
+    for (const file of files) {
+      if (!isAllowedFile(file)) {
+        useDashboardStore.getState().addToast({
+          type: "error",
+          message: "Only JPG, JPEG, and PNG images are allowed",
+        });
+        continue;
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        useDashboardStore.getState().addToast({
+          type: "error",
+          message: `"${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum size is 5MB.`,
+        });
+        continue;
+      }
+
+      let fileToProcess = file;
+
+      if (isHeicFile(file)) {
+        try {
+          onConversionStateChange?.(true);
+          const loadingToast = toast.loading("Processing HEIC image...");
+          const result = await heic2any({
+            blob: file,
+            toType: "image/jpeg",
+            quality: 0.85,
+          });
+          const blob = Array.isArray(result) ? result[0] : result;
+          toast.dismiss(loadingToast);
+
+          if (!blob || blob.size === 0) {
+            useDashboardStore.getState().addToast({
+              type: "error",
+              message: "Could not process this image. Please try a JPG or PNG instead",
+            });
+            continue;
+          }
+
+          fileToProcess = new File(
+            [blob],
+            file.name.replace(/\.[^/.]+$/, "") + ".jpg",
+            { type: "image/jpeg" }
+          );
+        } catch (err) {
+          console.error("HEIC conversion failed:", err);
           useDashboardStore.getState().addToast({
             type: "error",
-            message: `"${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum size is 5MB.`,
+            message: "Could not process this image. Please try a JPG or PNG instead",
           });
-          return;
+          continue;
+        } finally {
+          onConversionStateChange?.(false);
         }
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          onUpload({
-            id: Date.now() + Math.random(),
-            data: reader.result,
-            name: file.name,
-            file,
-          });
-        };
-        reader.readAsDataURL(file);
       }
-    });
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        onUpload({
+          id: Date.now() + Math.random(),
+          data: reader.result,
+          name: fileToProcess.name,
+          file: fileToProcess,
+        });
+      };
+      reader.readAsDataURL(fileToProcess);
+    }
     if (inputRef.current) inputRef.current.value = "";
   };
 
@@ -111,7 +172,7 @@ export default function ImageUploadSlot({
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept=".jpg,.jpeg,.png,.heic,.heif"
           onChange={handleFileChange}
           className="hidden"
         />
@@ -175,7 +236,7 @@ export default function ImageUploadSlot({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept=".jpg,.jpeg,.png,.heic,.heif"
         multiple
         onChange={handleFileChange}
         className="hidden"

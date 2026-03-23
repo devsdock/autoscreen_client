@@ -59,6 +59,10 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeConversions, setActiveConversions] = useState(0);
+  const handleConversionStateChange = (isConverting) => {
+    setActiveConversions((prev) => prev + (isConverting ? 1 : -1));
+  };
   const [availableModels, setAvailableModels] = useState([]);
   const [availableMakes, setAvailableMakes] = useState([]);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
@@ -1071,6 +1075,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                     image={formData.vehicleImages.frontView}
                     onUpload={(img) => handleSingleImageUpload("frontView", img)}
                     onRemove={() => removeSingleImage("frontView")}
+                    onConversionStateChange={handleConversionStateChange}
                     error={errors.frontView}
                   />
                   <ImageUploadSlot
@@ -1080,6 +1085,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                     image={formData.vehicleImages.vinLicenceDisc}
                     onUpload={(img) => handleSingleImageUpload("vinLicenceDisc", img)}
                     onRemove={() => removeSingleImage("vinLicenceDisc")}
+                    onConversionStateChange={handleConversionStateChange}
                     error={errors.vinLicenceDisc}
                   />
                 </div>
@@ -1091,6 +1097,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                   images={formData.vehicleImages.damagePhotos}
                   onUpload={handleDamagePhotoUpload}
                   onRemove={removeDamagePhoto}
+                  onConversionStateChange={handleConversionStateChange}
                   error={errors.damagePhotos}
                   multiple
                 />
@@ -1240,7 +1247,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || activeConversions > 0}
                 className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-br from-primary-600 to-primary-700 hover:from-primary-500 hover:to-primary-600 text-white font-bold text-[15px] rounded-xl shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {isSubmitting ? (

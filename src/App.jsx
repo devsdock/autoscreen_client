@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from 'react-hot-toast';
 
 // Dashboard Layout and Pages
 import DashboardLayout from "./components/dashboard/DashboardLayout";
@@ -35,6 +36,8 @@ const App = () => {
   }
 
   return (
+    <>
+    <Toaster position="bottom-right" toastOptions={{ duration: 4000 }} />
     <Routes>
       {/* Redirect root to dashboard */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -75,6 +78,7 @@ const App = () => {
       {/* Catch-all redirect */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
+    </>
   );
 };
 

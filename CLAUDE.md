@@ -3,7 +3,7 @@
 > **Project:** AutoScreen Customer Dashboard
 > **Stack:** React + Vite, Zustand, React Router v6, Axios, Socket.IO
 > **Version:** 1.0.0
-> **Last Updated:** 23 March 2026 (Categorized Vehicle Image Upload)
+> **Last Updated:** 24 March 2026 (Image Format Validation + HEIC Conversion)
 
 ---
 
@@ -828,6 +828,14 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 ---
 
 ## Changelog
+
+### 24 March 2026 (Image Format Validation + HEIC Conversion)
+
+- **`ImageUploadSlot.jsx` — Format validation + HEIC-to-JPEG conversion**: Replaced permissive `accept="image/*"` with explicit `.jpg,.jpeg,.png,.heic,.heif` accept attribute. Added client-side validation: only JPG, JPEG, PNG, HEIC, and HEIF files pass `isAllowedFile()` check (both extension and MIME type). HEIC/HEIF files are auto-converted to JPEG via `heic2any` library (quality 0.85) with a loading toast during conversion. Invalid formats and oversized files (>5MB) trigger error toasts via `useDashboardStore.getState().addToast()`. `handleFileChange` is now `async` to support HEIC conversion. New `onConversionStateChange` prop signals conversion start/end to parent.
+- **`App.jsx` — react-hot-toast Toaster mounted**: Added `<Toaster position="bottom-right" toastOptions={{ duration: 4000 }} />` to root component for HEIC loading toast display.
+- **`NewQuote.jsx` — Submit button disabled during HEIC conversion**: Added `activeConversions` state counter. All 3 `ImageUploadSlot` instances pass `onConversionStateChange` callback. Submit button `disabled` condition extended to `isSubmitting || activeConversions > 0`.
+- **`RequestQuoteModal.jsx` — Same submit guard**: Identical `activeConversions` state + `onConversionStateChange` prop wiring + submit button guard as `NewQuote.jsx`.
+- **Dependencies added**: `heic2any` (HEIC-to-JPEG conversion), `react-hot-toast` (loading toast for HEIC processing).
 
 ### 23 March 2026 (Quote Image Upload — FormData Fix, C-036)
 
