@@ -3,7 +3,7 @@
 > **Project:** AutoScreen Customer Dashboard
 > **Stack:** React + Vite, Zustand, React Router v6, Axios, Socket.IO
 > **Version:** 1.0.0
-> **Last Updated:** 24 March 2026 (Image Format Validation + HEIC Conversion)
+> **Last Updated:** 24 March 2026 (Quote Header Card — Address Removed)
 
 ---
 
@@ -828,6 +828,10 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 ---
 
 ## Changelog
+
+### 24 March 2026 (Quote Header Card — Address Removed)
+
+- **`QuoteDetailPanel.jsx` — Location column simplified**: Removed city and street address from the blue quote header card (context bar). The "Location" column now shows only the service location type badge ("Mobile" or "Workshop") under a "Service Location" label. Previously showed full address (city + street for mobile, city-only for workshop pre-payment, provider workshop address post-payment). Other location displays (BookAppointment Appointment Summary, BookingDetailDrawer) remain unchanged and continue showing full addresses.
 
 ### 24 March 2026 (Image Format Validation + HEIC Conversion)
 

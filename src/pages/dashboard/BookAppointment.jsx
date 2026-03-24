@@ -966,7 +966,7 @@ const BookAppointment = () => {
   const locationStr = (() => {
     const src = booking || quote || {};
     const isWorkshop =
-      src.serviceLocationType === "shop" || src.serviceLocationType === "workshop" ||
+      src.serviceLocationType === "workshop" ||
       quote?.serviceLocation?.type === "workshop";
 
     if (isWorkshop) {

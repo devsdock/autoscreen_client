@@ -444,7 +444,6 @@ export const mapBooking = (booking) => {
     damageImages: damageImages, // Processed with full URLs
     afterImages: afterImages, // Processed with full URLs
     locationType:
-      booking.serviceLocationType === "shop" ||
       booking.serviceLocationType === "workshop"
         ? "Workshop"
         : "Mobile Service",
