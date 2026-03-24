@@ -20,6 +20,7 @@ import {
   ArrowRight,
   RefreshCw,
   Navigation,
+  Users,
 } from "lucide-react";
 import Drawer, { DrawerFooter } from "../ui/Drawer";
 import StatusBadge from "../ui/StatusBadge";
@@ -931,16 +932,25 @@ const BookingDetailDrawer = ({
                       />
                     </div>
                   </div>
-                  {booking.providerPhone &&
-                    (booking.paymentStatus === "paid" ||
-                      ["confirmed", "in-progress", "in_progress", "completed"].includes(currentStatus)) && (
-                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                  {/* Assigned Technician — inside provider card */}
+                  {booking.assignedStaffName && (
+                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2">
+                      <Users size={14} className="text-primary-500 flex-shrink-0" />
+                      <span className="text-xs text-slate-500 dark:text-slate-400">Technician:</span>
+                      <span className="text-sm font-semibold text-slate-800 dark:text-white">{booking.assignedStaffName}</span>
+                    </div>
+                  )}
+                  {/* Phone — staff phone if available, else provider phone */}
+                  {(booking.paymentStatus === "paid" ||
+                    ["confirmed", "in-progress", "in_progress", "completed"].includes(currentStatus)) &&
+                    (booking.assignedStaffPhone || booking.providerPhone) && (
+                    <div className={`${booking.assignedStaffName ? "mt-2" : "mt-3 pt-3 border-t border-slate-200 dark:border-slate-700"}`}>
                       <a
-                        href={`tel:${booking.providerPhone}`}
+                        href={`tel:${booking.assignedStaffPhone || booking.providerPhone}`}
                         className="inline-flex items-center gap-2 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium"
                       >
                         <Phone size={14} />
-                        {booking.providerPhone}
+                        {booking.assignedStaffPhone || booking.providerPhone}
                       </a>
                     </div>
                   )}

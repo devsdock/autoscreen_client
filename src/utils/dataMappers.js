@@ -446,7 +446,7 @@ export const mapBooking = (booking) => {
     locationType:
       booking.serviceLocationType === "workshop"
         ? "Workshop"
-        : "Mobile Service",
+        : "Mobile",
     statusLabel: formatBookingStatus(booking.status),
     paymentStatus: normalizedPaymentStatus,
     refundAmount: booking.cancellation?.refundAmount || 0,
@@ -475,6 +475,11 @@ export const mapBooking = (booking) => {
     workshopAddress: booking.provider?.serviceArea?.workshopAddress || null,
     estimatedDuration: booking.estimatedDuration || null,
     bookedDuration: booking.bookedDuration || null,
+    assignedStaff: booking.assignedStaff || null,
+    assignedStaffName: booking.assignedStaff?.firstName
+      ? `${booking.assignedStaff.firstName} ${booking.assignedStaff.lastName || ""}`.trim()
+      : null,
+    assignedStaffPhone: booking.assignedStaff?.phone || null,
     suggestions: (booking.suggestions || []).map((s) => ({
       ...s,
       providerName: s.provider?.businessName || s.provider?.name || "Provider",

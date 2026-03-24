@@ -348,7 +348,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
               <div className="w-px bg-white/15 self-stretch hidden sm:block" />
               {/* Service Location */}
               <div className="w-full sm:flex-1 sm:min-w-0">
-                <p className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-1">Service Location</p>
+                <p className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-1">Service Mode</p>
                 {quote?.serviceLocation?.type && quote.serviceLocation.type !== "any" ? (
                   <span
                     className="inline-flex items-center gap-1 mt-0.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold"

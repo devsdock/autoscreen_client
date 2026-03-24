@@ -210,7 +210,17 @@ const BookingCard = ({
           <div className="text-[.875rem] font-semibold text-slate-800 dark:text-white truncate">
             {booking.providerName}
           </div>
-          {isPaid && hasSchedule && booking.providerPhone ? (
+          {booking.assignedStaffName && (
+            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+              Technician: <span className="font-semibold text-slate-700 dark:text-slate-300">{booking.assignedStaffName}</span>
+            </div>
+          )}
+          {booking.assignedStaffName && booking.assignedStaffPhone && isPaid ? (
+            <div className="flex items-center gap-1 mt-0.5">
+              <Phone size={10} className="text-slate-400" />
+              <span className="text-xs text-slate-400">{booking.assignedStaffPhone}</span>
+            </div>
+          ) : isPaid && hasSchedule && booking.providerPhone ? (
             <div className="flex items-center gap-1 mt-0.5">
               <Phone size={10} className="text-slate-400" />
               <span className="text-xs text-slate-400">{booking.providerPhone}</span>
@@ -226,7 +236,7 @@ const BookingCard = ({
         {/* Service Type */}
         <div className="flex-1 min-w-[110px]">
           <div className="text-[.625rem] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
-            Service Type
+            Service Mode
           </div>
           <div className="text-[.875rem] font-semibold text-slate-800 dark:text-white">
             {booking.locationType || "Mobile"}
