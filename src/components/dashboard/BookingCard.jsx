@@ -204,8 +204,15 @@ const BookingCard = ({
 
         {/* Provider */}
         <div className="flex-1 min-w-[110px]">
-          <div className="text-[.625rem] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
-            Provider
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-[.625rem] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              Provider
+            </span>
+            {booking.providerBusinessType !== "individual" && booking.providerVatNumber && (
+              <span className="text-[0.5625rem] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-px rounded-full dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 flex-shrink-0">
+                VAT Registered
+              </span>
+            )}
           </div>
           <div className="text-[.875rem] font-semibold text-slate-800 dark:text-white truncate">
             {booking.providerName}

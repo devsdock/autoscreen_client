@@ -829,6 +829,15 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 24 March 2026 (VAT Registered Badge on Provider Cards)
+
+- **`ProviderResponseCard.jsx` — VAT Registered badge**: Green emerald pill badge shown next to "Franchise Workshop" / "Independent Fitter" label when `provider.businessType !== "individual" && provider.vatNumber` is set. Dark mode supported.
+- **`BookingCard.jsx` — VAT Registered badge**: Badge shown next to "Provider" label header in booking list cards. Uses `providerBusinessType` and `providerVatNumber` from mapped booking data.
+- **`BookingDetailDrawer.jsx` — VAT Registered badge**: Badge shown next to provider name in the Provider section of the booking detail drawer.
+- **`QuoteDetailPanel.jsx` — VAT Registered badge**: Badge shown next to provider name in the confirmed provider bar (after payment).
+- **`dataMappers.js` — `providerBusinessType` and `providerVatNumber` added**: New fields in `mapBooking` output, sourced from `booking.provider.businessType` and `booking.provider.vatNumber`.
+- **Backend**: `vatNumber` added to provider populate select on customer quote endpoints (`quoteController.js`). `businessType` + `vatNumber` added to customer booking detail and list endpoints (`bookingController.js`).
+
 ### 24 March 2026 (Quote Header Card — Address Removed)
 
 - **`QuoteDetailPanel.jsx` — Location column simplified**: Removed city and street address from the blue quote header card (context bar). The "Location" column now shows only the service location type badge ("Mobile" or "Workshop") under a "Service Location" label. Previously showed full address (city + street for mobile, city-only for workshop pre-payment, provider workshop address post-payment). Other location displays (BookAppointment Appointment Summary, BookingDetailDrawer) remain unchanged and continue showing full addresses.

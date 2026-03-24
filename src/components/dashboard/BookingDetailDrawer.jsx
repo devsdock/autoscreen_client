@@ -921,9 +921,16 @@ const BookingDetailDrawer = ({
                       );
                     })()}
                     <div>
-                      <p className="font-semibold text-slate-900 dark:text-white">
-                        {booking.providerName}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-slate-900 dark:text-white">
+                          {booking.providerName}
+                        </p>
+                        {booking.providerBusinessType !== "individual" && booking.providerVatNumber && (
+                          <span className="text-[0.625rem] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-full dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
+                            VAT Registered
+                          </span>
+                        )}
+                      </div>
                       <Rating
                         value={booking.providerRating || 0}
                         reviewCount={booking.providerReviews || 0}
