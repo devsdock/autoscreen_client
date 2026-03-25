@@ -206,9 +206,9 @@ const PremiumSelect = ({
       <div className="relative">
         {isSearchable && !disabled && !loading ? (
           <div
-            className={`w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-800 border rounded-xl text-sm transition-all shadow-sm ${
+            className={`w-full flex items-center justify-between px-4 h-[40px] bg-white dark:bg-slate-800 border rounded-[8px] text-sm transition-colors ${
               isOpen
-                ? "ring-2 ring-primary-500/20 border-primary-500"
+                ? "border-primary-500"
                 : error
                   ? "border-danger-500"
                   : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
@@ -253,15 +253,15 @@ const PremiumSelect = ({
             type="button"
             onClick={handleToggle}
             onKeyDown={handleKeyDown}
-            className={`w-full flex items-center justify-between px-4 py-3 bg-slate-50/50 dark:bg-slate-800 border rounded-xl text-sm transition-all text-left ${
+            className={`w-full flex items-center justify-between px-4 h-[40px] bg-white dark:bg-slate-800 border rounded-[8px] text-sm transition-colors text-left ${
               isOpen
-                ? "ring-2 ring-primary-500/20 border-primary-500 bg-white dark:bg-slate-800"
+                ? "border-primary-500"
                 : error
                   ? "border-danger-500"
                   : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
-            } ${disabled || loading ? "opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800/50" : "cursor-pointer shadow-sm"} ${
+            } ${disabled || loading ? "opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800/50" : "cursor-pointer"} ${
               autoOpen && !isOpen && !value
-                ? "ring-2 ring-primary-500/50 animate-pulse"
+                ? "border-primary-500 animate-pulse"
                 : ""
             }`}
           >
@@ -298,7 +298,7 @@ const PremiumSelect = ({
         )}
 
         {isOpen && (
-          <div className="absolute left-0 top-full mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-[100] py-1 animate-in fade-in slide-in-from-top-1 duration-200 min-w-[200px]">
+          <div className="absolute left-0 top-full mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[8px] shadow-lg z-[100] py-1 animate-in fade-in slide-in-from-top-1 duration-200 min-w-[200px]">
             {searchable && !isSearchable && (
               <div className="p-2 border-b border-slate-50 dark:border-slate-700/50">
                 <div className="relative">
@@ -312,7 +312,7 @@ const PremiumSelect = ({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search..."
-                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-900 border-none rounded-lg text-sm focus:ring-1 focus:ring-primary-500 outline-none dark:text-slate-200"
+                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-[8px] text-sm focus:outline-none focus:border-primary-500 dark:text-slate-200"
                     onClick={(e) => e.stopPropagation()}
                   />
                 </div>

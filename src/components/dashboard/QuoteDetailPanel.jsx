@@ -18,6 +18,7 @@ import {
   SlidersHorizontal,
   Star,
   Phone,
+  Shield,
 } from "lucide-react";
 import useDashboardStore, {
   formatDate,
@@ -757,45 +758,90 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                 Most quotes receive responses within 2-4 hours
               </p>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {[...responses]
-                .sort((a, b) => {
-                  // Always show accepted response first
-                  const aAccepted = a.status === "Accepted" || a.status === "accepted";
-                  const bAccepted = b.status === "Accepted" || b.status === "accepted";
-                  if (aAccepted && !bAccepted) return -1;
-                  if (!aAccepted && bAccepted) return 1;
+          ) : (() => {
+            const isInsuranceQuote = quote?.hasInsurance;
+            const sortResponses = (list) =>
+              [...list].sort((a, b) => {
+                const aAccepted = a.status === "Accepted" || a.status === "accepted";
+                const bAccepted = b.status === "Accepted" || b.status === "accepted";
+                if (aAccepted && !bAccepted) return -1;
+                if (!aAccepted && bAccepted) return 1;
+                if (sortFilter === "best-price") return (a.price || 0) - (b.price || 0);
+                if (sortFilter === "top-rated") return (b.provider?.rating || 0) - (a.provider?.rating || 0);
+                if (sortFilter === "earliest") return (a.estimatedDuration || 9999) - (b.estimatedDuration || 9999);
+                return 0;
+              });
+            const renderCard = (response, idx, listForBest) => {
+              const thisAccepted =
+                response.status === "Accepted" ||
+                response.status === "accepted" ||
+                (acceptedResponseId && (response.id === acceptedResponseId || response._id === acceptedResponseId));
+              const thisRejected = response.status === "Rejected" || response.status === "rejected" ||
+                (isAccepted && !thisAccepted);
+              return (
+                <ProviderResponseCard
+                  key={response.id}
+                  response={{ ...response, _bestValue: sortFilter === "best-price" && idx === 0 && !isAccepted && listForBest }}
+                  isAccepted={thisAccepted}
+                  isRejected={thisRejected}
+                  disabled={isAccepted || isClosed}
+                  bookingConfirmed={bookingIsConfirmed}
+                  quoteData={quote}
+                  onAccept={() => handleAcceptAndPay(response)}
+                  onMessage={handleMessageProvider}
+                />
+              );
+            };
 
-                  if (sortFilter === "best-price") return (a.price || 0) - (b.price || 0);
-                  if (sortFilter === "top-rated") return (b.provider?.rating || 0) - (a.provider?.rating || 0);
-                  if (sortFilter === "earliest") return (a.estimatedDuration || 9999) - (b.estimatedDuration || 9999);
-                  return 0;
-                })
-                .map((response, idx) => {
-                  const thisAccepted =
-                    response.status === "Accepted" ||
-                    response.status === "accepted" ||
-                    (acceptedResponseId && (response.id === acceptedResponseId || response._id === acceptedResponseId));
-                  // If any response in this quote is accepted, mark non-accepted ones as rejected
-                  const thisRejected = response.status === "Rejected" || response.status === "rejected" ||
-                    (isAccepted && !thisAccepted);
-                  return (
-                  <ProviderResponseCard
-                    key={response.id}
-                    response={{ ...response, _bestValue: sortFilter === "best-price" && idx === 0 && !isAccepted }}
-                    isAccepted={thisAccepted}
-                    isRejected={thisRejected}
-                    disabled={isAccepted || isClosed}
-                    bookingConfirmed={bookingIsConfirmed}
-                    quoteData={quote}
-                    onAccept={() => handleAcceptAndPay(response)}
-                    onMessage={handleMessageProvider}
-                  />
-                  );
-                })}
-            </div>
-          )}
+            if (isInsuranceQuote) {
+              const registeredResponses = sortResponses(responses.filter(r => r.isInsuranceRegistered));
+              const otherResponses = sortResponses(responses.filter(r => !r.isInsuranceRegistered));
+              return (
+                <>
+                  {registeredResponses.length > 0 && (
+                    <div className="mb-6">
+                      <div className="flex items-center gap-2 mb-3 px-1">
+                        <Shield size={16} className="text-emerald-600 dark:text-emerald-400" />
+                        <h3 className="font-display font-bold text-[0.9375rem] text-emerald-700 dark:text-emerald-400">
+                          Insurance-Approved Providers
+                        </h3>
+                        <span className="text-[0.75rem] text-emerald-500 dark:text-emerald-500">
+                          ({registeredResponses.length})
+                        </span>
+                      </div>
+                      <p className="text-[0.8125rem] text-emerald-600/70 dark:text-emerald-400/70 mb-3 px-1">
+                        These providers handle your insurance claim directly. You only pay your excess.
+                      </p>
+                      <div className="space-y-4">
+                        {registeredResponses.map((r, idx) => renderCard(r, idx, true))}
+                      </div>
+                    </div>
+                  )}
+                  {otherResponses.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="font-display font-bold text-[0.9375rem] text-neutral-700 dark:text-neutral-300 mb-2 px-1">
+                        Other Providers
+                      </h3>
+                      <p className="text-[0.8125rem] text-neutral-500 dark:text-neutral-400 mb-3 px-1">
+                        Full payment required. Claim reimbursement from your insurer with your AutoScreen receipt.
+                      </p>
+                      <div className="space-y-4">
+                        {otherResponses.map((r, idx) => renderCard(r, idx, registeredResponses.length === 0))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            }
+
+            // Non-insurance quotes — flat list (unchanged)
+            const sorted = sortResponses(responses);
+            return (
+              <div className="space-y-4">
+                {sorted.map((response, idx) => renderCard(response, idx, true))}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Request Date — removed per design request */}

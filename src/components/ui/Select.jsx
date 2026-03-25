@@ -24,13 +24,13 @@ const Select = forwardRef(({
         <select
           ref={ref}
           className={`
-            w-full px-3 py-2.5 border rounded-lg text-sm
+            w-full px-4 h-[40px] border rounded-[8px] text-sm
             appearance-none bg-white dark:bg-slate-800
             text-slate-900 dark:text-white
             transition-colors duration-200
-            focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
+            focus:outline-none focus:border-primary-500
             disabled:bg-slate-50 dark:disabled:bg-slate-900 disabled:text-slate-500 dark:disabled:text-slate-600 disabled:cursor-not-allowed
-            ${error ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-slate-300 dark:border-slate-700'}
+            ${error ? 'border-red-300 focus:border-red-500' : 'border-slate-300 dark:border-slate-700'}
             ${selectClassName}
           `}
           {...props}

@@ -12,11 +12,13 @@ import {
   Users,
   Truck,
   Building2,
+  Phone,
 } from "lucide-react";
 import useDashboardStore from "../../store/useDashboardStore";
 import vehicleService from "../../services/vehicleService";
 import geocodingService from "../../services/geocodingService";
 import publicSettingsService from "../../services/publicSettingsService";
+import insurerService from "../../services/insurerService";
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PremiumSelect from "../../components/ui/PremiumSelect";
@@ -45,7 +47,7 @@ const geocodeAddress = async (address) => {
   }
 };
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 
 const NewQuote = () => {
   const { createQuote, user, vehicles, addresses } = useDashboardStore();
@@ -79,6 +81,12 @@ const NewQuote = () => {
     hasAdasCamera: false,
     hasRainSensor: false,
     serviceMode: "mobile",
+    insuranceOption: "no",
+    insurerId: "",
+    insurerName: "",
+    policyNumber: "",
+    claimNumber: "",
+    excessAmount: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -99,6 +107,33 @@ const NewQuote = () => {
   const [cities, setCities] = useState([]);
   const [glassTypes, setGlassTypes] = useState([]);
   const [adminServiceTypes, setAdminServiceTypes] = useState([]);
+
+  // Insurers
+  const [insurers, setInsurers] = useState([]);
+  const profile = useDashboardStore((s) => s.user);
+
+  useEffect(() => {
+    insurerService
+      .getActiveInsurers()
+      .then((res) => {
+        const data = res.data?.data || res.data || [];
+        setInsurers(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Pre-fill insurance from profile
+  useEffect(() => {
+    if (profile?.insurance?.insurer) {
+      setFormData((prev) => ({
+        ...prev,
+        insurerId:
+          profile.insurance.insurer._id || profile.insurance.insurer,
+        insurerName: profile.insurance.provider || "",
+        policyNumber: profile.insurance.policyNumber || "",
+      }));
+    }
+  }, [profile]);
 
   // Pre-fill vehicle on mount
   useEffect(() => {
@@ -506,6 +541,16 @@ const NewQuote = () => {
     }
 
     if (step === 3) {
+      if (formData.insuranceOption === "yes_with_claim") {
+        if (!formData.insurerId) newErrors.insurerId = "Please select an insurer";
+        if (!formData.claimNumber) newErrors.claimNumber = "Claim number is required";
+      }
+      if (formData.insuranceOption === "yes_pending") {
+        if (!formData.insurerId) newErrors.insurerId = "Please select an insurer";
+      }
+    }
+
+    if (step === 4) {
       if (!formData.city) {
         newErrors.city = "City is required";
       } else {
@@ -548,6 +593,13 @@ const NewQuote = () => {
     if (!formData.vehicleImages.frontView) newErrors.frontView = "Front of vehicle photo is required";
     if (!formData.vehicleImages.vinLicenceDisc) newErrors.vinLicenceDisc = "VIN / Licence disc photo is required";
     if (!formData.vehicleImages.damagePhotos.length) newErrors.damagePhotos = "At least one damage photo is required";
+    if (formData.insuranceOption === "yes_with_claim") {
+      if (!formData.insurerId) newErrors.insurerId = "Please select an insurer";
+      if (!formData.claimNumber) newErrors.claimNumber = "Claim number is required";
+    }
+    if (formData.insuranceOption === "yes_pending") {
+      if (!formData.insurerId) newErrors.insurerId = "Please select an insurer";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -572,8 +624,10 @@ const NewQuote = () => {
         setCurrentStep(1);
       } else if (errors.serviceType || errors.glassType || errors.frontView || errors.vinLicenceDisc || errors.damagePhotos) {
         setCurrentStep(2);
-      } else if (errors.city) {
+      } else if (errors.insurerId || errors.claimNumber) {
         setCurrentStep(3);
+      } else if (errors.city || errors.addressLine1) {
+        setCurrentStep(4);
       }
       return;
     }
@@ -676,6 +730,22 @@ const NewQuote = () => {
         preferredTimeSlot: null,
         customerNotes: formData.notes,
         damageImages: damageImageUrls,
+        hasInsurance: formData.insuranceOption !== "no",
+        insuranceDetails:
+          formData.insuranceOption !== "no"
+            ? {
+                insurerId: formData.insurerId,
+                policyNumber: formData.policyNumber || undefined,
+                claimNumber: formData.claimNumber || undefined,
+                claimStatus:
+                  formData.insuranceOption === "yes_with_claim"
+                    ? "has_claim_ref"
+                    : "claim_pending",
+                excessAmount: formData.excessAmount
+                  ? Number(formData.excessAmount)
+                  : undefined,
+              }
+            : undefined,
       };
 
       const response = await quoteService.createQuote(quotePayload);
@@ -711,6 +781,7 @@ const NewQuote = () => {
   const steps = [
     { label: "Vehicle Details", icon: Car },
     { label: "Service Info", icon: Wrench },
+    { label: "Insurance", icon: Shield },
     { label: "Location", icon: MapPin },
   ];
 
@@ -722,7 +793,7 @@ const NewQuote = () => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6 pb-48">
       {/* Page Header */}
       <div className="text-center">
         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
@@ -738,68 +809,62 @@ const NewQuote = () => {
       </div>
 
       {/* Stepper */}
-      <div className="max-w-md mx-auto">
-        {/* Circles + Lines row */}
-        <div className="flex items-center">
+      <div className="max-w-lg mx-auto">
+        <div className="flex items-start">
           {steps.map((step, i) => {
             const state = getStepState(i);
             const StepIcon = step.icon;
             return (
               <React.Fragment key={i}>
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                    state === "done"
-                      ? "bg-primary-600 text-white"
-                      : state === "now"
-                        ? "bg-primary-600 text-white ring-4 ring-primary-100 dark:ring-primary-900/40"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-[1.5px] border-slate-200 dark:border-slate-700"
-                  }`}
-                >
-                  {state === "done" ? (
-                    <Check size={14} strokeWidth={3} />
-                  ) : (
-                    <StepIcon size={16} />
-                  )}
-                </div>
-                {i < steps.length - 1 && (
+                {/* Step column: circle + label stacked, centered */}
+                <div className="flex flex-col items-center" style={{ minWidth: 0 }}>
                   <div
-                    className={`flex-1 h-0.5 mx-2 transition-all duration-300 ${
-                      i + 1 < currentStep
-                        ? "bg-primary-500"
-                        : "bg-slate-200 dark:bg-slate-700"
+                    className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                      state === "done"
+                        ? "bg-primary-600 text-white"
+                        : state === "now"
+                          ? "bg-primary-600 text-white ring-4 ring-primary-100 dark:ring-primary-900/40"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-[1.5px] border-slate-200 dark:border-slate-700"
                     }`}
-                  />
+                  >
+                    {state === "done" ? (
+                      <Check size={14} strokeWidth={3} />
+                    ) : (
+                      <StepIcon size={16} />
+                    )}
+                  </div>
+                  <span
+                    className={`text-[11px] font-semibold mt-1.5 text-center whitespace-nowrap ${
+                      state === "done"
+                        ? "text-primary-600 dark:text-primary-400"
+                        : state === "now"
+                          ? "text-primary-700 dark:text-primary-300 font-bold"
+                          : "text-slate-400 dark:text-slate-500"
+                    }`}
+                  >
+                    {step.label}
+                  </span>
+                </div>
+                {/* Connector line — vertically centered to circles */}
+                {i < steps.length - 1 && (
+                  <div className="flex-1 flex items-center" style={{ height: 40 }}>
+                    <div
+                      className={`w-full h-0.5 mx-2 transition-all duration-300 ${
+                        i + 1 < currentStep
+                          ? "bg-primary-500"
+                          : "bg-slate-200 dark:bg-slate-700"
+                      }`}
+                    />
+                  </div>
                 )}
               </React.Fragment>
-            );
-          })}
-        </div>
-        {/* Labels row */}
-        <div className="flex justify-between mt-1.5">
-          {steps.map((step, i) => {
-            const state = getStepState(i);
-            return (
-              <span
-                key={i}
-                className={`text-[11px] font-semibold whitespace-nowrap text-center ${
-                  i === 0 ? "text-left" : i === steps.length - 1 ? "text-right" : "text-center"
-                } ${
-                  state === "done"
-                    ? "text-primary-600 dark:text-primary-400"
-                    : state === "now"
-                      ? "text-primary-700 dark:text-primary-300 font-bold"
-                      : "text-slate-400 dark:text-slate-500"
-                }`}
-              >
-                {step.label}
-              </span>
             );
           })}
         </div>
       </div>
 
       {/* Wizard Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200/70 dark:border-slate-700/50 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200/70 dark:border-slate-700/50">
         {/* Step Content */}
         <div className="p-6 sm:p-8">
           {/* Step 1: Vehicle Details */}
@@ -1144,12 +1209,287 @@ const NewQuote = () => {
             </div>
           )}
 
-          {/* Step 3: Location */}
+          {/* Step 3: Insurance */}
           {currentStep === 3 && (
             <div>
               <div className="mb-1">
                 <span className="text-[11px] font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider">
                   STEP 3 OF {TOTAL_STEPS}
+                </span>
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight mb-0.5">
+                Insurance Coverage
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                Is this repair covered by your car insurance?
+              </p>
+
+              <div className="space-y-3">
+                {/* Yes, I have a claim reference */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleChange("insuranceOption", "yes_with_claim");
+                      if (errors.insurerId) setErrors((prev) => ({ ...prev, insurerId: null }));
+                      if (errors.claimNumber) setErrors((prev) => ({ ...prev, claimNumber: null }));
+                    }}
+                    className={`w-full relative p-4 rounded-[12px] border-[1.5px] text-left transition-all ${
+                      formData.insuranceOption === "yes_with_claim"
+                        ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-2 ring-primary-500/20"
+                        : "border-slate-200 dark:border-slate-700 hover:border-primary-400/50 hover:bg-slate-50 dark:hover:border-primary-600/50 dark:hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <div className={`absolute top-3 right-3 w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center transition-all ${
+                      formData.insuranceOption === "yes_with_claim"
+                        ? "bg-primary-600 border-primary-600"
+                        : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600"
+                    }`}>
+                      {formData.insuranceOption === "yes_with_claim" && (
+                        <Check size={11} strokeWidth={3} className="text-white" />
+                      )}
+                    </div>
+                    <div className="font-semibold text-[15px] text-slate-900 dark:text-white pr-6">
+                      Yes, I have a claim reference
+                    </div>
+                    <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                      I've already lodged a claim with my insurer
+                    </div>
+                  </button>
+
+                  {/* Insurance fields for yes_with_claim */}
+                  {formData.insuranceOption === "yes_with_claim" && (
+                    <div className="mt-3 p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-xl space-y-4">
+                      <PremiumSelect
+                        label="Insurance Provider"
+                        required
+                        value={
+                          formData.insurerId
+                            ? insurers.find((i) => i._id === formData.insurerId)?.name ||
+                              formData.insurerName ||
+                              formData.insurerId
+                            : ""
+                        }
+                        options={insurers.map((i) => i.name)}
+                        onChange={(val) => {
+                          const matched = insurers.find((i) => i.name === val);
+                          setFormData((prev) => ({
+                            ...prev,
+                            insurerId: matched?._id || val,
+                            insurerName: val,
+                          }));
+                          if (errors.insurerId) setErrors((prev) => ({ ...prev, insurerId: null }));
+                        }}
+                        placeholder="Select or type insurer name"
+                        error={errors.insurerId}
+                        isSearchable
+                        isCreatable
+                        isClearable
+                      />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                            Claim Reference <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.claimNumber}
+                            onChange={(e) => {
+                              handleChange("claimNumber", e.target.value);
+                              if (errors.claimNumber) setErrors((prev) => ({ ...prev, claimNumber: null }));
+                            }}
+                            placeholder="e.g. CLM-123456"
+                            className={`w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 text-slate-700 dark:text-slate-200 ${
+                              errors.claimNumber
+                                ? "border-red-400"
+                                : "border-slate-200 dark:border-slate-700"
+                            }`}
+                          />
+                          {errors.claimNumber && (
+                            <p className="mt-1 text-xs text-red-500">{errors.claimNumber}</p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                            Excess Amount{" "}
+                            <span className="text-slate-400 dark:text-slate-500 font-normal">(optional)</span>
+                          </label>
+                          <input
+                            type="number"
+                            value={formData.excessAmount}
+                            onChange={(e) => handleChange("excessAmount", e.target.value)}
+                            placeholder="e.g. 500"
+                            className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 text-slate-700 dark:text-slate-200"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                          Policy Number{" "}
+                          <span className="text-slate-400 dark:text-slate-500 font-normal">(optional)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.policyNumber}
+                          onChange={(e) => handleChange("policyNumber", e.target.value)}
+                          placeholder="e.g. POL-789012"
+                          className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Yes, but I need to lodge a claim */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleChange("insuranceOption", "yes_pending");
+                      if (errors.insurerId) setErrors((prev) => ({ ...prev, insurerId: null }));
+                      if (errors.claimNumber) setErrors((prev) => ({ ...prev, claimNumber: null }));
+                    }}
+                    className={`w-full relative p-4 rounded-[12px] border-[1.5px] text-left transition-all ${
+                      formData.insuranceOption === "yes_pending"
+                        ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-2 ring-primary-500/20"
+                        : "border-slate-200 dark:border-slate-700 hover:border-primary-400/50 hover:bg-slate-50 dark:hover:border-primary-600/50 dark:hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <div className={`absolute top-3 right-3 w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center transition-all ${
+                      formData.insuranceOption === "yes_pending"
+                        ? "bg-primary-600 border-primary-600"
+                        : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600"
+                    }`}>
+                      {formData.insuranceOption === "yes_pending" && (
+                        <Check size={11} strokeWidth={3} className="text-white" />
+                      )}
+                    </div>
+                    <div className="font-semibold text-[15px] text-slate-900 dark:text-white pr-6">
+                      Yes, but I need to lodge a claim
+                    </div>
+                    <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                      I haven't contacted my insurer yet
+                    </div>
+                  </button>
+
+                  {/* Insurance fields for yes_pending */}
+                  {formData.insuranceOption === "yes_pending" && (
+                    <div className="mt-3 p-4 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-xl space-y-4">
+                      <PremiumSelect
+                        label="Insurance Provider"
+                        required
+                        value={
+                          formData.insurerId
+                            ? insurers.find((i) => i._id === formData.insurerId)?.name ||
+                              formData.insurerName ||
+                              formData.insurerId
+                            : ""
+                        }
+                        options={insurers.map((i) => i.name)}
+                        onChange={(val) => {
+                          const matched = insurers.find((i) => i.name === val);
+                          setFormData((prev) => ({
+                            ...prev,
+                            insurerId: matched?._id || val,
+                            insurerName: val,
+                          }));
+                          if (errors.insurerId) setErrors((prev) => ({ ...prev, insurerId: null }));
+                        }}
+                        placeholder="Select or type insurer name"
+                        error={errors.insurerId}
+                        isSearchable
+                        isCreatable
+                        isClearable
+                      />
+                      {(() => {
+                        const selectedInsurer = insurers.find((i) => i._id === formData.insurerId);
+                        if (selectedInsurer?.claimsPhone) {
+                          return (
+                            <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+                              <Phone size={14} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                              <div>
+                                <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                  Claims Phone Number
+                                </p>
+                                <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+                                  {selectedInsurer.claimsPhone}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                          Policy Number{" "}
+                          <span className="text-slate-400 dark:text-slate-500 font-normal">(optional)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.policyNumber}
+                          onChange={(e) => handleChange("policyNumber", e.target.value)}
+                          placeholder="e.g. POL-789012"
+                          className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* No, I'll pay myself */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        insuranceOption: "no",
+                        insurerId: "",
+                        insurerName: "",
+                        policyNumber: "",
+                        claimNumber: "",
+                        excessAmount: "",
+                      }));
+                      setErrors((prev) => ({
+                        ...prev,
+                        insurerId: null,
+                        claimNumber: null,
+                      }));
+                    }}
+                    className={`w-full relative p-4 rounded-[12px] border-[1.5px] text-left transition-all ${
+                      formData.insuranceOption === "no"
+                        ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-2 ring-primary-500/20"
+                        : "border-slate-200 dark:border-slate-700 hover:border-primary-400/50 hover:bg-slate-50 dark:hover:border-primary-600/50 dark:hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <div className={`absolute top-3 right-3 w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center transition-all ${
+                      formData.insuranceOption === "no"
+                        ? "bg-primary-600 border-primary-600"
+                        : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600"
+                    }`}>
+                      {formData.insuranceOption === "no" && (
+                        <Check size={11} strokeWidth={3} className="text-white" />
+                      )}
+                    </div>
+                    <div className="font-semibold text-[15px] text-slate-900 dark:text-white pr-6">
+                      No, I'll pay myself
+                    </div>
+                    <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                      I'm not using insurance for this repair
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Location */}
+          {currentStep === 4 && (
+            <div>
+              <div className="mb-1">
+                <span className="text-[11px] font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider">
+                  STEP 4 OF {TOTAL_STEPS}
                 </span>
               </div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight mb-0.5">

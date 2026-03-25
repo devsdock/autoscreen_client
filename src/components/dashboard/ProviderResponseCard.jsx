@@ -8,6 +8,7 @@ import {
   Wrench,
   Phone,
   AlertTriangle,
+  Wallet,
 } from "lucide-react";
 import { formatCurrency } from "../../store/useDashboardStore";
 import { formatDuration } from "../../utils/formatDuration";
@@ -180,16 +181,14 @@ const ProviderResponseCard = ({
 
       {/* ── Ticket Main ── */}
       <div
-        style={{
-          paddingTop: isBest || isAccepted ? "1.625rem" : 0,
-        }}
         className="flex flex-col sm:flex-row items-stretch border-b border-dashed border-slate-200 dark:border-slate-700"
       >
-        {/* Provider Column */}
+        {/* Provider Column — bg extends full height, padding-top added when badge present */}
         <div
           style={{
             flexShrink: 0,
             gap: ".5rem",
+            paddingTop: isBest || isAccepted ? "1.625rem" : undefined,
           }}
           className="bg-slate-50 dark:bg-slate-800/50 flex flex-row sm:flex-col items-center sm:items-start sm:justify-center sm:w-[160px] border-b sm:border-b-0 sm:border-r border-dashed border-slate-200 dark:border-slate-700 p-3 sm:p-5"
         >
@@ -288,6 +287,7 @@ const ProviderResponseCard = ({
             flexDirection: "column",
             gap: ".5rem",
             justifyContent: "center",
+            paddingTop: isBest || isAccepted ? "1.625rem" : undefined,
           }}
           className="px-3 py-3 sm:px-4 sm:py-5"
         >
@@ -363,6 +363,7 @@ const ProviderResponseCard = ({
         <div
           style={{
             padding: "1.25rem .875rem",
+            paddingTop: isBest || isAccepted ? "calc(1.625rem + 1.25rem)" : "1.25rem",
             alignItems: "center",
             gap: ".625rem",
             flexShrink: 0,
@@ -461,39 +462,73 @@ const ProviderResponseCard = ({
           style={{
             flexShrink: 0,
             gap: ".625rem",
+            paddingTop: isBest || isAccepted ? "1.625rem" : undefined,
           }}
-          className="flex flex-col justify-center items-center sm:items-end sm:w-[148px] border-t sm:border-t-0 border-dashed border-slate-200 dark:border-slate-700 p-3 sm:p-[1.125rem]"
+          className={`flex flex-col justify-center ${response.isInsuranceRegistered ? "items-stretch sm:w-[210px]" : "items-center sm:items-end sm:w-[148px]"} border-t sm:border-t-0 border-dashed border-slate-200 dark:border-slate-700 p-3 sm:p-[1.125rem]`}
         >
           {/* Price */}
-          <div className="text-center sm:text-right">
-            <div>
-              <span
-                style={{ fontSize: ".9375rem", fontWeight: 600 }}
-                className="text-slate-900 dark:text-white"
-              >
-                R
-              </span>
-              <span
-                style={{
-                  fontSize: "1.75rem",
-                  fontWeight: 800,
-                  letterSpacing: "-.02em",
-                  lineHeight: 1,
-                }}
-                className="text-slate-900 dark:text-white"
-              >
-                {price ? price.toLocaleString() : "0"}
-              </span>
-            </div>
-            <div
-              style={{
-                fontSize: ".625rem",
-                marginTop: ".25rem",
-              }}
-              className="text-slate-400 dark:text-slate-500"
-            >
-              Service amount
-            </div>
+          <div className={`${response.isInsuranceRegistered ? "w-full" : "text-center sm:text-right"}`}>
+            {response.isInsuranceRegistered ? (
+              <div style={{ width: "100%" }}>
+                {/* Table-style breakdown */}
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".8125rem", textAlign: "left" }}>
+                  <tbody>
+                    {response.insuranceDetails?.totalJobValue != null && (
+                      <tr>
+                        <td style={{ padding: ".1875rem 0", whiteSpace: "nowrap", textAlign: "left" }} className="text-slate-500 dark:text-slate-400">Total job</td>
+                        <td style={{ padding: ".1875rem 0", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap" }} className="text-slate-700 dark:text-slate-300">R {response.insuranceDetails.totalJobValue.toLocaleString()}</td>
+                      </tr>
+                    )}
+                    {response.insuranceDetails?.totalJobValue != null && (
+                      <tr>
+                        <td style={{ padding: ".1875rem 0", whiteSpace: "nowrap", textAlign: "left" }} className="text-slate-500 dark:text-slate-400">Insurer covers</td>
+                        <td style={{ padding: ".1875rem 0", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap" }} className="text-emerald-600 dark:text-emerald-400">R {(response.insuranceDetails.insurerClaimAmount ?? (response.insuranceDetails.totalJobValue - price)).toLocaleString()}</td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td style={{ padding: ".375rem 0 .125rem", whiteSpace: "nowrap", textAlign: "left", borderTop: "1px dashed #e2e8f0" }} className="text-emerald-700 dark:text-emerald-300 font-semibold">You pay</td>
+                      <td style={{ padding: ".375rem 0 .125rem", textAlign: "right", whiteSpace: "nowrap", borderTop: "1px dashed #e2e8f0" }} className="text-emerald-600 dark:text-emerald-400">
+                        <span style={{ fontSize: "1.25rem", fontWeight: 800, letterSpacing: "-.02em" }}>R {price ? price.toLocaleString() : "0"}</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div style={{ fontSize: ".6875rem", marginTop: ".25rem", textAlign: "right" }} className="text-emerald-500 dark:text-emerald-500 font-medium">
+                  Excess only
+                </div>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <span
+                    style={{ fontSize: ".9375rem", fontWeight: 600 }}
+                    className="text-slate-900 dark:text-white"
+                  >
+                    R
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "1.75rem",
+                      fontWeight: 800,
+                      letterSpacing: "-.02em",
+                      lineHeight: 1,
+                    }}
+                    className="text-slate-900 dark:text-white"
+                  >
+                    {price ? price.toLocaleString() : "0"}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    fontSize: ".625rem",
+                    marginTop: ".25rem",
+                  }}
+                  className="text-slate-400 dark:text-slate-500"
+                >
+                  Service amount
+                </div>
+              </>
+            )}
           </div>
 
           {/* Accept Button */}
@@ -605,7 +640,7 @@ const ProviderResponseCard = ({
           </div>
         )}
 
-        {/* Service area */}
+        {/* Service area — workshop shows workshop address, mobile shows service area */}
         {(provider.serviceAreas?.length > 0 ||
           provider.serviceArea ||
           provider.address?.city) && (
@@ -621,16 +656,26 @@ const ProviderResponseCard = ({
           >
             <MapPin size={12} />
             {(() => {
+              // Workshop service — show workshop address
+              if (isWorkshopService && provider.serviceArea?.workshopAddress) {
+                const ws = provider.serviceArea.workshopAddress;
+                const parts = [ws.addressLine1, ws.suburb, ws.city, ws.province].filter(Boolean);
+                if (parts.length > 0) return parts.join(", ");
+              }
+              // Also check response-level workshop address
+              if (isWorkshopService && response.workshopAddress) {
+                const ws = response.workshopAddress;
+                const parts = [ws.addressLine1, ws.city, ws.province].filter(Boolean);
+                if (parts.length > 0) return parts.join(", ");
+              }
+              // Mobile / fallback — show service area
               if (Array.isArray(provider.serviceAreas) && provider.serviceAreas.length > 0)
                 return provider.serviceAreas.join(", ");
-              // Show provider's address city if available
-              if (provider.address?.city) return provider.address.city;
               if (typeof provider.serviceArea === "object") {
                 if (provider.serviceArea?.address?.city) return provider.serviceArea.address.city;
-                // Match client's requested city from provider's service area cities
                 const cities = provider.serviceArea?.cities;
                 if (Array.isArray(cities) && cities.length > 0) {
-                  const requestedCity = quoteData?.location?.city;
+                  const requestedCity = quoteData?.location?.city || quoteData?.serviceLocation?.address?.city;
                   if (requestedCity) {
                     const match = cities.find(
                       (c) => c.toLowerCase() === requestedCity.toLowerCase()
@@ -640,6 +685,7 @@ const ProviderResponseCard = ({
                   return cities[0];
                 }
               }
+              if (provider.address?.city) return provider.address.city;
               return typeof provider.serviceArea === "string" ? provider.serviceArea : null;
             })()}
           </div>
@@ -695,6 +741,40 @@ const ProviderResponseCard = ({
           >
             <AlertTriangle size={12} className="text-amber-500 dark:text-amber-400" />
             Counter offer
+          </div>
+        )}
+
+        {/* Insurance claim note — insurance-registered providers */}
+        {response.isInsuranceRegistered && (
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: ".375rem",
+              fontSize: ".6875rem",
+              fontWeight: 600,
+            }}
+            className="text-emerald-600 dark:text-emerald-400"
+          >
+            <Shield size={12} className="text-emerald-500 dark:text-emerald-400" />
+            This provider handles your insurance claim directly
+          </div>
+        )}
+
+        {/* Non-registered provider on insurance quote — payment note */}
+        {quoteData?.hasInsurance && !response.isInsuranceRegistered && (
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: ".375rem",
+              fontSize: ".6875rem",
+              fontWeight: 600,
+            }}
+            className="text-slate-400 dark:text-slate-500"
+          >
+            <Wallet size={12} />
+            Full payment — claim from insurer with receipt
           </div>
         )}
 

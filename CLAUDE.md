@@ -3,7 +3,7 @@
 > **Project:** AutoScreen Customer Dashboard
 > **Stack:** React + Vite, Zustand, React Router v6, Axios, Socket.IO
 > **Version:** 1.0.0
-> **Last Updated:** 24 March 2026 (Quote Header Card — Address Removed)
+> **Last Updated:** 25 March 2026 (NewQuote — 4-Step Refactor)
 
 ---
 
@@ -828,6 +828,47 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 ---
 
 ## Changelog
+
+### 25 March 2026 (NewQuote — Insurance Step Layout Restructure)
+
+- **`NewQuote.jsx` — Insurance conditional fields moved inline with radio options**: Previously, the three insurance radio buttons were in a `grid grid-cols-1 gap-3 mb-4` container and the conditional fields blocks for `yes_with_claim` and `yes_pending` appeared AFTER all three radio buttons. Now each radio button is wrapped in its own `<div>` inside a `space-y-3` container, with its conditional fields block rendered directly below the button (with `mt-3` gap). This places the insurance form fields visually adjacent to the selected option instead of far below. No changes to field logic, validation, state, or submission payload.
+
+### 25 March 2026 (NewQuote — 4-Step Wizard Refactor)
+
+- **`NewQuote.jsx` — Insurance promoted to its own step**: Refactored the quote request wizard from 3 steps to 4 steps to match the web portal's structure. `TOTAL_STEPS` changed from 3 to 4. Stepper config updated: Vehicle Details (1), Service Info (2), Insurance (3), Location (4). `Shield` icon added to the stepper for step 3.
+- **Step 2 slimmed down**: Insurance Coverage section (radio cards, insurer PremiumSelect, claim/excess/policy fields) removed from Step 2. Step 2 now contains only: service type selection, glass type per-service selection, vehicle features (ADAS/rain sensor), vehicle photos, and damage description.
+- **Step 3 — Insurance Coverage (new dedicated step)**: Full-page step with "Step 3 of 4" header, "Insurance Coverage" title, "Is this repair covered by your car insurance?" subtitle. Three radio card options identical to the previous inline section. Conditional fields for yes_with_claim (insurer, claim ref, excess, policy) and yes_pending (insurer, claims phone, policy) render below the cards.
+- **Step 4 — Location (renumbered from 3)**: All location UI (service mode toggle, Use My Location, city, address, suburb, postcode) now renders in step 4 with "Step 4 of 4" header.
+- **`validateStep` updated**: Step 2 no longer validates insurance fields. Step 3 validates insurance (yes_with_claim: insurerId + claimNumber required; yes_pending: insurerId required). Step 4 validates location (city required, addressLine1 required for mobile mode).
+- **`handleSubmit` error routing updated**: Insurance errors (insurerId, claimNumber) route to step 3. Location errors (city, addressLine1) route to step 4.
+- **No payload changes**: Submission payload structure (hasInsurance, insuranceDetails) remains identical. No backend changes needed.
+- **Zero regression**: Vehicle, service, and location steps are functionally unchanged. Insurer fetch on mount and profile pre-fill continue to work.
+
+### 25 March 2026 (Quote Request Forms — Insurance Coverage Section)
+
+- **`NewQuote.jsx` — Insurance section added to Step 2**: New "Insurance Coverage" section placed after Vehicle Photos and before Damage Description in the multi-step quote request form. Three radio card options: "Yes, I have a claim reference" (shows insurer PremiumSelect with `isCreatable`, claim reference input, optional excess amount, optional policy number), "Yes, but I need to lodge a claim" (shows insurer PremiumSelect, read-only claims phone from insurer data, optional policy number), "No, I'll pay myself" (clears all insurance fields). Default is "no". Insurer list fetched from `insurerService.getActiveInsurers()` on mount. Profile insurance data pre-fills `insurerId`, `insurerName`, and `policyNumber` (does NOT auto-select "yes" option). Validation: `yes_with_claim` requires insurerId + claimNumber; `yes_pending` requires insurerId. Submission payload includes `hasInsurance` boolean and `insuranceDetails` object with `insurerId`, `policyNumber`, `claimNumber`, `claimStatus` ("has_claim_ref" or "claim_pending"), and `excessAmount`.
+- **`RequestQuoteModal.jsx` — Same insurance section (compact modal variant)**: Identical insurance logic and payload but with compact styling for modal context (smaller padding, smaller radio indicators, tighter spacing). Insurance fields reset on modal open/close. Same validation and submission behavior as `NewQuote.jsx`.
+- **Design**: Radio cards use `border-[1.5px] rounded-[12px]`, selected state uses `border-primary-500 bg-primary-50 ring-2 ring-primary-500/20`. Insurance section uses emerald/green accent (`Shield` icon, emerald-50 icon background). Claims phone displayed in emerald info box when "yes_pending" and an insurer with `claimsPhone` is selected. PremiumSelect for insurer is `isCreatable` to allow custom insurer names (non-ObjectId values passed as string).
+- **Imports added**: `insurerService` from services, `Phone` from lucide-react.
+- **Zero regression**: No changes to service selection, location, image upload, or existing API service calls. Quote submission works identically when "No" is selected (no insurance fields in payload).
+
+### 24 March 2026 (Insurance Page — UX Rewrite with Cover Type, Policy Holder, Search)
+
+- **`Insurance.jsx` — Full UX rewrite**: Rewrote the Insurance page to address 5 UX problems:
+  1. **Cover Type dropdown** replaces the simplistic glass-cover-only toggle. New `COVER_TYPES` constant with "Comprehensive", "Third Party", "Glass Only", "Not Sure" options rendered via `PremiumSelect`. Cover type shown as a color-coded badge pill in the info rows (green for comprehensive, blue for glass-only, neutral for others). `coverTypeBadgeStyles` mapping defines per-type Tailwind classes.
+  2. **Policy Holder Name** field added to the modal (`Input` with `User` icon, optional). Displayed in info rows — falls back to the logged-in customer's name (`user.firstName + user.lastName` from `useDashboardStore`) when blank.
+  3. **Booking search** — `Input` with `Search` icon below the Booking History card header. Client-side `useMemo` filter matches against `reference/bookingRef/bookingNumber`, `providerName/provider.businessName/provider.name`, and `insurerName/insurer.name`. Separate empty states for "no results found" (with search query echo) vs "no bookings at all".
+  4. **Stats strip conditional** — The two stat cards (Insurance Bookings count + Cover Type display) now only render when `insurance` exists, eliminating the redundant "My Insurer" summary card that duplicated the details card.
+  5. **Empty state improved** — Uses `bg-primary-50` circle (instead of `bg-slate-100`), "No insurance added yet" title, "Add Insurance Details" button text with `Plus` icon.
+- **Validation updated**: `handleSave` now validates `coverType` as required in addition to `insurerId` and `policyNumber`.
+- **Payload updated**: `handleSave` sends `{ insurerId, policyNumber, policyHolderName, coverType, hasGlassCover }` to `profileService.updateInsurance`.
+- **Modal pre-fill**: `openModal` pre-fills `policyHolderName` and `coverType` from existing insurance data on edit.
+- **Search bar** only appears when `bookings.length > 0` (hidden in empty booking state).
+- **Glass Cover toggle** in modal now has helper text below: "This determines if glass repairs are covered under your plan".
+
+### 24 March 2026 (Insurance Page — Design System Rewrite)
+
+- **`Insurance.jsx` — Complete rewrite to use design system components**: Replaced all raw `<div>`-based card containers (`bg-white dark:bg-slate-900 rounded-[20px] border-[1.5px]`) with the `<Card>` UI component. Replaced `<EmptyState>` component usage with inline empty states matching the same visual pattern (icon circle + title + description + CTA button). Edit button now uses orange accent styling (`!bg-orange-50 !text-orange-600 !border-orange-200`) with dark mode variants via `!important` overrides on `<Button variant="secondary">`. Icon boxes use `rounded-[10px]` instead of `rounded-xl`. Removed unused `EmptyState` import and `Edit2` icon (replaced with `Pencil`). Toast access pattern changed from destructured `const { addToast } = useDashboardStore()` to selector `const addToast = useDashboardStore((s) => s.addToast)` matching the recommended Zustand pattern. All existing functionality (data fetching, modal add/edit, validation, glass cover toggle) preserved unchanged.
 
 ### 24 March 2026 (Quote Header Card — Address Removed)
 

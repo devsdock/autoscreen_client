@@ -11,11 +11,13 @@ import {
   Shield,
   Clock,
   Users,
+  Phone,
 } from "lucide-react";
 import useDashboardStore from "../../store/useDashboardStore";
 import vehicleService from "../../services/vehicleService";
 import geocodingService from "../../services/geocodingService";
 import publicSettingsService from "../../services/publicSettingsService";
+import insurerService from "../../services/insurerService";
 import { useState, useEffect } from "react";
 import PremiumSelect from "../ui/PremiumSelect";
 import ImageUploadSlot from "../ui/ImageUploadSlot";
@@ -55,6 +57,12 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
     suburb: "",
     hasAdasCamera: false,
     hasRainSensor: false,
+    insuranceOption: "no",
+    insurerId: "",
+    insurerName: "",
+    policyNumber: "",
+    claimNumber: "",
+    excessAmount: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -75,6 +83,33 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
   const [cities, setCities] = useState([]);
   const [glassTypes, setGlassTypes] = useState([]);
   const [adminServiceTypes, setAdminServiceTypes] = useState([]);
+
+  // Insurers
+  const [insurers, setInsurers] = useState([]);
+  const profile = useDashboardStore((s) => s.user);
+
+  useEffect(() => {
+    insurerService
+      .getActiveInsurers()
+      .then((res) => {
+        const data = res.data?.data || res.data || [];
+        setInsurers(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Pre-fill insurance from profile
+  useEffect(() => {
+    if (isOpen && profile?.insurance?.insurer) {
+      setFormData((prev) => ({
+        ...prev,
+        insurerId:
+          profile.insurance.insurer._id || profile.insurance.insurer,
+        insurerName: profile.insurance.provider || "",
+        policyNumber: profile.insurance.policyNumber || "",
+      }));
+    }
+  }, [isOpen, profile]);
 
   // Initialize form when opening
   useEffect(() => {
@@ -101,6 +136,12 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
         suburb: "",
         hasAdasCamera: false,
         hasRainSensor: false,
+        insuranceOption: "no",
+        insurerId: "",
+        insurerName: "",
+        policyNumber: "",
+        claimNumber: "",
+        excessAmount: "",
       });
       setErrors({});
       setCurrentStep(1);
@@ -440,6 +481,13 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
       if (!formData.vehicleImages.frontView) newErrors.frontView = "Front of vehicle photo is required";
       if (!formData.vehicleImages.vinLicenceDisc) newErrors.vinLicenceDisc = "VIN / Licence disc photo is required";
       if (!formData.vehicleImages.damagePhotos.length) newErrors.damagePhotos = "At least one damage photo is required";
+      if (formData.insuranceOption === "yes_with_claim") {
+        if (!formData.insurerId) newErrors.insurerId = "Please select an insurer";
+        if (!formData.claimNumber) newErrors.claimNumber = "Claim number is required";
+      }
+      if (formData.insuranceOption === "yes_pending") {
+        if (!formData.insurerId) newErrors.insurerId = "Please select an insurer";
+      }
     }
 
     if (step === 3) {
@@ -467,6 +515,13 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
     if (!formData.vehicleImages.frontView) newErrors.frontView = "Front of vehicle photo is required";
     if (!formData.vehicleImages.vinLicenceDisc) newErrors.vinLicenceDisc = "VIN / Licence disc photo is required";
     if (!formData.vehicleImages.damagePhotos.length) newErrors.damagePhotos = "At least one damage photo is required";
+    if (formData.insuranceOption === "yes_with_claim") {
+      if (!formData.insurerId) newErrors.insurerId = "Please select an insurer";
+      if (!formData.claimNumber) newErrors.claimNumber = "Claim number is required";
+    }
+    if (formData.insuranceOption === "yes_pending") {
+      if (!formData.insurerId) newErrors.insurerId = "Please select an insurer";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -494,7 +549,9 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
         errors.glassType ||
         errors.frontView ||
         errors.vinLicenceDisc ||
-        errors.damagePhotos
+        errors.damagePhotos ||
+        errors.insurerId ||
+        errors.claimNumber
       ) {
         setCurrentStep(2);
       } else if (errors.city) {
@@ -599,6 +656,22 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
         preferredTimeSlot: null,
         customerNotes: formData.notes,
         damageImages: damageImageUrls,
+        hasInsurance: formData.insuranceOption !== "no",
+        insuranceDetails:
+          formData.insuranceOption !== "no"
+            ? {
+                insurerId: formData.insurerId,
+                policyNumber: formData.policyNumber || undefined,
+                claimNumber: formData.claimNumber || undefined,
+                claimStatus:
+                  formData.insuranceOption === "yes_with_claim"
+                    ? "has_claim_ref"
+                    : "claim_pending",
+                excessAmount: formData.excessAmount
+                  ? Number(formData.excessAmount)
+                  : undefined,
+              }
+            : undefined,
       };
 
       const response = await quoteService.createQuote(quotePayload);
@@ -634,6 +707,15 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
           vinLicenceDisc: null,
           damagePhotos: [],
         },
+        suburb: "",
+        hasAdasCamera: false,
+        hasRainSensor: false,
+        insuranceOption: "no",
+        insurerId: "",
+        insurerName: "",
+        policyNumber: "",
+        claimNumber: "",
+        excessAmount: "",
       });
       setModelSearchQuery("");
       setCurrentStep(1);
@@ -677,7 +759,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
       />
 
       {/* Modal */}
-      <div className="relative bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-200/50 dark:border-slate-700/50 animate-in fade-in zoom-in duration-200 pointer-events-auto">
+      <div className="relative bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-slate-200/50 dark:border-slate-700/50 animate-in fade-in zoom-in duration-200 pointer-events-auto">
         {/* Header */}
         <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800">
           {/* Close button */}
@@ -1101,6 +1183,273 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                   error={errors.damagePhotos}
                   multiple
                 />
+              </div>
+
+              {/* Insurance Coverage */}
+              <div className="mb-5">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-7 h-7 rounded-[10px] bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+                    <Shield size={14} className="text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Insurance Coverage
+                  </h4>
+                </div>
+                <p className="text-[13px] text-slate-500 dark:text-slate-400 mb-3 ml-9">
+                  Is this repair covered by your car insurance?
+                </p>
+
+                <div className="grid grid-cols-1 gap-2 mb-3">
+                  {/* Yes, I have a claim reference */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleChange("insuranceOption", "yes_with_claim");
+                      if (errors.insurerId) setErrors((prev) => ({ ...prev, insurerId: null }));
+                      if (errors.claimNumber) setErrors((prev) => ({ ...prev, claimNumber: null }));
+                    }}
+                    className={`relative p-3 rounded-[12px] border-[1.5px] text-left transition-all ${
+                      formData.insuranceOption === "yes_with_claim"
+                        ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-2 ring-primary-500/20"
+                        : "border-slate-200 dark:border-slate-700 hover:border-primary-400/50 hover:bg-slate-50 dark:hover:border-primary-600/50 dark:hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <div className={`absolute top-3 right-3 w-4 h-4 rounded-full border-[1.5px] flex items-center justify-center transition-all ${
+                      formData.insuranceOption === "yes_with_claim"
+                        ? "bg-primary-600 border-primary-600"
+                        : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600"
+                    }`}>
+                      {formData.insuranceOption === "yes_with_claim" && (
+                        <Check size={9} strokeWidth={3} className="text-white" />
+                      )}
+                    </div>
+                    <div className="font-semibold text-sm text-slate-900 dark:text-white pr-6">
+                      Yes, I have a claim reference
+                    </div>
+                    <div className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      I've already lodged a claim with my insurer
+                    </div>
+                  </button>
+
+                  {/* Yes, but I need to lodge a claim */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleChange("insuranceOption", "yes_pending");
+                      if (errors.insurerId) setErrors((prev) => ({ ...prev, insurerId: null }));
+                      if (errors.claimNumber) setErrors((prev) => ({ ...prev, claimNumber: null }));
+                    }}
+                    className={`relative p-3 rounded-[12px] border-[1.5px] text-left transition-all ${
+                      formData.insuranceOption === "yes_pending"
+                        ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-2 ring-primary-500/20"
+                        : "border-slate-200 dark:border-slate-700 hover:border-primary-400/50 hover:bg-slate-50 dark:hover:border-primary-600/50 dark:hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <div className={`absolute top-3 right-3 w-4 h-4 rounded-full border-[1.5px] flex items-center justify-center transition-all ${
+                      formData.insuranceOption === "yes_pending"
+                        ? "bg-primary-600 border-primary-600"
+                        : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600"
+                    }`}>
+                      {formData.insuranceOption === "yes_pending" && (
+                        <Check size={9} strokeWidth={3} className="text-white" />
+                      )}
+                    </div>
+                    <div className="font-semibold text-sm text-slate-900 dark:text-white pr-6">
+                      Yes, but I need to lodge a claim
+                    </div>
+                    <div className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      I haven't contacted my insurer yet
+                    </div>
+                  </button>
+
+                  {/* No, I'll pay myself */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        insuranceOption: "no",
+                        insurerId: "",
+                        insurerName: "",
+                        policyNumber: "",
+                        claimNumber: "",
+                        excessAmount: "",
+                      }));
+                      setErrors((prev) => ({
+                        ...prev,
+                        insurerId: null,
+                        claimNumber: null,
+                      }));
+                    }}
+                    className={`relative p-3 rounded-[12px] border-[1.5px] text-left transition-all ${
+                      formData.insuranceOption === "no"
+                        ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-2 ring-primary-500/20"
+                        : "border-slate-200 dark:border-slate-700 hover:border-primary-400/50 hover:bg-slate-50 dark:hover:border-primary-600/50 dark:hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <div className={`absolute top-3 right-3 w-4 h-4 rounded-full border-[1.5px] flex items-center justify-center transition-all ${
+                      formData.insuranceOption === "no"
+                        ? "bg-primary-600 border-primary-600"
+                        : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600"
+                    }`}>
+                      {formData.insuranceOption === "no" && (
+                        <Check size={9} strokeWidth={3} className="text-white" />
+                      )}
+                    </div>
+                    <div className="font-semibold text-sm text-slate-900 dark:text-white pr-6">
+                      No, I'll pay myself
+                    </div>
+                    <div className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      I'm not using insurance for this repair
+                    </div>
+                  </button>
+                </div>
+
+                {/* Insurance fields for yes_with_claim */}
+                {formData.insuranceOption === "yes_with_claim" && (
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-xl space-y-3">
+                    <PremiumSelect
+                      label="Insurance Provider"
+                      required
+                      value={
+                        formData.insurerId
+                          ? insurers.find((i) => i._id === formData.insurerId)?.name ||
+                            formData.insurerName ||
+                            formData.insurerId
+                          : ""
+                      }
+                      options={insurers.map((i) => i.name)}
+                      onChange={(val) => {
+                        const matched = insurers.find((i) => i.name === val);
+                        setFormData((prev) => ({
+                          ...prev,
+                          insurerId: matched?._id || val,
+                          insurerName: val,
+                        }));
+                        if (errors.insurerId) setErrors((prev) => ({ ...prev, insurerId: null }));
+                      }}
+                      placeholder="Select or type insurer name"
+                      error={errors.insurerId}
+                      isSearchable
+                      isCreatable
+                      isClearable
+                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                          Claim Reference <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.claimNumber}
+                          onChange={(e) => {
+                            handleChange("claimNumber", e.target.value);
+                            if (errors.claimNumber) setErrors((prev) => ({ ...prev, claimNumber: null }));
+                          }}
+                          placeholder="e.g. CLM-123456"
+                          className={`w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 text-slate-700 dark:text-slate-200 ${
+                            errors.claimNumber
+                              ? "border-red-400"
+                              : "border-slate-200 dark:border-slate-700"
+                          }`}
+                        />
+                        {errors.claimNumber && (
+                          <p className="mt-1 text-xs text-red-500">{errors.claimNumber}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                          Excess Amount{" "}
+                          <span className="text-slate-400 dark:text-slate-500 font-normal">(optional)</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.excessAmount}
+                          onChange={(e) => handleChange("excessAmount", e.target.value)}
+                          placeholder="e.g. 500"
+                          className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 text-slate-700 dark:text-slate-200"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                        Policy Number{" "}
+                        <span className="text-slate-400 dark:text-slate-500 font-normal">(optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.policyNumber}
+                        onChange={(e) => handleChange("policyNumber", e.target.value)}
+                        placeholder="e.g. POL-789012"
+                        className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 text-slate-700 dark:text-slate-200"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Insurance fields for yes_pending */}
+                {formData.insuranceOption === "yes_pending" && (
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-xl space-y-3">
+                    <PremiumSelect
+                      label="Insurance Provider"
+                      required
+                      value={
+                        formData.insurerId
+                          ? insurers.find((i) => i._id === formData.insurerId)?.name ||
+                            formData.insurerName ||
+                            formData.insurerId
+                          : ""
+                      }
+                      options={insurers.map((i) => i.name)}
+                      onChange={(val) => {
+                        const matched = insurers.find((i) => i.name === val);
+                        setFormData((prev) => ({
+                          ...prev,
+                          insurerId: matched?._id || val,
+                          insurerName: val,
+                        }));
+                        if (errors.insurerId) setErrors((prev) => ({ ...prev, insurerId: null }));
+                      }}
+                      placeholder="Select or type insurer name"
+                      error={errors.insurerId}
+                      isSearchable
+                      isCreatable
+                      isClearable
+                    />
+                    {(() => {
+                      const selectedInsurer = insurers.find((i) => i._id === formData.insurerId);
+                      if (selectedInsurer?.claimsPhone) {
+                        return (
+                          <div className="flex items-center gap-2 p-2.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+                            <Phone size={13} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                Claims Phone Number
+                              </p>
+                              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+                                {selectedInsurer.claimsPhone}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                        Policy Number{" "}
+                        <span className="text-slate-400 dark:text-slate-500 font-normal">(optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.policyNumber}
+                        onChange={(e) => handleChange("policyNumber", e.target.value)}
+                        placeholder="e.g. POL-789012"
+                        className="w-full px-3 py-[9.5px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-400 text-slate-700 dark:text-slate-200"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Notes */}

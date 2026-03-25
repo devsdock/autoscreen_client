@@ -149,6 +149,29 @@ const profileService = {
       data,
     });
   },
+
+  // Insurance
+  getInsurance: () => {
+    return request({
+      method: "GET",
+      url: "/customer/insurance",
+    });
+  },
+
+  updateInsurance: (data) => {
+    return request({
+      method: "PUT",
+      url: "/customer/insurance",
+      data,
+    });
+  },
+
+  getInsuranceBookings: () => {
+    return request({
+      method: "GET",
+      url: "/customer/insurance/bookings",
+    });
+  },
 };
 
 export default profileService;
