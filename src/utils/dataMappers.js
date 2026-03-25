@@ -471,6 +471,8 @@ export const mapBooking = (booking) => {
       booking.provider?.reviewCount || booking.provider?.totalReviews || 0,
     providerPhone: booking.provider?.phone || booking.providerPhone,
     providerEmail: booking.provider?.email || booking.providerEmail,
+    providerBusinessType: booking.provider?.businessType || null,
+    providerVatNumber: booking.provider?.vatNumber || null,
     serviceLocationType: booking.serviceLocationType || booking.quote?.serviceLocation?.type || "mobile",
     workshopAddress: booking.provider?.serviceArea?.workshopAddress || null,
     estimatedDuration: booking.estimatedDuration || null,

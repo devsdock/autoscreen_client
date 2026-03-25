@@ -237,14 +237,21 @@ const ProviderResponseCard = ({
           >
             {displayName}
           </div>
-          {provider.businessType && (
-            <div style={{ fontSize: ".75rem" }} className="text-slate-500 dark:text-slate-400">
-              {provider.businessType === "company" ||
-              provider.businessType === "franchise"
-                ? "Franchise Workshop"
-                : "Independent Fitter"}
-            </div>
-          )}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {provider.businessType && (
+              <span style={{ fontSize: ".75rem" }} className="text-slate-500 dark:text-slate-400">
+                {provider.businessType === "company" ||
+                provider.businessType === "franchise"
+                  ? "Franchise Workshop"
+                  : "Independent Fitter"}
+              </span>
+            )}
+            {provider.businessType !== "individual" && provider.vatNumber && (
+              <span className="text-[0.625rem] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-px rounded-full dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
+                VAT Registered
+              </span>
+            )}
+          </div>
           <div
             style={{
               display: "flex",
