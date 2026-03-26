@@ -829,6 +829,15 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 26 March 2026 (Insurance Module — Client Portal)
+
+- **`QuotesNew.jsx` — Insurance pill on quote cards**: White translucent "Insurance Claim" badge with Shield icon in card header when `quote.hasInsurance`.
+- **`QuoteDetailPanel.jsx` — Insurance context bar**: Fourth "Insurance" column in blue gradient header showing Claim Reference/Claim Pending status, claim number, excess amount. Payment data includes `isInsuranceRegistered` and `insuranceBreakdown` for PaymentModal.
+- **`PaymentModal.jsx` — Insurance breakdown**: Shows Total Job Value / Insurer Covers (green negative) / Your Excess before standard line items.
+- **`BookingDetailDrawer.jsx` — Insurance price section**: Insurance Claim header with Shield icon, Total Job Value, Insurer Covers (green), Your Excess. "Excess Amount" / "You Paid" labels. VAT row always shown (percentage or "Included").
+- **`BookingCard.jsx` — Insurance badge + label**: Shield "Insurance" badge in header. "Excess Paid" label instead of "Paid" for insurance.
+- **`dataMappers.js` — Insurance + VAT fields**: Added `isInsuranceClaim`, `insuranceDetails`, `subtotal`, `vatPercentage` to `mapBooking`.
+
 ### 25 March 2026 (NewQuote — Insurance Step Layout Restructure)
 
 - **`NewQuote.jsx` — Insurance conditional fields moved inline with radio options**: Previously, the three insurance radio buttons were in a `grid grid-cols-1 gap-3 mb-4` container and the conditional fields blocks for `yes_with_claim` and `yes_pending` appeared AFTER all three radio buttons. Now each radio button is wrapped in its own `<div>` inside a `space-y-3` container, with its conditional fields block rendered directly below the button (with `mt-3` gap). This places the insurance form fields visually adjacent to the selected option instead of far below. No changes to field logic, validation, state, or submission payload.

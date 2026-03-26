@@ -1033,36 +1033,64 @@ const BookingDetailDrawer = ({
 
                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800 space-y-3">
                   <div className="space-y-2">
+                    {/* Insurance breakdown for registered provider bookings */}
+                    {booking.isInsuranceClaim && booking.insuranceDetails?.isRegisteredProvider && (
+                      <div className="space-y-1.5 pb-2 mb-2 border-b border-dashed border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <Shield size={12} className="text-emerald-600 dark:text-emerald-400" />
+                          <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Insurance Claim</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-600 dark:text-slate-400">Total Job Value</span>
+                          <span className="font-medium text-slate-700 dark:text-slate-200">
+                            {formatCurrency(booking.insuranceDetails.totalJobValue || 0)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-emerald-600 dark:text-emerald-400">Insurer Covers</span>
+                          <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                            -{formatCurrency(booking.insuranceDetails.insurerPortion || 0)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs font-semibold">
+                          <span className="text-slate-900 dark:text-white">Your Excess</span>
+                          <span className="text-slate-900 dark:text-white">
+                            {formatCurrency(booking.insuranceDetails.customerExcess || 0)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-slate-600 dark:text-slate-400">
-                        Subtotal
+                        {booking.isInsuranceClaim && booking.insuranceDetails?.isRegisteredProvider
+                          ? "Excess Amount"
+                          : "Subtotal"}
                       </span>
                       <span className="font-medium text-slate-700 dark:text-slate-200">
-                        {formatCurrency(
-                          (booking.price?.vatPercentage || 0) > 0
-                            ? booking.price?.subtotal ||
-                                booking.price?.total ||
-                                0
-                            : booking.price?.total || 0,
-                        )}
+                        {formatCurrency(booking.price?.subtotal || booking.price?.total || 0)}
                       </span>
                     </div>
 
-                    {booking.price?.vat > 0 &&
-                      (booking.price?.vatPercentage || 0) > 0 && (
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="text-slate-600 dark:text-slate-400">
-                            VAT ({booking.price?.vatPercentage || 0}%)
-                          </span>
-                          <span className="font-medium text-slate-700 dark:text-slate-200">
-                            {formatCurrency(booking.price.vat)}
-                          </span>
-                        </div>
-                      )}
+                    {/* VAT row — always show */}
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-600 dark:text-slate-400">
+                        {(booking.price?.vatPercentage || 0) > 0
+                          ? `VAT (${booking.price.vatPercentage}%)`
+                          : "VAT"}
+                      </span>
+                      <span className="font-medium text-slate-700 dark:text-slate-200">
+                        {(booking.price?.vatPercentage || 0) > 0 && booking.price?.vat > 0
+                          ? formatCurrency(booking.price.vat)
+                          : "Included"}
+                      </span>
+                    </div>
 
                     <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-700">
                       <span className="text-sm font-bold text-slate-900 dark:text-white">
-                        Total Amount
+                        {booking.isInsuranceClaim && booking.insuranceDetails?.isRegisteredProvider
+                          ? "You Paid"
+                          : "Total Amount"}
                       </span>
                       <span className="font-display font-bold text-primary-600 dark:text-primary-400 text-lg">
                         {formatCurrency(booking.price?.total || 0)}

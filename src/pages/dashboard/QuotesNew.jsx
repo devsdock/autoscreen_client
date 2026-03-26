@@ -11,6 +11,7 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
+  Shield,
 } from "lucide-react";
 import { QuoteCardSkeleton } from "../../components/skeletons/CardSkeleton";
 import useDashboardStore, {
@@ -96,11 +97,19 @@ const QuoteCard = ({ quote, onClick }) => {
           <div className="font-display text-base font-bold text-white truncate">
             {vehicleText}
           </div>
-          {regPlate && (
-            <span className="inline-block text-xs font-mono text-white/70 bg-white/10 px-2 py-0.5 rounded mt-1">
-              {regPlate}
-            </span>
-          )}
+          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+            {regPlate && (
+              <span className="inline-block text-xs font-mono text-white/70 bg-white/10 px-2 py-0.5 rounded">
+                {regPlate}
+              </span>
+            )}
+            {quote.hasInsurance && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-white/80 bg-white/15 px-2 py-0.5 rounded">
+                <Shield size={9} />
+                Insurance Claim
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex-shrink-0 text-right">
           {paymentDue ? (

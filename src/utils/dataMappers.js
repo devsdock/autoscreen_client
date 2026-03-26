@@ -456,9 +456,11 @@ export const mapBooking = (booking) => {
           (booking.priceBreakdown?.laborPrice || 0) ||
         booking.price?.subtotal ||
         0,
+      subtotal: booking.price?.subtotal || 0,
       callout: booking.priceBreakdown?.calloutFee || 0,
       materials: booking.priceBreakdown?.materialsPrice || 0, // Fallback if exists
       vat: booking.price?.vat || 0,
+      vatPercentage: booking.price?.vatPercentage || 0,
       total: booking.price?.total || booking.totalAmount || 0,
     },
     providerName:
@@ -473,6 +475,8 @@ export const mapBooking = (booking) => {
     providerEmail: booking.provider?.email || booking.providerEmail,
     providerBusinessType: booking.provider?.businessType || null,
     providerVatNumber: booking.provider?.vatNumber || null,
+    isInsuranceClaim: booking.isInsuranceClaim || false,
+    insuranceDetails: booking.insuranceDetails || null,
     serviceLocationType: booking.serviceLocationType || booking.quote?.serviceLocation?.type || "mobile",
     workshopAddress: booking.provider?.serviceArea?.workshopAddress || null,
     estimatedDuration: booking.estimatedDuration || null,

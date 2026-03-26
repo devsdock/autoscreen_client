@@ -9,6 +9,7 @@ import {
   CheckCircle,
   Phone,
   Navigation,
+  Shield,
 } from "lucide-react";
 import { formatCurrency } from "../../store/useDashboardStore";
 import StatusBadge from "../ui/StatusBadge";
@@ -149,6 +150,15 @@ const BookingCard = ({
                 <span className="font-mono text-xs text-white/50">{booking.vehicleRegNumber}</span>
               </>
             )}
+            {booking.isInsuranceClaim && (
+              <>
+                <span className="text-white/40">·</span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-white/80 bg-white/15 px-1.5 py-px rounded">
+                  <Shield size={9} />
+                  Insurance
+                </span>
+              </>
+            )}
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0 ml-3">
@@ -279,7 +289,9 @@ const BookingCard = ({
             })()}
           </span>
           {isPaid && (
-            <span className="text-xs font-normal text-slate-400">Paid</span>
+            <span className="text-xs font-normal text-slate-400">
+              {booking.isInsuranceClaim && booking.insuranceDetails?.isRegisteredProvider ? "Excess Paid" : "Paid"}
+            </span>
           )}
         </div>
 

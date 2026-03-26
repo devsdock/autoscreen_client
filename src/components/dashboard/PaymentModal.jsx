@@ -199,6 +199,30 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
                 </div>
               )}
 
+              {/* Insurance breakdown */}
+              {payment.isInsuranceRegistered && payment.insuranceBreakdown && (
+                <div className="space-y-1.5 mb-2">
+                  <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400 py-0.5">
+                    <span>Total Job Value</span>
+                    <span className="font-medium text-slate-900 dark:text-white">
+                      {formatCurrency(payment.insuranceBreakdown.totalJobValue)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400 py-0.5">
+                    <span>Insurer Covers</span>
+                    <span className="font-medium">
+                      -{formatCurrency(payment.insuranceBreakdown.insurerCovers)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm border-t border-dashed border-slate-200 dark:border-slate-700 pt-1.5">
+                    <span className="font-semibold text-slate-900 dark:text-white">Your Excess</span>
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {formatCurrency(payment.insuranceBreakdown.customerExcess)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Line items */}
               {payment.breakdown?.parts != null && (
                 <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400 py-0.5">

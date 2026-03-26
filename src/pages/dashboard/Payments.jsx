@@ -10,6 +10,7 @@ import {
   Clock,
   RotateCcw,
   History,
+  Shield,
 } from "lucide-react";
 import useDashboardStore, {
   formatDate,
@@ -311,9 +312,16 @@ const Payments = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="font-semibold text-slate-900 dark:text-white">
-                          {formatCurrency(payment.amount)}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-slate-900 dark:text-white">
+                            {formatCurrency(payment.amount)}
+                          </span>
+                          {payment.isInsuranceClaim && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 px-1.5 py-0.5 rounded">
+                              <Shield size={9} /> Insurance
+                            </span>
+                          )}
+                        </div>
                         {payment.status === "Refunded" &&
                           payment.refundAmount > 0 && (
                             <span className="text-[10px] text-red-600 dark:text-red-400 font-medium">
@@ -440,9 +448,16 @@ const Payments = () => {
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-lg font-bold text-slate-900 dark:text-white">
-                      {formatCurrency(payment.amount)}
-                    </p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-lg font-bold text-slate-900 dark:text-white">
+                        {formatCurrency(payment.amount)}
+                      </p>
+                      {payment.isInsuranceClaim && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 px-1.5 py-0.5 rounded">
+                          <Shield size={9} /> Insurance
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       {payment.date
                         ? formatDate(payment.date)

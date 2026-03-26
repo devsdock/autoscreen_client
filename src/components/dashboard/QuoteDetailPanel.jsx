@@ -114,10 +114,20 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
       ? rawAvatar.startsWith("http") || rawAvatar.startsWith("data:") ? rawAvatar : `${NodeURL}${rawAvatar}`
       : null;
 
+    // For insurance-registered providers, response.price = customer excess
     const subtotal = response.price || 0;
     const vatRate = platformSettings?.vatPercentage || 0;
     const vatAmount = vatRate > 0 ? Math.round(subtotal * (vatRate / 100) * 100) / 100 : 0;
     const total = subtotal + vatAmount;
+
+    // Insurance info for display in PaymentModal
+    const isInsuranceRegistered = response.isInsuranceRegistered && quote.hasInsurance;
+    const insuranceBreakdown = isInsuranceRegistered ? {
+      totalJobValue: response.insuranceDetails?.totalJobValue || 0,
+      customerExcess: response.insuranceDetails?.customerExcess || subtotal,
+      insurerCovers: response.insuranceDetails?.insurerClaimAmount ||
+        (response.insuranceDetails?.totalJobValue || 0) - (response.insuranceDetails?.customerExcess || subtotal),
+    } : null;
 
     setPaymentData({
       quoteId: quote.id,
@@ -137,6 +147,8 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
         vat: vatAmount,
         vatPercentage: vatRate,
       },
+      isInsuranceRegistered,
+      insuranceBreakdown,
     });
     setShowPaymentModal(true);
   };
@@ -364,6 +376,31 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                   <p className="font-display text-[15px] font-bold text-white leading-snug">—</p>
                 )}
               </div>
+              {/* Insurance Status */}
+              {quote?.hasInsurance && (
+                <>
+                  <div className="w-px bg-white/15 self-stretch hidden sm:block" />
+                  <div className="w-full sm:flex-1 sm:min-w-0">
+                    <p className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-1">Insurance</p>
+                    <span className="inline-flex items-center gap-1.5 mt-0.5 px-2.5 py-0.5 rounded text-[11px] font-semibold bg-white/15 text-white/90">
+                      <Shield size={11} />
+                      {quote.insuranceDetails?.claimStatus === "claim_pending"
+                        ? "Claim Pending"
+                        : "Claim Reference"}
+                    </span>
+                    {quote.insuranceDetails?.claimNumber && (
+                      <p className="font-mono text-xs text-white/60 mt-1">
+                        Ref: {quote.insuranceDetails.claimNumber}
+                      </p>
+                    )}
+                    {quote.insuranceDetails?.excessAmount > 0 && (
+                      <p className="text-xs text-white/50 mt-0.5">
+                        Excess: R{quote.insuranceDetails.excessAmount.toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Damage images row inside context bar */}

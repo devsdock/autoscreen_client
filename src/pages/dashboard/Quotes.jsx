@@ -12,6 +12,7 @@ import {
   Filter,
   Loader2,
   AlertCircle,
+  Shield,
 } from "lucide-react";
 import { CardSkeleton } from "../../components/skeletons/CardSkeleton";
 import useDashboardStore, {
@@ -476,6 +477,12 @@ const Quotes = () => {
                             type="quote"
                             size="sm"
                           />
+                          {quote.hasInsurance && (
+                            <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium rounded-full flex items-center gap-1">
+                              <Shield size={10} />
+                              Insurance
+                            </span>
+                          )}
                         </div>
 
                         {/* Service Type */}
