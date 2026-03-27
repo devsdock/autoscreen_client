@@ -215,6 +215,12 @@ const paymentStatusConfig = {
     dot: "bg-green-700 dark:bg-green-400",
     label: "Paid",
   },
+  insurance_direct: {
+    color:
+      "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400",
+    dot: "bg-green-700 dark:bg-green-400",
+    label: "Paid",
+  },
   Refunded: {
     color:
       "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400",

@@ -81,7 +81,10 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
 
       const res = await paymentService.initializePaystack(params, coversFees);
 
-      if (res.success && res.authorization_url) {
+      if (res.success && res.redirect_url && !res.authorization_url) {
+        // R0 insurance — no Paystack payment, booking confirmed directly
+        window.location.href = res.redirect_url;
+      } else if (res.success && res.authorization_url) {
         if (!isPaystackUrl(res.authorization_url)) {
           throw new Error("Invalid payment redirect URL.");
         }
@@ -131,10 +134,14 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
           <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800">
             <div>
               <h2 id="payment-modal-title" className="text-[1.25rem] font-bold text-slate-900 dark:text-white">
-                Accept & Pay in Full
+                {payment.isInsuranceRegistered && payment.amount === 0
+                  ? "Confirm Insurance Booking"
+                  : "Accept & Pay in Full"}
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                Lock in this quote with full payment
+                {payment.isInsuranceRegistered && payment.amount === 0
+                  ? "Your insurer covers the full cost — no payment needed"
+                  : "Lock in this quote with full payment"}
               </p>
             </div>
             <button
@@ -220,6 +227,11 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
                       {formatCurrency(payment.insuranceBreakdown.customerExcess)}
                     </span>
                   </div>
+                  {payment.insuranceBreakdown.customerExcess === 0 && (
+                    <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1.5">
+                      Fully covered by insurer — no payment required
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -363,7 +375,9 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
               ) : (
                 <>
                   <CreditCard size={18} />
-                  Pay {formatCurrency(payment.amount)}
+                  {payment.isInsuranceRegistered && payment.amount === 0
+                    ? "Confirm Booking"
+                    : `Pay ${formatCurrency(payment.amount)}`}
                 </>
               )}
             </button>

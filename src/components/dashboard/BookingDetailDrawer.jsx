@@ -246,7 +246,7 @@ const BookingDetailDrawer = ({
     "searching",
     "awaiting-customer-approval",
   ].includes(currentStatus);
-  const canReschedule = currentStatus === "confirmed" && booking?.scheduledDate && currentPaymentStatus === "paid" &&
+  const canReschedule = currentStatus === "confirmed" && booking?.scheduledDate && (currentPaymentStatus === "paid" || currentPaymentStatus === "insurance_direct") &&
     new Date(booking.scheduledDate) - new Date() > 24 * 3600000;
   const canPay =
     currentPaymentStatus === "unpaid" &&
@@ -258,13 +258,13 @@ const BookingDetailDrawer = ({
     (currentStatus === "completed" || booking?.status === "Completed") &&
     (!booking?.rating || !booking?.rating?.score);
   const canDownloadInvoice =
-    ["paid", "refunded", "partially_refunded", "partially refunded"].includes(
+    ["paid", "insurance_direct", "refunded", "partially_refunded", "partially refunded"].includes(
       currentPaymentStatus,
     ) ||
     currentStatus === "completed" ||
     currentStatus === "completed-by-fitter";
   const isInvoiceEnabled =
-    currentPaymentStatus === "paid" ||
+    currentPaymentStatus === "paid" || currentPaymentStatus === "insurance_direct" ||
     currentStatus === "completed" ||
     currentStatus === "completed-by-fitter" ||
     currentStatus === "confirmed" ||
@@ -300,7 +300,7 @@ const BookingDetailDrawer = ({
                 booking.status?.toLowerCase() === "searching" &&
                 booking.quotes?.length > 0
                   ? "awaiting-customer-approval"
-                  : booking.status?.toLowerCase() === "confirmed" && booking.scheduledDate && booking.paymentStatus?.toLowerCase() === "paid"
+                  : booking.status?.toLowerCase() === "confirmed" && booking.scheduledDate && (booking.paymentStatus?.toLowerCase() === "paid" || booking.paymentStatus?.toLowerCase() === "insurance_direct")
                     ? (booking.rescheduledAt ? "rescheduled" : "scheduled")
                     : booking.status
               }
@@ -948,7 +948,7 @@ const BookingDetailDrawer = ({
                     </div>
                   )}
                   {/* Phone — staff phone if available, else provider phone */}
-                  {(booking.paymentStatus === "paid" ||
+                  {(booking.paymentStatus === "paid" || booking.paymentStatus === "insurance_direct" ||
                     ["confirmed", "in-progress", "in_progress", "completed"].includes(currentStatus)) &&
                     (booking.assignedStaffPhone || booking.providerPhone) && (
                     <div className={`${booking.assignedStaffName ? "mt-2" : "mt-3 pt-3 border-t border-slate-200 dark:border-slate-700"}`}>
@@ -1092,9 +1092,14 @@ const BookingDetailDrawer = ({
                           ? "You Paid"
                           : "Total Amount"}
                       </span>
-                      <span className="font-display font-bold text-primary-600 dark:text-primary-400 text-lg">
-                        {formatCurrency(booking.price?.total || 0)}
-                      </span>
+                      <div className="text-right">
+                        <span className="font-display font-bold text-primary-600 dark:text-primary-400 text-lg">
+                          {formatCurrency(booking.price?.total || 0)}
+                        </span>
+                        {booking.isInsuranceClaim && booking.insuranceDetails?.isRegisteredProvider && (booking.price?.total || 0) === 0 && (
+                          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">Fully covered by insurer</div>
+                        )}
+                      </div>
                     </div>
                   </div>
 

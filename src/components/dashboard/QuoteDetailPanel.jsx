@@ -25,6 +25,7 @@ import useDashboardStore, {
   formatCurrency,
 } from "../../store/useDashboardStore";
 import { NodeURL } from "../../services/api";
+import paymentService from "../../services/paymentService";
 import StatusBadge from "../ui/StatusBadge";
 import Button from "../ui/Button";
 import ProviderResponseCard from "./ProviderResponseCard";
@@ -94,9 +95,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     quote.status === "Closed" ||
     ["closed", "expired", "cancelled"].includes(quote.status?.toLowerCase());
 
-  const handleAcceptAndPay = (response) => {
-    // Just open the PaymentModal — no API call yet.
-    // Booking is created only after Paystack payment succeeds.
+  const handleAcceptAndPay = async (response) => {
     const providerName =
       response.provider?.businessName ||
       response.provider?.name ||
@@ -128,6 +127,27 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
       insurerCovers: response.insuranceDetails?.insurerClaimAmount ||
         (response.insuranceDetails?.totalJobValue || 0) - (response.insuranceDetails?.customerExcess || subtotal),
     } : null;
+
+    // R0 insurance — skip payment modal, call backend directly
+    if (isInsuranceRegistered && total === 0) {
+      try {
+        const res = await paymentService.initializePaystack(
+          { quoteId: quote.id, responseId: response.id },
+          false,
+        );
+        if (res.success && res.redirect_url) {
+          window.location.href = res.redirect_url;
+          return;
+        }
+        // Backend didn't return redirect — show error
+        addToast?.({ type: "error", message: res.message || "Failed to confirm insurance booking. Please try again." });
+        return;
+      } catch (err) {
+        import.meta.env.DEV && console.error("R0 insurance confirm error:", err);
+        addToast?.({ type: "error", message: "Failed to confirm insurance booking. Please try again." });
+        return;
+      }
+    }
 
     setPaymentData({
       quoteId: quote.id,

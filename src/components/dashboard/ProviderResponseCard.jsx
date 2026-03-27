@@ -495,13 +495,15 @@ const ProviderResponseCard = ({
                     <tr>
                       <td style={{ padding: ".375rem 0 .125rem", whiteSpace: "nowrap", textAlign: "left", borderTop: "1px dashed #e2e8f0" }} className="text-emerald-700 dark:text-emerald-300 font-semibold">You pay</td>
                       <td style={{ padding: ".375rem 0 .125rem", textAlign: "right", whiteSpace: "nowrap", borderTop: "1px dashed #e2e8f0" }} className="text-emerald-600 dark:text-emerald-400">
-                        <span style={{ fontSize: "1.25rem", fontWeight: 800, letterSpacing: "-.02em" }}>R {price ? price.toLocaleString() : "0"}</span>
+                        <span style={{ fontSize: "1.25rem", fontWeight: 800, letterSpacing: "-.02em" }}>
+                          {price > 0 ? `R ${price.toLocaleString()}` : "R 0"}
+                        </span>
                       </td>
                     </tr>
                   </tbody>
                 </table>
                 <div style={{ fontSize: ".6875rem", marginTop: ".25rem", textAlign: "right" }} className="text-emerald-500 dark:text-emerald-500 font-medium">
-                  Excess only
+                  {price === 0 ? "Fully covered by insurer" : "Excess only"}
                 </div>
               </div>
             ) : (
@@ -564,7 +566,9 @@ const ProviderResponseCard = ({
               }}
               className="w-full flex items-center justify-center hover:shadow-lg hover:-translate-y-px"
             >
-              Accept &amp; Pay
+              {response.isInsuranceRegistered && (response.insuranceDetails?.customerExcess === 0 || response.price === 0)
+                ? "Accept & Confirm"
+                : "Accept & Pay"}
             </button>
           )}
 

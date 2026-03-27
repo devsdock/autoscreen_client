@@ -50,7 +50,8 @@ const BookingCard = ({
   onDirections,
 }) => {
   const category = getCategory(booking);
-  const isPaid = booking.paymentStatus?.toLowerCase() === "paid";
+  const pStatus = booking.paymentStatus?.toLowerCase();
+  const isPaid = pStatus === "paid" || pStatus === "insurance_direct";
   const hasSchedule = !!booking.scheduledDate;
   const isCompletedByFitter = booking.status?.toLowerCase() === "completed-by-fitter";
   const isCompleted = booking.status?.toLowerCase() === "completed";
@@ -283,14 +284,17 @@ const BookingCard = ({
         <div className="flex items-baseline gap-2">
           <span className="font-display text-[1.125rem] font-extrabold text-slate-900 dark:text-white">
             {(() => {
-              const num = +(booking.price?.total) || 0;
+              const isInsR0 = booking.isInsuranceClaim && booking.insuranceDetails?.isRegisteredProvider && (+(booking.price?.total) || 0) === 0;
+              const num = isInsR0 ? (+(booking.insuranceDetails?.totalJobValue) || 0) : (+(booking.price?.total) || 0);
               const hasDecimals = num % 1 !== 0;
               return `R ${num.toLocaleString("en-US", { minimumFractionDigits: hasDecimals ? 2 : 0, maximumFractionDigits: 2, useGrouping: false })}`;
             })()}
           </span>
           {isPaid && (
             <span className="text-xs font-normal text-slate-400">
-              {booking.isInsuranceClaim && booking.insuranceDetails?.isRegisteredProvider ? "Excess Paid" : "Paid"}
+              {booking.isInsuranceClaim && booking.insuranceDetails?.isRegisteredProvider
+                ? ((+(booking.price?.total) || 0) === 0 ? "Insurance Covered" : "Excess Paid")
+                : "Paid"}
             </span>
           )}
         </div>

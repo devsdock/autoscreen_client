@@ -204,7 +204,8 @@ export const mapBooking = (booking) => {
     const currentStatusLevel = statusOrder[currentStatus] || 1;
 
     // Check payment status
-    const isPaid = (booking.paymentStatus || "").toLowerCase() === "paid";
+    const pStat = (booking.paymentStatus || "").toLowerCase();
+    const isPaid = pStat === "paid" || pStat === "insurance_direct";
 
     // Build timeline stages
     const stages = [];
@@ -370,6 +371,7 @@ export const mapBooking = (booking) => {
   const getNormalizedPaymentStatus = () => {
     if (!booking.paymentStatus) return "Unpaid";
     const ps = booking.paymentStatus.toLowerCase();
+    if (ps === "insurance_direct") return "Paid";
     if (ps === "partially_refunded") return "Partial Refund";
     return ps.charAt(0).toUpperCase() + ps.slice(1);
   };
