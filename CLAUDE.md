@@ -829,6 +829,16 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 27 March 2026 (Insurance insurance_direct & R0 Fixes)
+
+- **`StatusBadge.jsx` — `insurance_direct` entry**: Green "Paid" styling in `paymentStatusConfig`.
+- **`BookingCard.jsx` — isPaid includes insurance_direct**: Scheduled state, reschedule, directions all work. R0 shows totalJobValue (R1,400) with "Insurance Covered". Non-zero shows "Excess Paid".
+- **`BookingDetailDrawer.jsx` — insurance_direct support**: Scheduled detection, canReschedule, canDownloadInvoice, phone display all include `insurance_direct`.
+- **`dataMappers.js` — insurance_direct normalization**: `isPaid` includes it. `getNormalizedPaymentStatus` returns "Paid".
+- **`QuoteDetailPanel.jsx` — R0 skips payment modal**: Calls backend directly, redirects to book-appointment. Error toast on failure.
+- **`PaymentModal.jsx` — R0 redirect_url handling**: Title "Confirm Insurance Booking", button "Confirm Booking" for R0.
+- **`ProviderResponseCard.jsx` — R0 button/label**: "Accept & Confirm" button. "Fully covered by insurer" label.
+
 ### 26 March 2026 (Insurance Module — Client Portal)
 
 - **`QuotesNew.jsx` — Insurance pill on quote cards**: White translucent "Insurance Claim" badge with Shield icon in card header when `quote.hasInsurance`.
