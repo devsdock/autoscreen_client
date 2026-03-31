@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Navigation,
   Users,
+  ShieldCheck,
 } from "lucide-react";
 import Drawer, { DrawerFooter } from "../ui/Drawer";
 import StatusBadge from "../ui/StatusBadge";
@@ -921,22 +922,30 @@ const BookingDetailDrawer = ({
                       );
                     })()}
                     <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-slate-900 dark:text-white">
-                          {booking.providerName}
-                        </p>
-                        {booking.providerBusinessType !== "individual" && booking.providerVatNumber && (
-                          <span className="text-[0.625rem] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-full dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
-                            VAT Registered
-                          </span>
-                        )}
-                      </div>
+                      <p className="font-semibold text-slate-900 dark:text-white">
+                        {booking.providerName}
+                      </p>
                       <Rating
                         value={booking.providerRating || 0}
                         reviewCount={booking.providerReviews || 0}
                         size="sm"
                         className="mt-1"
                       />
+                      {((booking.providerBusinessType !== "individual" && booking.providerVatNumber) || (booking.isInsuranceClaim && booking.providerInsuranceApproved)) && (
+                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                          {booking.providerBusinessType !== "individual" && booking.providerVatNumber && (
+                            <span className="text-[0.5625rem] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-full dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
+                              VAT Registered
+                            </span>
+                          )}
+                          {booking.isInsuranceClaim && booking.providerInsuranceApproved && (
+                            <span className="inline-flex items-center gap-0.5 text-[0.5625rem] font-medium bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                              <ShieldCheck size={8} />
+                              Insurance Approved
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                   {/* Assigned Technician — inside provider card */}

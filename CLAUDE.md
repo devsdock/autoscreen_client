@@ -829,6 +829,19 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 31 March 2026 (Insurance Approved Badge — Provider Cards, Insurance Context Only)
+
+- **`ProviderResponseCard.jsx` — Insurance Approved badge**: Blue `ShieldCheck` pill badge shown on the same row as rating/reviews (with `flex-wrap`), only when `response.isInsuranceRegistered` (insurance quote context). VAT Registered badge moved from between business type label and rating to same badges row. Font size `text-[0.5625rem]` to fit 160px provider column.
+- **`BookingCard.jsx` — Insurance Approved badge**: Blue badge shown next to VAT Registered badge in Provider column header, only when `booking.isInsuranceClaim && booking.providerInsuranceApproved`.
+- **`BookingDetailDrawer.jsx` — Insurance Approved badge**: Blue badge shown on a dedicated row below reviews (below provider name and Rating component), only when `booking.isInsuranceClaim && booking.providerInsuranceApproved`. VAT Registered badge also moved to same row below reviews.
+- **`QuoteDetailPanel.jsx` — Insurance Approved badge**: Blue badge shown next to provider name in confirmed provider bar, only when `quote.hasInsurance` and provider has active insurance partnerships.
+- **`dataMappers.js` — `providerInsuranceApproved` added**: New boolean field in `mapBooking` output, derived from `booking.provider.insurancePartnerships?.some(p => p.isActive)`.
+- **UX decision**: Badge only shown on insurance-related quotes/bookings to avoid confusing customers on non-insurance jobs.
+
+### 31 March 2026 (Staff Reassignment — Socket Notification Handler)
+
+- **`socketService.js` — `technician_changed` added to booking refresh handler**: When a business provider reassigns a staff member, the customer receives a `technician_changed` notification via socket. The `refreshData` method now includes this type in the condition that triggers `fetchBookings()`, so the BookingDetailDrawer automatically reflects the updated technician without requiring a page reload.
+
 ### 27 March 2026 (Insurance insurance_direct & R0 Fixes)
 
 - **`StatusBadge.jsx` — `insurance_direct` entry**: Green "Paid" styling in `paymentStatusConfig`.
@@ -1201,6 +1214,14 @@ Customer pays → booking: confirmed → NOW visible in Bookings page (Upcoming 
 - **`NewQuote.jsx` — `handleUseMyLocation` handler added**: Uses `navigator.geolocation.getCurrentPosition`, stores GPS coordinates in `formData.coordinates`, then reverse-geocodes via Nominatim to auto-fill `city`, `suburb`, `addressLine1`, and `postcode` fields.
 - **`NewQuote.jsx` — "Use My Location" button added in Step 3**: Appears right-aligned above the City/Area PremiumSelect. Styled with `text-primary-600`, `border-primary-300`, dark mode variants.
 - **`NewQuote.jsx` — submit geocoding updated**: Replaced `geocodingService.getCoordinates` fallback with Nominatim `geocodeAddress` call. Condition tightened to `!finalCoordinates?.lat` to avoid unnecessary API calls when coordinates were set via "Use My Location".
+
+---
+
+### 31 March 2026 (Insurance Page Fixes + Prefill)
+
+- **`Insurance.jsx` — Excess display fixed (C-039)**: "Excess: —" now shows actual values. R0 excess shows "Fully Covered by Insurance" instead of "R 0.00". Backend field name aligned (`excessAmount`).
+- **`Insurance.jsx` — Service line-by-line display (C-040)**: Multi-service bookings now render each service on its own line (e.g., "Glass Replacement - Windscreen" on line 1, "Glass Repair - Quarter Glass" on line 2). Service column spans full width.
+- **`dataMappers.js` — `mapUser()` now includes `insurance` (C-041)**: Added `insurance: user.insurance || null` to the `mapUser()` return object. Enables insurance prefill in NewQuote from the dashboard store's `user` object.
 
 ---
 

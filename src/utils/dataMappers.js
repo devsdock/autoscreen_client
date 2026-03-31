@@ -477,6 +477,7 @@ export const mapBooking = (booking) => {
     providerEmail: booking.provider?.email || booking.providerEmail,
     providerBusinessType: booking.provider?.businessType || null,
     providerVatNumber: booking.provider?.vatNumber || null,
+    providerInsuranceApproved: booking.provider?.insurancePartnerships?.some(p => p.isActive) || false,
     isInsuranceClaim: booking.isInsuranceClaim || false,
     insuranceDetails: booking.insuranceDetails || null,
     serviceLocationType: booking.serviceLocationType || booking.quote?.serviceLocation?.type || "mobile",
@@ -668,5 +669,6 @@ export const mapUser = (user) => {
     },
     vehicles,
     addresses,
+    insurance: user.insurance || null,
   };
 };

@@ -4,6 +4,7 @@ import {
   Clock,
   MapPin,
   Shield,
+  ShieldCheck,
   Check,
   Wrench,
   Phone,
@@ -246,11 +247,6 @@ const ProviderResponseCard = ({
                   : "Independent Fitter"}
               </span>
             )}
-            {provider.businessType !== "individual" && provider.vatNumber && (
-              <span className="text-[0.625rem] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-px rounded-full dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
-                VAT Registered
-              </span>
-            )}
           </div>
           <div
             style={{
@@ -279,6 +275,21 @@ const ProviderResponseCard = ({
               </span>
             )}
           </div>
+          {((provider.businessType !== "individual" && provider.vatNumber) || response.isInsuranceRegistered) && (
+            <div className="flex items-center gap-1 flex-wrap">
+              {provider.businessType !== "individual" && provider.vatNumber && (
+                <span className="text-[0.5625rem] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-px rounded-full dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
+                  VAT Registered
+                </span>
+              )}
+              {response.isInsuranceRegistered && (
+                <span className="inline-flex items-center gap-0.5 text-[0.5625rem] font-medium bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-px rounded-full dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                  <ShieldCheck size={8} />
+                  Insurance Approved
+                </span>
+              )}
+            </div>
+          )}
           {provider.distance && (
             <div style={{ fontSize: ".6875rem" }} className="text-slate-400 dark:text-slate-500">
               {provider.distance} away

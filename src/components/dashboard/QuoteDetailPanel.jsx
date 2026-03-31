@@ -19,6 +19,7 @@ import {
   Star,
   Phone,
   Shield,
+  ShieldCheck,
 } from "lucide-react";
 import useDashboardStore, {
   formatDate,
@@ -648,6 +649,12 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                     {acceptedResp?.provider?.businessType !== "individual" && acceptedResp?.provider?.vatNumber && (
                       <span className="text-[0.625rem] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-full dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
                         VAT Registered
+                      </span>
+                    )}
+                    {quote?.hasInsurance && acceptedResp?.provider?.insurancePartnerships?.some(p => p.isActive) && (
+                      <span className="inline-flex items-center gap-0.5 text-[0.625rem] font-medium bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                        <ShieldCheck size={9} />
+                        Insurance Approved
                       </span>
                     )}
                   </div>

@@ -334,9 +334,15 @@ const Insurance = () => {
 
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-sm">
                   {(booking.serviceDescription || booking.service?.name || booking.serviceType) && (
-                    <div className="min-w-0">
+                    <div className="min-w-0 sm:col-span-2 lg:col-span-4">
                       <span className="text-slate-500 dark:text-slate-400">Service: </span>
-                      <span className="text-slate-700 dark:text-slate-300">{booking.serviceDescription || booking.service?.name || booking.serviceType}</span>
+                      <span className="text-slate-700 dark:text-slate-300">
+                        {Array.isArray(booking.serviceDescription)
+                          ? booking.serviceDescription.map((line, i) => (
+                              <span key={i}>{line}{i < booking.serviceDescription.length - 1 && <br />}</span>
+                            ))
+                          : booking.serviceDescription || booking.service?.name || booking.serviceType}
+                      </span>
                     </div>
                   )}
                   {(booking.providerName || booking.provider?.businessName) && (
@@ -353,7 +359,11 @@ const Insurance = () => {
                   )}
                   <div className="min-w-0">
                     <span className="text-slate-500 dark:text-slate-400">Excess: </span>
-                    <span className="text-slate-700 dark:text-slate-300 font-medium">{formatCurrency(booking.excessAmount)}</span>
+                    <span className="text-slate-700 dark:text-slate-300 font-medium">
+                      {booking.excessAmount === 0
+                        ? "Fully Covered by Insurance"
+                        : formatCurrency(booking.excessAmount)}
+                    </span>
                   </div>
                 </div>
               </div>

@@ -10,6 +10,7 @@ import {
   Phone,
   Navigation,
   Shield,
+  ShieldCheck,
 } from "lucide-react";
 import { formatCurrency } from "../../store/useDashboardStore";
 import StatusBadge from "../ui/StatusBadge";
@@ -222,6 +223,12 @@ const BookingCard = ({
             {booking.providerBusinessType !== "individual" && booking.providerVatNumber && (
               <span className="text-[0.5625rem] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-px rounded-full dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 flex-shrink-0">
                 VAT Registered
+              </span>
+            )}
+            {booking.isInsuranceClaim && booking.providerInsuranceApproved && (
+              <span className="text-[0.5625rem] font-medium bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-px rounded-full dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 flex-shrink-0 inline-flex items-center gap-0.5">
+                <ShieldCheck size={8} />
+                Insurance Approved
               </span>
             )}
           </div>
