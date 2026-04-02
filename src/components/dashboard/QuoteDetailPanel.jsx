@@ -600,7 +600,10 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           const vehicleLabel = typeof quote.vehicle === "object"
             ? `${quote.vehicle.make || ""} ${quote.vehicle.model || ""}`.trim()
             : quote.vehicle || "";
-          const paidAmount = booking?.price?.total || acceptedResp?.price || 0;
+          const paidAmount = +(booking?.price?.total) || +(acceptedResp?.price) || 0;
+          const isInsuranceClaim = (booking?.isInsuranceClaim || (acceptedResp?.isInsuranceRegistered && quote?.hasInsurance));
+          const isRegisteredProvider = acceptedResp?.isInsuranceRegistered || booking?.insuranceDetails?.isRegisteredProvider;
+          const totalJobValue = +(acceptedResp?.insuranceDetails?.totalJobValue) || +(booking?.insuranceDetails?.totalJobValue) || 0;
 
           return (
             <div
@@ -684,7 +687,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
               {/* Price + Paid badge */}
               <div className="flex items-center justify-between sm:block sm:text-right sm:flex-shrink-0">
                 <div style={{ fontSize: "1.375rem", fontWeight: 800, lineHeight: 1 }} className="text-slate-900 dark:text-white">
-                  {formatCurrency(paidAmount)}
+                  {formatCurrency(isInsuranceClaim && isRegisteredProvider && paidAmount === 0 && totalJobValue > 0 ? totalJobValue : paidAmount)}
                 </div>
                 <div
                   style={{
@@ -698,7 +701,11 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                   }}
                   className="text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20 sm:mt-1.5"
                 >
-                  <Check size={11} /> Paid in full
+                  {isInsuranceClaim && isRegisteredProvider ? (
+                    paidAmount === 0 ? (<><ShieldCheck size={11} /> Insurance Covered</>) : (<><ShieldCheck size={11} /> Excess Paid</>)
+                  ) : (
+                    <><Check size={11} /> Paid in full</>
+                  )}
                 </div>
               </div>
             </div>

@@ -15,6 +15,7 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  ShieldCheck,
 } from "lucide-react";
 import useDashboardStore, { formatCurrency } from "../../store/useDashboardStore";
 import quoteService from "../../services/quoteService";
@@ -90,7 +91,7 @@ const JourneyProgress = ({ currentStep = 4 }) => (
 
 // ─── Provider Paid Bar ───────────────────────────────────────────────────────
 
-const ProviderPaidBar = ({ providerName, service, vehicle, amount, avatarUrl }) => {
+const ProviderPaidBar = ({ providerName, service, vehicle, amount, avatarUrl, isInsuranceClaim, isRegisteredProvider, totalJobValue }) => {
   const initials = (providerName || "?")
     .split(" ")
     .map((w) => w[0])
@@ -149,11 +150,14 @@ const ProviderPaidBar = ({ providerName, service, vehicle, amount, avatarUrl }) 
       {/* Amount + badge */}
       <div className="flex items-center gap-3 flex-shrink-0">
         <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
-          {formatCurrency(amount)}
+          {formatCurrency(isInsuranceClaim && isRegisteredProvider && amount === 0 && totalJobValue > 0 ? totalJobValue : amount)}
         </span>
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200 dark:border-emerald-800">
-          <Check size={11} />
-          Paid in full
+          {isInsuranceClaim && isRegisteredProvider ? (
+            amount === 0 ? (<><ShieldCheck size={11} /> Insurance Covered</>) : (<><ShieldCheck size={11} /> Excess Paid</>)
+          ) : (
+            <><Check size={11} /> Paid in full</>
+          )}
         </span>
       </div>
     </div>
@@ -995,7 +999,15 @@ const BookAppointment = () => {
 
     return address ? `Mobile — ${address}` : address;
   })();
-  const totalAmount = booking?.price?.total || booking?.totalAmount || 0;
+  const totalAmount = +(booking?.price?.total) || +(booking?.totalAmount) || 0;
+
+  // Insurance detection for ProviderPaidBar
+  const acceptedRespForInsurance = quote?.responses?.find(
+    (r) => r.status === "accepted" || r.status === "Accepted" || r._id === quote?.acceptedResponseId
+  );
+  const isInsuranceClaim = booking?.isInsuranceClaim || (acceptedRespForInsurance?.isInsuranceRegistered && quote?.hasInsurance);
+  const isRegisteredProvider = acceptedRespForInsurance?.isInsuranceRegistered || booking?.insuranceDetails?.isRegisteredProvider;
+  const insuranceTotalJobValue = +(acceptedRespForInsurance?.insuranceDetails?.totalJobValue) || +(booking?.insuranceDetails?.totalJobValue) || 0;
 
   // Get registration number from quote vehicle raw data
   const regNumber = quote?.vehicle?.registrationNumber || "";
@@ -1236,6 +1248,9 @@ const BookAppointment = () => {
           vehicle={vehicleStr}
           amount={totalAmount}
           avatarUrl={providerAvatarUrl}
+          isInsuranceClaim={isInsuranceClaim}
+          isRegisteredProvider={isRegisteredProvider}
+          totalJobValue={insuranceTotalJobValue}
         />
       )}
 

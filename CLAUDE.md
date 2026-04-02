@@ -834,6 +834,12 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 2 April 2026 (Insurance R0 Banner — Show Total Job Value Instead of R0)
+
+- **`QuoteDetailPanel.jsx` — Confirmed provider banner insurance-aware**: R0 insurance claims previously showed `R 0.00` + "Paid in full" in the top confirmed-provider bar. Now shows the total job value (e.g. `R 1,300`) + "Insurance Covered" badge (green pill with `ShieldCheck` icon) when `isInsuranceClaim && isRegisteredProvider && paidAmount === 0 && totalJobValue > 0`. Non-zero excess insurance shows amount + "Excess Paid" badge. Normal bookings unchanged ("Paid in full"). `paidAmount` and `totalJobValue` use numeric coercion (`+()`) to handle potential string values from MongoDB/JSON. Insurance detection uses `acceptedResp.isInsuranceRegistered || booking.insuranceDetails.isRegisteredProvider` gate (matches BookingCard pattern).
+- **`BookAppointment.jsx` — ProviderPaidBar insurance-aware**: Same R0 insurance fix applied to the ProviderPaidBar component on the appointment scheduling page. Component accepts 3 new props: `isInsuranceClaim`, `isRegisteredProvider`, `totalJobValue`. Insurance data derived from accepted quote response (`acceptedRespForInsurance`) and booking fields. `ShieldCheck` icon imported from lucide-react. `totalAmount` uses numeric coercion.
+- **Already handled (no changes)**: `BookingCard.jsx` (lines 294-304) and `BookingDetailDrawer.jsx` (lines 1046-1110) already had correct insurance-aware display logic.
+
 ### 31 March 2026 (Insurance Approved Badge — Provider Cards, Insurance Context Only)
 
 - **`ProviderResponseCard.jsx` — Insurance Approved badge**: Blue `ShieldCheck` pill badge shown on the same row as rating/reviews (with `flex-wrap`), only when `response.isInsuranceRegistered` (insurance quote context). VAT Registered badge moved from between business type label and rating to same badges row. Font size `text-[0.5625rem]` to fit 160px provider column.
