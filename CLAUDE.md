@@ -24,6 +24,11 @@ _If you are an AI assistant or subagent reading this, you MUST unconditionally f
    - If a flow, architecture, or workflow changes during your implementation, you MUST automatically update the corresponding `CLAUDE.md` file to reflect these changes.
    - If you resolve or work on a known bug/feature, you MUST automatically update `ISSUES.md` (mark it as FIXED, or update the status) without waiting for the user to tell you.
 
+5. **Mandatory Code Review After Implementation**:
+   - After completing ANY implementation (bug fix, feature, refactor), you MUST run a code review using the `superpowers:requesting-code-review` skill BEFORE marking the task as done.
+   - Dispatch the `superpowers:code-reviewer` subagent with: what was implemented, the plan/requirements, base and head SHAs, files changed, and a brief description.
+   - Fix **Critical** and **Important** issues before proceeding. Do NOT skip code review for "simple changes".
+
 ---
 
 ## 📋 Table of Contents

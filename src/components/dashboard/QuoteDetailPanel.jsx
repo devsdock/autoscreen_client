@@ -77,7 +77,14 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     );
   }
 
-  const responses = quoteResponses.filter((r) => r.quoteRequestId === quote.id);
+  const responses = quoteResponses.filter((r) => {
+    if (r.quoteRequestId !== quote.id) return false;
+    // Keep accepted responses even if provider is deleted
+    if (r.status === "accepted" || r.status === "Accepted") return true;
+    // Hide responses from deleted/missing providers
+    if (!r.provider || r.provider.isDeleted) return false;
+    return true;
+  });
   const isAccepted =
     quote.status === "Accepted" ||
     quote.status?.toLowerCase() === "accepted" ||

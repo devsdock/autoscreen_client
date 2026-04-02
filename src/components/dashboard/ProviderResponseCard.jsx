@@ -38,15 +38,21 @@ const ProviderResponseCard = ({
     validUntil,
   } = response;
 
-  const initials = (provider.businessName || provider.name || "P")
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  // Handle deleted/missing provider — show disabled card
+  const isProviderDeleted = !provider || provider.isDeleted;
+
+  const initials = isProviderDeleted
+    ? "NA"
+    : (provider.businessName || provider.name || "P")
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
 
   // Resolve provider avatar URL
   const providerAvatarUrl = (() => {
+    if (isProviderDeleted) return null;
     const raw = provider.avatarUrl || provider.personalImageUrl || provider.companyLogoUrl || provider.profileImage;
     if (!raw) return null;
     if (raw.startsWith("http") || raw.startsWith("data:")) return raw;
@@ -77,11 +83,13 @@ const ProviderResponseCard = ({
   const isUrgent =
     effectiveExpiry && effectiveExpiry - new Date() < 6 * 60 * 60 * 1000;
 
-  const displayName = ["company", "franchise", "Business"].includes(
-    provider.businessType || provider.type
-  )
-    ? provider.businessName || provider.name
-    : provider.name || "Provider";
+  const displayName = isProviderDeleted
+    ? "Provider"
+    : ["company", "franchise", "Business"].includes(
+        provider.businessType || provider.type
+      )
+      ? provider.businessName || provider.name
+      : provider.name || "Provider";
 
   const isBest = response._bestValue;
   const quoteServiceMode = quoteData?.serviceLocation?.type;
@@ -238,62 +246,66 @@ const ProviderResponseCard = ({
           >
             {displayName}
           </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {provider.businessType && (
-              <span style={{ fontSize: ".75rem" }} className="text-slate-500 dark:text-slate-400">
-                {provider.businessType === "company" ||
-                provider.businessType === "franchise"
-                  ? "Franchise Workshop"
-                  : "Independent Fitter"}
-              </span>
-            )}
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: ".25rem",
-              fontSize: ".75rem",
-              fontWeight: 600,
-            }}
-            className="text-slate-700 dark:text-slate-300"
-          >
-            <Star
-              size={11}
-              style={{ fill: "#F59E0B", color: "#F59E0B" }}
-            />
-            {(provider.rating || 0).toFixed(1)}
-            {provider.reviewCount > 0 && (
-              <span
+          {!isProviderDeleted && (
+            <>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {provider.businessType && (
+                  <span style={{ fontSize: ".75rem" }} className="text-slate-500 dark:text-slate-400">
+                    {provider.businessType === "company" ||
+                    provider.businessType === "franchise"
+                      ? "Franchise Workshop"
+                      : "Independent Fitter"}
+                  </span>
+                )}
+              </div>
+              <div
                 style={{
-                  fontWeight: 400,
-                  fontSize: ".6875rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: ".25rem",
+                  fontSize: ".75rem",
+                  fontWeight: 600,
                 }}
-                className="text-slate-400 dark:text-slate-500"
+                className="text-slate-700 dark:text-slate-300"
               >
-                ({provider.reviewCount})
-              </span>
-            )}
-          </div>
-          {((provider.businessType !== "individual" && provider.vatNumber) || response.isInsuranceRegistered) && (
-            <div className="flex items-center gap-1 flex-wrap">
-              {provider.businessType !== "individual" && provider.vatNumber && (
-                <span className="text-[0.5625rem] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-px rounded-full dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
-                  VAT Registered
-                </span>
+                <Star
+                  size={11}
+                  style={{ fill: "#F59E0B", color: "#F59E0B" }}
+                />
+                {(provider.rating || 0).toFixed(1)}
+                {provider.reviewCount > 0 && (
+                  <span
+                    style={{
+                      fontWeight: 400,
+                      fontSize: ".6875rem",
+                    }}
+                    className="text-slate-400 dark:text-slate-500"
+                  >
+                    ({provider.reviewCount})
+                  </span>
+                )}
+              </div>
+              {((provider.businessType !== "individual" && provider.vatNumber) || response.isInsuranceRegistered) && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  {provider.businessType !== "individual" && provider.vatNumber && (
+                    <span className="text-[0.5625rem] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-px rounded-full dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
+                      VAT Registered
+                    </span>
+                  )}
+                  {response.isInsuranceRegistered && (
+                    <span className="inline-flex items-center gap-0.5 text-[0.5625rem] font-medium bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-px rounded-full dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                      <ShieldCheck size={8} />
+                      Insurance Approved
+                    </span>
+                  )}
+                </div>
               )}
-              {response.isInsuranceRegistered && (
-                <span className="inline-flex items-center gap-0.5 text-[0.5625rem] font-medium bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-px rounded-full dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
-                  <ShieldCheck size={8} />
-                  Insurance Approved
-                </span>
+              {provider.distance && (
+                <div style={{ fontSize: ".6875rem" }} className="text-slate-400 dark:text-slate-500">
+                  {provider.distance} away
+                </div>
               )}
-            </div>
-          )}
-          {provider.distance && (
-            <div style={{ fontSize: ".6875rem" }} className="text-slate-400 dark:text-slate-500">
-              {provider.distance} away
-            </div>
+            </>
           )}
         </div>
 
@@ -552,7 +564,7 @@ const ProviderResponseCard = ({
           </div>
 
           {/* Accept Button */}
-          {!isAccepted && !isRejected && !disabled && (
+          {!isAccepted && !isRejected && !disabled && !isProviderDeleted && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -731,7 +743,7 @@ const ProviderResponseCard = ({
         )}
 
         {/* Provider Phone — only after payment confirmed */}
-        {isAccepted && bookingConfirmed && provider.phone && (
+        {isAccepted && bookingConfirmed && !isProviderDeleted && provider.phone && (
           <a
             href={`tel:${provider.phone}`}
             style={{

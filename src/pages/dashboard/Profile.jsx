@@ -1109,8 +1109,8 @@ const Profile = () => {
           </h3>
         </div>
 
-        {/* Saved Payment Methods */}
-        <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+        {/* Saved Payment Methods — hidden for now, re-enable when feature is ready */}
+        {/* <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
           <div className="flex items-center gap-3.5">
             <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
               <CreditCard size={16} className="text-slate-500 dark:text-slate-400" />
@@ -1120,10 +1120,10 @@ const Profile = () => {
               <p className="text-[13px] text-slate-400 dark:text-slate-500">Paystack</p>
             </div>
           </div>
-        </div>
+        </div> */}
 
-        {/* Save Card */}
-        <button
+        {/* Save Card — hidden for now, re-enable when feature is ready */}
+        {/* <button
           type="button"
           onClick={() => addToast({ type: "info", message: "Save card feature coming soon!" })}
           className="w-full flex items-center justify-between px-6 py-3.5 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors text-left"
@@ -1143,7 +1143,7 @@ const Profile = () => {
             </div>
           </div>
           <ChevronRight size={14} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
-        </button>
+        </button> */}
 
         {/* Sign Out */}
         <button
