@@ -285,7 +285,10 @@ const ProviderResponseCard = ({
                   </span>
                 )}
               </div>
-              {((provider.businessType !== "individual" && provider.vatNumber) || response.isInsuranceRegistered) && (
+              {((provider.businessType !== "individual" && provider.vatNumber) ||
+                response.isInsuranceRegistered ||
+                provider.paymentOptions?.cashOnCompletion ||
+                provider.paymentOptions?.cardOnCompletion) && (
                 <div className="flex items-center gap-1 flex-wrap">
                   {provider.businessType !== "individual" && provider.vatNumber && (
                     <span className="text-[0.5625rem] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-px rounded-full dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
@@ -296,6 +299,19 @@ const ProviderResponseCard = ({
                     <span className="inline-flex items-center gap-0.5 text-[0.5625rem] font-medium bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-px rounded-full dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
                       <ShieldCheck size={8} />
                       Insurance Approved
+                    </span>
+                  )}
+                  {/* Flexible Payment Options v1.2 — Cash on Completion badge */}
+                  {provider.paymentOptions?.cashOnCompletion &&
+                    (provider.enforcement?.stage || 0) < 3 && (
+                      <span className="text-[0.5625rem] font-medium bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-px rounded-full dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
+                        Cash Accepted
+                      </span>
+                    )}
+                  {/* Flexible Payment Options v1.2 — Pay After Service badge */}
+                  {provider.paymentOptions?.cardOnCompletion && (
+                    <span className="text-[0.5625rem] font-medium bg-orange-50 text-orange-700 border border-orange-200 px-1.5 py-px rounded-full dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800">
+                      Pay After
                     </span>
                   )}
                 </div>
@@ -589,9 +605,34 @@ const ProviderResponseCard = ({
               }}
               className="w-full flex items-center justify-center hover:shadow-lg hover:-translate-y-px"
             >
-              {response.isInsuranceRegistered && (response.insuranceDetails?.customerExcess === 0 || response.price === 0)
-                ? "Accept & Confirm"
-                : "Accept & Pay"}
+              {(() => {
+                // Insurance R0 — straight confirm
+                if (
+                  response.isInsuranceRegistered &&
+                  (response.insuranceDetails?.customerExcess === 0 ||
+                    response.price === 0)
+                ) {
+                  return "Accept & Confirm";
+                }
+                // Flexible Payment Options v1.2 — when provider supports cash
+                // and/or card-after-service in addition to prepayment, the next
+                // step is the payment-method picker, not Paystack. Insurance
+                // quotes always go straight to Paystack.
+                const isInsuranceResponse =
+                  response?.isInsuranceRegistered;
+                const cashAvailable =
+                  !!provider?.paymentOptions?.cashOnCompletion &&
+                  (provider?.enforcement?.stage || 0) < 3;
+                const cardAfterAvailable =
+                  !!provider?.paymentOptions?.cardOnCompletion;
+                if (
+                  !isInsuranceResponse &&
+                  (cashAvailable || cardAfterAvailable)
+                ) {
+                  return "Accept Quote";
+                }
+                return "Accept & Pay";
+              })()}
             </button>
           )}
 

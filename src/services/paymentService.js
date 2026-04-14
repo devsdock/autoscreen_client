@@ -60,6 +60,37 @@ const paymentService = {
   },
 
   /**
+   * Accept a quote with Cash on Completion payment option (PRD v1.2 — Model B).
+   * Creates a confirmed booking without any Paystack transaction. Customer pays
+   * the provider in cash at service time.
+   *
+   * @param {Object} params - { quoteId, responseId }
+   * @returns {Object} { success, bookingId, bookingNumber, redirect_url }
+   */
+  acceptCash: ({ quoteId, responseId }) => {
+    return request({
+      method: "POST",
+      url: "/customer/payments/accept-cash",
+      data: { quoteId, responseId },
+    });
+  },
+
+  /**
+   * Accept a quote with Card on Completion via payment link (Path B).
+   * Creates a confirmed booking. Customer pays later via a Paystack link
+   * sent after the provider marks "Service Done".
+   *
+   * @param {Object} params - { quoteId, responseId, subMode? ("payment_link" default) }
+   */
+  acceptCardAfter: ({ quoteId, responseId, subMode = "payment_link" }) => {
+    return request({
+      method: "POST",
+      url: "/customer/payments/accept-card-after",
+      data: { quoteId, responseId, subMode },
+    });
+  },
+
+  /**
    * Verify Paystack Payment
    * @param {string} reference
    */

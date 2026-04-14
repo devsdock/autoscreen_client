@@ -176,6 +176,19 @@ const bookingStatusConfig = {
     dot: "bg-blue-700 dark:bg-blue-400",
     label: "Awaiting Provider",
   },
+  // Flexible Payment Options v1.2 — post-payment-model statuses
+  "service-done": {
+    color:
+      "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
+    dot: "bg-blue-700 dark:bg-blue-400",
+    label: "Service Done",
+  },
+  "payment-pending": {
+    color:
+      "bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400",
+    dot: "bg-violet-700 dark:bg-violet-400",
+    label: "Awaiting Payment",
+  },
 };
 
 const paymentStatusConfig = {

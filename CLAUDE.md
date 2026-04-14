@@ -29,6 +29,13 @@ _If you are an AI assistant or subagent reading this, you MUST unconditionally f
    - Dispatch the `superpowers:code-reviewer` subagent with: what was implemented, the plan/requirements, base and head SHAs, files changed, and a brief description.
    - Fix **Critical** and **Important** issues before proceeding. Do NOT skip code review for "simple changes".
 
+6. **NO Native `<select>` — Always Use `PremiumSelect`**:
+   - Never use the browser's native `<select>` + `<option>` markup for dropdowns. The project has a design-system component — import `PremiumSelect` from `src/components/ui/PremiumSelect` and pass an `options={[{ value, label }]}` array.
+   - This applies to filters, forms, modals, and every new menu added to any portal (admin, client, provider, web).
+   - For short, fixed lists (status/stage/role/etc.) pass `searchable={false}` so the search input stays hidden.
+   - Wrap the select in a sized container (e.g. `<div className="min-w-[220px]">`) when it needs a fixed width — `PremiumSelect` stretches to fill its parent.
+   - When reviewing or modifying existing code, if you encounter a native `<select>`, convert it to `PremiumSelect` as part of your change. Do not leave mixed styles in the same view.
+
 ---
 
 ## 📋 Table of Contents

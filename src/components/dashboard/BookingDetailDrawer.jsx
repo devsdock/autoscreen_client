@@ -348,6 +348,29 @@ const BookingDetailDrawer = ({
             </div>
           )}
 
+          {/* Card Saved Banner — Path A tokenized card on file, will auto-charge */}
+          {booking.paymentOption === "card_on_completion" &&
+            booking.paymentSubMethod === "tokenized" &&
+            booking.cardAuth?.last4 &&
+            booking.paymentStatus?.toLowerCase() !== "paid" && (
+              <div className="flex items-center gap-3 p-4 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-xl">
+                <Shield
+                  size={20}
+                  className="text-violet-600 dark:text-violet-400 flex-shrink-0"
+                />
+                <div className="flex-1">
+                  <p className="font-semibold text-violet-800 dark:text-violet-200">
+                    {booking.cardAuth.cardType || "Card"} ending ••••
+                    {booking.cardAuth.last4}
+                  </p>
+                  <p className="text-sm text-violet-600 dark:text-violet-400">
+                    Your card will be charged automatically after your service is
+                    complete.
+                  </p>
+                </div>
+              </div>
+            )}
+
           {/* Payment Pending Banner — quote-based booking awaiting payment */}
           {booking.quote && currentStatus === "awaiting-payment" && (
             <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">

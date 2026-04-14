@@ -185,6 +185,11 @@ export const mapBooking = (booking) => {
       booking.quoteResponse;
 
     // Status progression levels based on specification
+    // Flexible Payment Options v1.2 — `service-done` and `payment-pending`
+    // are post-payment-model statuses that fit between "in-progress" and
+    // "completed". They share level 7 with `completed-by-fitter` so the
+    // existing `currentStatusLevel >= 7` checks still mark all earlier
+    // stages as complete.
     const statusOrder = {
       quote: 0,
       pending: 1,
@@ -195,6 +200,8 @@ export const mapBooking = (booking) => {
       arrived: 5,
       "in-progress": 6,
       "completed-by-fitter": 7,
+      "service-done": 7,
+      "payment-pending": 7,
       completed: 8,
       cancelled: -1,
       expired: -1,
@@ -209,6 +216,21 @@ export const mapBooking = (booking) => {
 
     // Build timeline stages
     const stages = [];
+
+    // Flexible Payment Options v1.2 — derive payment model so the timeline
+    // can show the correct sequence (cash + card-on-completion have no
+    // Paystack-up-front step, and add a "Service Done" step before final).
+    const paymentOption = booking.paymentOption || "prepayment";
+    const isCash = paymentOption === "cash";
+    const isCardAfter = paymentOption === "card_on_completion";
+    const isPostPayment = isCash || isCardAfter;
+    const hasCashReceipt = !!booking.cashReceipt?.confirmedAt;
+    const hasPaymentLink = !!booking.paymentLink?.sentAt;
+    const isServiceDone =
+      currentStatus === "service-done" ||
+      currentStatus === "payment-pending" ||
+      currentStatus === "completed";
+    const isPaymentPending = currentStatus === "payment-pending";
 
     if (isQuoteBased) {
       // Quote-based booking timeline
@@ -240,15 +262,35 @@ export const mapBooking = (booking) => {
         completed: true,
       });
 
-      // 4. Payment Confirmed
-      stages.push({
-        status: "Payment Confirmed",
-        date:
-          booking.actualTimes?.confirmedAt ||
-          booking.statusHistory?.find((h) => h.status === "confirmed")
-            ?.timestamp,
-        completed: isPaid,
-      });
+      // 4. Payment-model-specific confirmation step
+      if (isCash) {
+        // Cash: no Paystack at acceptance — booking is immediately confirmed
+        stages.push({
+          status: "Cash Booking Confirmed",
+          date: booking.actualTimes?.confirmedAt || booking.createdAt,
+          completed: true,
+        });
+      } else if (isCardAfter) {
+        // Card on Completion: Path A saves a card via R1 tokenize +
+        // immediate refund; Path B has no Paystack step until after service.
+        stages.push({
+          status: booking.cardAuth?.last4
+            ? `Card Saved (••${booking.cardAuth.last4})`
+            : "Pay After Confirmed",
+          date: booking.actualTimes?.confirmedAt || booking.createdAt,
+          completed: true,
+        });
+      } else {
+        // Prepayment — original Paystack settlement step
+        stages.push({
+          status: "Payment Confirmed",
+          date:
+            booking.actualTimes?.confirmedAt ||
+            booking.statusHistory?.find((h) => h.status === "confirmed")
+              ?.timestamp,
+          completed: isPaid,
+        });
+      }
 
       // 5. Appointment Scheduled
       const hasSchedule = !!booking.scheduledDate;
@@ -272,16 +314,39 @@ export const mapBooking = (booking) => {
         completed: currentStatusLevel >= 6,
       });
 
-      // 8. Completed
+      // 8. Service Done — only for post-payment models (cash + card-after).
+      // For prepayment this step is collapsed into "Completed".
+      if (isPostPayment) {
+        stages.push({
+          status: "Service Done",
+          date:
+            booking.statusHistory?.find((h) => h.status === "service-done")
+              ?.timestamp || null,
+          completed: isServiceDone,
+        });
+      }
+
+      // 9. Path B specific — payment link sent, awaiting customer payment
+      if (isCardAfter && (isPaymentPending || hasPaymentLink)) {
+        stages.push({
+          status: "Awaiting Customer Payment",
+          date: booking.paymentLink?.sentAt || null,
+          completed: isPaid,
+        });
+      }
+
+      // 10. Completed
       stages.push({
         status: "Completed",
         date: booking.actualTimes?.completedAt || booking.completedAt,
-        completed: currentStatusLevel >= 7,
+        completed: currentStatus === "completed",
       });
 
-      // Refund (Special Case)
+      // Refund (Special Case) — cash bookings have no refund (provider keeps
+      // the cash directly); only show for prepayment + card-after.
       if (
         currentStatus === "cancelled" &&
+        !isCash &&
         (booking.cancellation?.refundAmount > 0 ||
           booking.paymentStatus === "refunded")
       ) {
@@ -451,6 +516,11 @@ export const mapBooking = (booking) => {
         : "Mobile",
     statusLabel: formatBookingStatus(booking.status),
     paymentStatus: normalizedPaymentStatus,
+    paymentOption: booking.paymentOption || "prepayment",
+    paymentSubMethod: booking.paymentSubMethod || null,
+    cashReceipt: booking.cashReceipt || null,
+    paymentLink: booking.paymentLink || null,
+    cardAuth: booking.cardAuth || null,
     refundAmount: booking.cancellation?.refundAmount || 0,
     price: {
       service:

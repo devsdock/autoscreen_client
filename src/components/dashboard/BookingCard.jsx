@@ -56,7 +56,20 @@ const BookingCard = ({
   const hasSchedule = !!booking.scheduledDate;
   const isCompletedByFitter = booking.status?.toLowerCase() === "completed-by-fitter";
   const isCompleted = booking.status?.toLowerCase() === "completed";
-  const isScheduled = booking.status?.toLowerCase() === "confirmed" && hasSchedule && isPaid;
+  // Flexible Payment Options v1.2 — cash bookings are "confirmed" without prepayment
+  const isCashBooking = booking.paymentOption === "cash";
+  const isCardAfterBooking = booking.paymentOption === "card_on_completion";
+  const cashConfirmed =
+    isCashBooking && booking.status?.toLowerCase() === "confirmed";
+  const cardAfterConfirmed =
+    isCardAfterBooking && booking.status?.toLowerCase() === "confirmed";
+  // Card-after Path B: status flips to "payment-pending" once provider marks Service Done
+  const isPaymentPending =
+    isCardAfterBooking && booking.status?.toLowerCase() === "payment-pending";
+  const isScheduled =
+    booking.status?.toLowerCase() === "confirmed" &&
+    hasSchedule &&
+    (isPaid || cashConfirmed || cardAfterConfirmed);
 
   const quoteId =
     booking.quote?._id ||
@@ -304,10 +317,51 @@ const BookingCard = ({
                 : "Paid"}
             </span>
           )}
+          {/* Cash on Completion indicator (Flexible Payment Options v1.2) */}
+          {isCashBooking && !isPaid && (
+            <span className="inline-flex items-center gap-1 text-[0.6875rem] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
+              Cash on Completion
+            </span>
+          )}
+          {/* Card on Completion (Path B) — pre-service */}
+          {cardAfterConfirmed && !isPaymentPending && !booking.cardAuth?.last4 && (
+            <span className="inline-flex items-center gap-1 text-[0.6875rem] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
+              Pay After Service
+            </span>
+          )}
+          {/* Card on Completion (Path A, tokenized) — card saved, will auto-charge */}
+          {cardAfterConfirmed && !isPaymentPending && booking.cardAuth?.last4 && (
+            <span
+              className="inline-flex items-center gap-1 text-[0.6875rem] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200 dark:bg-violet-900/20 dark:text-violet-400 dark:border-violet-800"
+              title={`${booking.cardAuth.cardType || "Card"} ending ${booking.cardAuth.last4}`}
+            >
+              Card ••••{booking.cardAuth.last4}
+            </span>
+          )}
+          {/* Card on Completion (Path B) — payment pending after service-done */}
+          {isPaymentPending && (
+            <span className="inline-flex items-center gap-1 text-[0.6875rem] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 animate-pulse">
+              Payment Required
+            </span>
+          )}
         </div>
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
+          {/* Pay Now — Card on Completion Path B after service-done */}
+          {isPaymentPending && booking.paymentLink?.url && (
+            <a
+              href={booking.paymentLink.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:shadow-md hover:-translate-y-px"
+              style={{ background: "linear-gradient(135deg, #DC2626, #B91C1C)" }}
+            >
+              Pay Now
+              <ArrowRight size={12} />
+            </a>
+          )}
+
           {/* Book Appointment — paid but no schedule */}
           {needsAppointment && (
             <button

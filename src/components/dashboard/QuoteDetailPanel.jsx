@@ -32,6 +32,7 @@ import Button from "../ui/Button";
 import ProviderResponseCard from "./ProviderResponseCard";
 import Modal from "../ui/Modal";
 import PaymentModal from "./PaymentModal";
+import PaymentMethodModal from "./PaymentMethodModal";
 import Tooltip from "../ui/Tooltip";
 import { useSettingsStore } from "../../store/useSettingsStore";
 
@@ -43,12 +44,18 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     closeQuoteRequest,
     addToast,
     fetchQuoteDetails,
+    fetchQuotes,
+    fetchBookings,
   } = useDashboardStore();
   const platformSettings = useSettingsStore((s) => s.settings);
   const [selectedImage, setSelectedImage] = useState(null);
   const [closeModal, setCloseModal] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  // Flexible Payment Options v1.2 — method selection step
+  const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
+  const [pendingAcceptResponse, setPendingAcceptResponse] = useState(null);
+  const [isProcessingCash, setIsProcessingCash] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
   const [sortFilter, setSortFilter] = useState("best-price");
   const [closePanelModal, setClosePanelModal] = useState(false);
@@ -103,7 +110,32 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     quote.status === "Closed" ||
     ["closed", "expired", "cancelled"].includes(quote.status?.toLowerCase());
 
+  // Flexible Payment Options v1.2 — intercept accept flow when provider offers
+  // multiple payment methods (cash and/or card-on-completion) so customer can pick.
   const handleAcceptAndPay = async (response) => {
+    // Insurance quotes always go through Paystack (post-payment models not supported)
+    const isInsuranceResponse = response?.isInsuranceRegistered && quote?.hasInsurance;
+    const providerOpts = response?.provider?.paymentOptions || {};
+    const providerSupportsCash =
+      !!providerOpts.cashOnCompletion &&
+      (response?.provider?.enforcement?.stage || 0) < 3;
+    const providerSupportsCardAfter = !!providerOpts.cardOnCompletion;
+
+    if (
+      !isInsuranceResponse &&
+      (providerSupportsCash || providerSupportsCardAfter)
+    ) {
+      // Open method selection modal first
+      setPendingAcceptResponse(response);
+      setShowPaymentMethodModal(true);
+      return;
+    }
+
+    // Default prepayment flow
+    return handleAcceptPrepayment(response);
+  };
+
+  const handleAcceptPrepayment = async (response) => {
     const providerName =
       response.provider?.businessName ||
       response.provider?.name ||
@@ -179,6 +211,123 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
       insuranceBreakdown,
     });
     setShowPaymentModal(true);
+  };
+
+  // Customer chose a payment method from the PaymentMethodModal
+  const handlePaymentMethodSelected = async (method) => {
+    const response = pendingAcceptResponse;
+    setShowPaymentMethodModal(false);
+    if (!response) return;
+
+    if (method === "prepayment") {
+      setPendingAcceptResponse(null);
+      return handleAcceptPrepayment(response);
+    }
+
+    if (method === "cash") {
+      setIsProcessingCash(true);
+      try {
+        const res = await paymentService.acceptCash({
+          quoteId: quote.id,
+          responseId: response.id,
+        });
+        if (res.success) {
+          addToast?.({
+            type: "success",
+            message: "Booking confirmed — cash on completion",
+          });
+          if (res.redirect_url) {
+            window.location.href = res.redirect_url;
+            return;
+          }
+          // Fallback: refresh quotes + bookings
+          await Promise.all([
+            fetchQuotes?.().catch(() => {}),
+            fetchBookings?.().catch(() => {}),
+          ]);
+          return;
+        }
+        addToast?.({
+          type: "error",
+          message: res.message || "Failed to confirm cash booking",
+        });
+      } catch (err) {
+        import.meta.env.DEV && console.error("acceptCash error:", err);
+        addToast?.({
+          type: "error",
+          message:
+            err?.response?.data?.error ||
+            err?.response?.data?.message ||
+            "Failed to confirm cash booking",
+        });
+      } finally {
+        setIsProcessingCash(false);
+        setPendingAcceptResponse(null);
+      }
+      return;
+    }
+
+    if (method === "card_after" || method === "card_after_tokenize") {
+      // Card on Completion
+      //  - "card_after"          → Path B (pay via link after service)
+      //  - "card_after_tokenize" → Path A (tokenize R1 now, auto-charge after service)
+      const subMode = method === "card_after_tokenize" ? "tokenized" : "payment_link";
+      setIsProcessingCash(true); // reuse loading flag
+      try {
+        const res = await paymentService.acceptCardAfter({
+          quoteId: quote.id,
+          responseId: response.id,
+          subMode,
+        });
+        if (res.success) {
+          // Tokenize path: Paystack auth URL returned — redirect customer to enter card
+          if (subMode === "tokenized") {
+            if (res.authorization_url) {
+              window.location.href = res.authorization_url;
+              return;
+            }
+            // Backend returned success but no auth URL — cannot collect card
+            addToast?.({
+              type: "error",
+              message: "Could not start card setup. Please try again.",
+            });
+            return;
+          }
+          addToast?.({
+            type: "success",
+            message:
+              subMode === "tokenized"
+                ? "Card saved — we'll charge it automatically after service"
+                : "Booking confirmed — you'll receive a payment link after service",
+          });
+          if (res.redirect_url) {
+            window.location.href = res.redirect_url;
+            return;
+          }
+          await Promise.all([
+            fetchQuotes?.().catch(() => {}),
+            fetchBookings?.().catch(() => {}),
+          ]);
+          return;
+        }
+        addToast?.({
+          type: "error",
+          message: res.message || "Failed to confirm card-after booking",
+        });
+      } catch (err) {
+        import.meta.env.DEV && console.error("acceptCardAfter error:", err);
+        addToast?.({
+          type: "error",
+          message:
+            err?.response?.data?.error ||
+            err?.response?.data?.message ||
+            "Failed to confirm card-after booking",
+        });
+      } finally {
+        setIsProcessingCash(false);
+        setPendingAcceptResponse(null);
+      }
+    }
   };
 
   const booking = quote?.booking;
@@ -931,6 +1080,32 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
 
         {/* Request Date — removed per design request */}
       </div>
+
+      {/* Payment Method Selection (Flexible Payment Options v1.2) */}
+      <PaymentMethodModal
+        isOpen={showPaymentMethodModal}
+        onClose={() => {
+          if (!isProcessingCash) {
+            setShowPaymentMethodModal(false);
+            setPendingAcceptResponse(null);
+          }
+        }}
+        onSelect={handlePaymentMethodSelected}
+        providerName={
+          pendingAcceptResponse?.provider?.businessName ||
+          pendingAcceptResponse?.provider?.name ||
+          "Provider"
+        }
+        amount={(() => {
+          if (!pendingAcceptResponse) return "";
+          const sub = pendingAcceptResponse.price || 0;
+          const vatRate = platformSettings?.vatPercentage || 0;
+          const vatAmt =
+            vatRate > 0 ? Math.round(sub * (vatRate / 100) * 100) / 100 : 0;
+          return sub + vatAmt;
+        })()}
+        paymentOptions={pendingAcceptResponse?.provider?.paymentOptions}
+      />
 
       {/* Payment Modal */}
       <PaymentModal

@@ -1,0 +1,299 @@
+import { useState, useEffect } from "react";
+import { CreditCard, Banknote, Shield, Check, ArrowLeft, Zap, Mail } from "lucide-react";
+import { createPortal } from "react-dom";
+
+/**
+ * PaymentMethodModal
+ *
+ * Pre-payment step that appears when a provider supports more than one
+ * payment method (Flexible Payment Options v1.2). Customer picks between
+ * prepayment (card now) and cash on completion.
+ *
+ * Props:
+ *   isOpen           — boolean
+ *   onClose          — close handler
+ *   onSelect(method) — called with "prepayment" or "cash"
+ *   providerName     — provider display name
+ *   amount           — total amount string or number
+ *   paymentOptions   — provider.paymentOptions object (controls which options are shown)
+ */
+const PaymentMethodModal = ({
+  isOpen,
+  onClose,
+  onSelect,
+  providerName,
+  amount,
+  paymentOptions = { prepayment: true, cashOnCompletion: false, cardOnCompletion: false },
+}) => {
+  const [view, setView] = useState("main");
+
+  useEffect(() => {
+    if (isOpen) setView("main");
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const amountStr =
+    typeof amount === "number" ? `R ${amount.toLocaleString("en-ZA")}` : amount || "";
+
+  const handleSelect = (method) => {
+    if (method === "card_after") {
+      setView("card_sub");
+      return;
+    }
+    onSelect(method);
+  };
+
+  const handleClose = () => {
+    setView("main");
+    onClose();
+  };
+
+  const isCardSubView = view === "card_sub";
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ background: "rgba(15,23,42,0.7)", backdropFilter: "blur(6px)" }}
+      onClick={handleClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-[540px] rounded-[24px] bg-white dark:bg-slate-900 shadow-2xl overflow-hidden"
+      >
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 border-b border-neutral-100 dark:border-neutral-800">
+          <div className="flex items-center gap-3">
+            {isCardSubView && (
+              <button
+                onClick={() => setView("main")}
+                className="w-9 h-9 rounded-[10px] flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-neutral-100 dark:hover:bg-slate-800 transition-all"
+                aria-label="Back"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
+            <div
+              className="w-12 h-12 rounded-[14px] flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, #2563eb, #1e40af)" }}
+            >
+              <CreditCard className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="font-display font-bold text-[1.125rem] text-slate-900 dark:text-white">
+                {isCardSubView ? "Pay by card after service" : "Choose Payment Method"}
+              </h2>
+              <p className="text-[0.8125rem] text-slate-500 dark:text-slate-400 mt-0.5">
+                {isCardSubView
+                  ? "Choose how you'd like to set up card payment"
+                  : `${providerName} offers multiple ways to pay`}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Options */}
+        {!isCardSubView && (
+        <div className="px-6 py-5 space-y-3">
+          {/* Prepayment — always first, always available */}
+          <button
+            onClick={() => handleSelect("prepayment")}
+            className="w-full text-left p-5 rounded-[16px] border-[1.5px] transition-all hover:-translate-y-px group"
+            style={{
+              borderColor: "#93c5fd",
+              background: "linear-gradient(135deg, #eff6ff, #dbeafe)",
+            }}
+          >
+            <div className="flex items-start gap-4">
+              <div
+                className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0"
+                style={{ background: "linear-gradient(135deg, #2563eb, #1e40af)" }}
+              >
+                <CreditCard className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="font-display font-bold text-[0.9375rem] text-slate-900 dark:text-white">
+                    Pay now by card
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-600 text-white text-[0.6875rem] font-bold">
+                    <Shield className="w-3 h-3" /> Recommended
+                  </span>
+                </div>
+                <p className="text-[0.8125rem] text-slate-600 dark:text-slate-400 leading-snug">
+                  Pay securely before your service with full platform protection.
+                  {amountStr && (
+                    <>
+                      {" "}
+                      <strong className="text-slate-900 dark:text-white">{amountStr}</strong>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+          </button>
+
+          {/* Cash on Completion */}
+          {paymentOptions.cashOnCompletion && (
+            <button
+              onClick={() => handleSelect("cash")}
+              className="w-full text-left p-5 rounded-[16px] border-[1.5px] transition-all hover:-translate-y-px group"
+              style={{
+                borderColor: "#bbf7d0",
+                background: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
+              }}
+            >
+              <div className="flex items-start gap-4">
+                <div
+                  className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, #16a34a, #15803d)" }}
+                >
+                  <Banknote className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-display font-bold text-[0.9375rem] text-slate-900 dark:text-white mb-1">
+                    Pay cash when done
+                  </div>
+                  <p className="text-[0.8125rem] text-slate-600 dark:text-slate-400 leading-snug">
+                    Pay your technician directly in cash after service.
+                    {amountStr && (
+                      <>
+                        {" "}
+                        Have <strong className="text-slate-900 dark:text-white">{amountStr}</strong>{" "}
+                        ready.
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </button>
+          )}
+
+          {/* Card on Completion (Path B — pay via link) */}
+          {paymentOptions.cardOnCompletion && (
+            <button
+              onClick={() => handleSelect("card_after")}
+              className="w-full text-left p-5 rounded-[16px] border-[1.5px] transition-all hover:-translate-y-px group"
+              style={{
+                borderColor: "#fde68a",
+                background: "linear-gradient(135deg, #fffbeb, #fef3c7)",
+              }}
+            >
+              <div className="flex items-start gap-4">
+                <div
+                  className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, #d97706, #b45309)" }}
+                >
+                  <CreditCard className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-display font-bold text-[0.9375rem] text-slate-900 dark:text-white mb-1">
+                    Pay by card after service
+                  </div>
+                  <p className="text-[0.8125rem] text-slate-600 dark:text-slate-400 leading-snug">
+                    You'll receive a secure payment link by email once your
+                    service is complete.
+                    {amountStr && (
+                      <>
+                        {" "}
+                        <strong className="text-slate-900 dark:text-white">
+                          {amountStr}
+                        </strong>
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </button>
+          )}
+        </div>
+        )}
+
+        {/* Card sub-selection: Add card now (tokenize) vs Pay via link later (Path B) */}
+        {isCardSubView && (
+          <div className="px-6 py-5 space-y-3">
+            <button
+              onClick={() => onSelect("card_after_tokenize")}
+              className="w-full text-left p-5 rounded-[16px] border-[1.5px] transition-all hover:-translate-y-px group"
+              style={{
+                borderColor: "#c4b5fd",
+                background: "linear-gradient(135deg, #f5f3ff, #ede9fe)",
+              }}
+            >
+              <div className="flex items-start gap-4">
+                <div
+                  className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, #7c3aed, #5b21b6)" }}
+                >
+                  <Zap className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="font-display font-bold text-[0.9375rem] text-slate-900 dark:text-white">
+                      Add card now
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-600 text-white text-[0.6875rem] font-bold">
+                      <Check className="w-3 h-3" /> Auto-charge
+                    </span>
+                  </div>
+                  <p className="text-[0.8125rem] text-slate-600 dark:text-slate-400 leading-snug">
+                    Save your card securely (R1 charge, refunded instantly). We'll
+                    automatically charge{" "}
+                    {amountStr && (
+                      <strong className="text-slate-900 dark:text-white">{amountStr}</strong>
+                    )}{" "}
+                    after your service is complete — nothing more to do.
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => onSelect("card_after")}
+              className="w-full text-left p-5 rounded-[16px] border-[1.5px] transition-all hover:-translate-y-px group"
+              style={{
+                borderColor: "#fde68a",
+                background: "linear-gradient(135deg, #fffbeb, #fef3c7)",
+              }}
+            >
+              <div className="flex items-start gap-4">
+                <div
+                  className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, #d97706, #b45309)" }}
+                >
+                  <Mail className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-display font-bold text-[0.9375rem] text-slate-900 dark:text-white mb-1">
+                    Pay via link later
+                  </div>
+                  <p className="text-[0.8125rem] text-slate-600 dark:text-slate-400 leading-snug">
+                    We'll email you a secure payment link after your service is
+                    complete. Pay{" "}
+                    {amountStr && (
+                      <strong className="text-slate-900 dark:text-white">{amountStr}</strong>
+                    )}{" "}
+                    within 7 days.
+                  </p>
+                </div>
+              </div>
+            </button>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
+          <button
+            onClick={handleClose}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[10px] border-[1.5px] border-neutral-300 dark:border-neutral-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-semibold text-[0.8125rem] hover:bg-neutral-50 dark:hover:bg-slate-800 transition-all"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+};
+
+export default PaymentMethodModal;
