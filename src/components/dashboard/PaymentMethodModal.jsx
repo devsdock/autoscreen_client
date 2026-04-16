@@ -79,9 +79,9 @@ const PaymentMethodModal = ({
 
   const confirmLabel =
     selectedMethod === "cash"
-      ? "Confirm Cash Payment"
+      ? "Confirm Cash"
       : selectedMethod === "card_after"
-        ? "Confirm Pay Via Link"
+        ? "Confirm Pay Link"
         : "";
 
   const isCardSubView = view === "card_sub";
@@ -347,17 +347,17 @@ const PaymentMethodModal = ({
         )}
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-end gap-2">
+        <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-end gap-2 flex-wrap">
           <button
             onClick={handleClose}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[10px] border-[1.5px] border-neutral-300 dark:border-neutral-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-semibold text-[0.8125rem] hover:bg-neutral-50 dark:hover:bg-slate-800 transition-all"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[10px] border-[1.5px] border-neutral-300 dark:border-neutral-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-semibold text-[0.8125rem] whitespace-nowrap hover:bg-neutral-50 dark:hover:bg-slate-800 transition-all"
           >
             Cancel
           </button>
           {selectedMethod && confirmLabel && (
             <button
               onClick={handleConfirm}
-              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-[10px] border-[1.5px] font-semibold text-[0.8125rem] text-white transition-all hover:-translate-y-px"
+              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-[10px] border-[1.5px] font-semibold text-[0.8125rem] text-white whitespace-nowrap transition-all hover:-translate-y-px"
               style={{
                 borderColor: selectedMethod === "cash" ? "#16a34a" : "#b45309",
                 background:
