@@ -59,6 +59,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   const [paymentData, setPaymentData] = useState(null);
   const [sortFilter, setSortFilter] = useState("best-price");
   const [closePanelModal, setClosePanelModal] = useState(false);
+  const [isRetryingTokenize, setIsRetryingTokenize] = useState(false);
 
   // Fetch latest details to ensure we have responses
   useEffect(() => {
@@ -332,6 +333,35 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
 
   const booking = quote?.booking;
 
+  // Restart a card-after-tokenize flow that was abandoned at Paystack.
+  const handleRetryCardTokenize = async () => {
+    const bookingId = booking?._id || booking?.id;
+    if (!bookingId || isRetryingTokenize) return;
+    setIsRetryingTokenize(true);
+    try {
+      const res = await paymentService.retryCardTokenize(bookingId);
+      if (res?.success && res.authorization_url) {
+        window.location.href = res.authorization_url;
+        return;
+      }
+      addToast?.({
+        type: "error",
+        message: res?.message || "Could not restart card setup. Please try again.",
+      });
+    } catch (err) {
+      import.meta.env.DEV && console.error("retryCardTokenize error:", err);
+      addToast?.({
+        type: "error",
+        message:
+          err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Could not restart card setup. Please try again.",
+      });
+    } finally {
+      setIsRetryingTokenize(false);
+    }
+  };
+
   // Booking needs payment if it exists but isn't confirmed/paid yet
   const bookingStatus = booking?.status?.toLowerCase();
   const bookingPaymentStatus = booking?.paymentStatus?.toLowerCase();
@@ -344,13 +374,30 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     !["confirmed", "in-progress", "completed", "completed-by-fitter"].includes(
       bookingStatus,
     );
+  // Card-after-tokenize flow: booking is created in "confirmed" state even
+  // before the customer completes the Paystack tokenization redirect. If they
+  // back out, `cardAuth.authorizationCode` is never set — we must NOT show the
+  // booking as "Paid in full" until the card is actually on file.
+  const isCardSetupPending =
+    !!booking &&
+    booking.paymentOption === "card_on_completion" &&
+    booking.paymentSubMethod === "tokenized" &&
+    !booking.cardAuth?.authorizationCode;
+
   const bookingIsConfirmed =
     isAccepted &&
     booking &&
+    !isCardSetupPending &&
     (["confirmed", "in-progress", "completed", "completed-by-fitter"].includes(
       bookingStatus,
     ) ||
       bookingPaymentStatus === "paid");
+
+  // Payment was initiated (backend status "accepting") but not yet completed.
+  // During this state the backend has set quote.acceptedResponse prematurely —
+  // don't lock the user into that provider; they can still pick another one.
+  const isPaymentInitiatedNotComplete =
+    quote.rawStatus === "accepting" && !bookingIsConfirmed;
 
   const handleCloseRequest = async () => {
     setIsClosing(true);
@@ -623,7 +670,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           let currentJourneyStep = 0;
           if (["open", "pending"].includes(statusLower)) currentJourneyStep = 1;
           if (["responses", "quoted", "received responses"].includes(statusLower)) currentJourneyStep = 2;
-          if (isAccepted && bookingNeedsPayment) currentJourneyStep = 3;
+          if (isAccepted && (bookingNeedsPayment || isCardSetupPending)) currentJourneyStep = 3;
           if (isAccepted && bookingIsConfirmed && !hasSchedule) currentJourneyStep = 4;
           if (isAccepted && bookingIsConfirmed && hasSchedule) currentJourneyStep = 5;
           if (isClosed) currentJourneyStep = -1;
@@ -659,10 +706,24 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
               bookingIsConfirmed && booking?.scheduledDate
                 ? "Your appointment is confirmed. You can view it in your bookings."
                 : bookingIsConfirmed && !booking?.scheduledDate
-                  ? <><strong>Payment successful!</strong> Now choose your preferred appointment date and time.</>
-                  : bookingNeedsPayment
-                    ? <><strong>Payment required.</strong> Complete payment to confirm your appointment.</>
-                    : "You've accepted a quote. Your booking has been confirmed."
+                  ? (() => {
+                      const mode = booking?.paymentOption;
+                      const subMode = booking?.paymentSubMethod;
+                      if (mode === "cash")
+                        return <><strong>Booking confirmed!</strong> You'll pay cash on completion. Now choose your appointment date and time.</>;
+                      if (mode === "card_on_completion" && subMode === "payment_link")
+                        return <><strong>Booking confirmed!</strong> A payment link will be sent after service. Now choose your appointment date and time.</>;
+                      if (mode === "card_on_completion" && subMode === "tokenized")
+                        return <><strong>Booking confirmed!</strong> Your card will be charged automatically after service. Now choose your appointment date and time.</>;
+                      return <><strong>Payment successful!</strong> Now choose your preferred appointment date and time.</>;
+                    })()
+                  : isCardSetupPending
+                    ? <><strong>Card setup not completed.</strong> Click "Complete Card Setup" below to save your card on Paystack.</>
+                    : isPaymentInitiatedNotComplete
+                      ? <><strong>Payment not completed.</strong> Click "Accept & Pay" below to finish, or choose a different provider.</>
+                      : bookingNeedsPayment
+                        ? <><strong>Payment required.</strong> Complete payment to confirm your appointment.</>
+                        : "You've accepted a quote. Your booking has been confirmed."
             ) : isClosed ? (
               "This quote request has been closed."
             ) : responses.length > 0 ? (
@@ -709,30 +770,53 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
         </div>
 
         {/* Payment Pending Banner */}
-        {bookingNeedsPayment && (
+        {(bookingNeedsPayment || isPaymentInitiatedNotComplete || isCardSetupPending) && (
           <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
             <AlertCircle size={20} className="text-amber-600 dark:text-amber-400 flex-shrink-0" />
             <div className="flex-1">
-              <p className="font-semibold text-amber-800 dark:text-amber-200">Payment Required</p>
-              <p className="text-sm text-amber-600 dark:text-amber-400">Complete payment to confirm your appointment.</p>
+              <p className="font-semibold text-amber-800 dark:text-amber-200">
+                {isCardSetupPending
+                  ? "Card Setup Not Completed"
+                  : isPaymentInitiatedNotComplete
+                    ? "Payment Not Completed"
+                    : "Payment Required"}
+              </p>
+              <p className="text-sm text-amber-600 dark:text-amber-400">
+                {isCardSetupPending
+                  ? "Your card wasn't saved on Paystack. Complete card setup to confirm your booking."
+                  : isPaymentInitiatedNotComplete
+                    ? "Your last payment wasn't completed. Retry below, or pick a different provider."
+                    : "Complete payment to confirm your appointment."}
+              </p>
             </div>
-            <Button
-              size="sm"
-              onClick={() => {
-                // Find the accepted/selected response for this quote
-                const acceptedResp = findAcceptedResponse();
-                if (acceptedResp) {
-                  handleAcceptAndPay(acceptedResp);
-                } else if (booking) {
-                  // Fallback for old-flow bookings that exist but need payment
-                  setPaymentData(booking);
-                  setShowPaymentModal(true);
-                }
-              }}
-              className="whitespace-nowrap"
-            >
-              Pay Now
-            </Button>
+            {isCardSetupPending ? (
+              <Button
+                size="sm"
+                onClick={handleRetryCardTokenize}
+                loading={isRetryingTokenize}
+                className="whitespace-nowrap"
+              >
+                Complete Card Setup
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => {
+                  // Find the accepted/selected response for this quote
+                  const acceptedResp = findAcceptedResponse();
+                  if (acceptedResp) {
+                    handleAcceptAndPay(acceptedResp);
+                  } else if (booking) {
+                    // Fallback for old-flow bookings that exist but need payment
+                    setPaymentData(booking);
+                    setShowPaymentModal(true);
+                  }
+                }}
+                className="whitespace-nowrap"
+              >
+                Pay Now
+              </Button>
+            )}
           </div>
         )}
 
@@ -833,30 +917,52 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
               {/* Divider — mobile only */}
               <div className="border-t border-slate-100 dark:border-slate-700 sm:hidden" />
 
-              {/* Price + Paid badge */}
-              <div className="flex items-center justify-between sm:block sm:text-right sm:flex-shrink-0">
-                <div style={{ fontSize: "1.375rem", fontWeight: 800, lineHeight: 1 }} className="text-slate-900 dark:text-white">
-                  {formatCurrency(isInsuranceClaim && isRegisteredProvider && paidAmount === 0 && totalJobValue > 0 ? totalJobValue : paidAmount)}
-                </div>
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: ".25rem",
-                    fontSize: ".6875rem",
-                    fontWeight: 600,
-                    padding: ".2rem .625rem",
-                    borderRadius: "9999px",
-                  }}
-                  className="text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20 sm:mt-1.5"
-                >
-                  {isInsuranceClaim && isRegisteredProvider ? (
-                    paidAmount === 0 ? (<><ShieldCheck size={11} /> Insurance Covered</>) : (<><ShieldCheck size={11} /> Excess Paid</>)
-                  ) : (
-                    <><Check size={11} /> Paid in full</>
-                  )}
-                </div>
-              </div>
+              {/* Price + Paid badge (mode-aware: insurance / cash / card-after / tokenized / prepaid) */}
+              {(() => {
+                const last4 = booking?.cardAuth?.last4;
+                const mode = booking?.paymentOption;
+                const subMode = booking?.paymentSubMethod;
+
+                let badgeClass = "text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20";
+                let badgeInner = <><Check size={11} /> Paid in full</>;
+
+                if (isInsuranceClaim && isRegisteredProvider) {
+                  badgeInner = paidAmount === 0
+                    ? <><ShieldCheck size={11} /> Insurance Covered</>
+                    : <><ShieldCheck size={11} /> Excess Paid</>;
+                } else if (mode === "cash") {
+                  badgeClass = "text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/20";
+                  badgeInner = <><Check size={11} /> Cash on Completion</>;
+                } else if (mode === "card_on_completion" && subMode === "payment_link") {
+                  badgeClass = "text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/20";
+                  badgeInner = <><Clock size={11} /> Pay After Service</>;
+                } else if (mode === "card_on_completion" && subMode === "tokenized" && last4) {
+                  badgeClass = "text-violet-700 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/20";
+                  badgeInner = <><CreditCard size={11} /> Card on File ••{last4}</>;
+                }
+
+                return (
+                  <div className="flex items-center justify-between sm:block sm:text-right sm:flex-shrink-0">
+                    <div style={{ fontSize: "1.375rem", fontWeight: 800, lineHeight: 1 }} className="text-slate-900 dark:text-white">
+                      {formatCurrency(isInsuranceClaim && isRegisteredProvider && paidAmount === 0 && totalJobValue > 0 ? totalJobValue : paidAmount)}
+                    </div>
+                    <div
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: ".25rem",
+                        fontSize: ".6875rem",
+                        fontWeight: 600,
+                        padding: ".2rem .625rem",
+                        borderRadius: "9999px",
+                      }}
+                      className={`${badgeClass} sm:mt-1.5`}
+                    >
+                      {badgeInner}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           );
         })()}
@@ -1006,19 +1112,25 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                 return 0;
               });
             const renderCard = (response, idx, listForBest) => {
+              // Only visually treat a response as "accepted" once payment is complete.
+              // The backend pre-sets quote.acceptedResponse during Paystack init, but
+              // that's not a true acceptance until processQuoteChargeSuccess runs.
+              const matchesAcceptedId =
+                acceptedResponseId &&
+                (response.id === acceptedResponseId || response._id === acceptedResponseId);
               const thisAccepted =
                 response.status === "Accepted" ||
                 response.status === "accepted" ||
-                (acceptedResponseId && (response.id === acceptedResponseId || response._id === acceptedResponseId));
+                (matchesAcceptedId && bookingIsConfirmed);
               const thisRejected = response.status === "Rejected" || response.status === "rejected" ||
-                (isAccepted && !thisAccepted);
+                (isAccepted && !thisAccepted && bookingIsConfirmed);
               return (
                 <ProviderResponseCard
                   key={response.id}
                   response={{ ...response, _bestValue: sortFilter === "best-price" && idx === 0 && !isAccepted && listForBest }}
                   isAccepted={thisAccepted}
                   isRejected={thisRejected}
-                  disabled={isAccepted || isClosed}
+                  disabled={bookingIsConfirmed || isClosed}
                   bookingConfirmed={bookingIsConfirmed}
                   quoteData={quote}
                   onAccept={() => handleAcceptAndPay(response)}

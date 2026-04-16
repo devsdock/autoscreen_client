@@ -53,7 +53,9 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
 
   // Escape key + body scroll lock
   useEffect(() => {
-    const handleEscape = (e) => { if (e.key === "Escape") handleClose(); };
+    const handleEscape = (e) => {
+      if (e.key === "Escape" && !loading) handleClose();
+    };
     if (isOpen) {
       document.addEventListener("keydown", handleEscape);
       document.body.style.overflow = "hidden";
@@ -62,7 +64,7 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
       document.removeEventListener("keydown", handleEscape);
       document.body.style.overflow = "";
     };
-  }, [isOpen]);
+  }, [isOpen, loading]);
 
   useEffect(() => {
     if (isOpen && modalRef.current) modalRef.current.focus();
@@ -103,6 +105,7 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
   };
 
   const handleClose = () => {
+    if (loading) return;
     setErrors({});
     onClose();
   };
@@ -130,6 +133,32 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
           className="relative w-full max-w-[520px] bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-xl animate-scale-in"
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Loading overlay — shown while initializing Paystack (can take 10-40s) */}
+          {loading && (
+            <div
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-t-2xl sm:rounded-2xl"
+              role="status"
+              aria-live="polite"
+            >
+              <div className="relative w-14 h-14">
+                <div className="absolute inset-0 rounded-full border-[3px] border-blue-100 dark:border-blue-900/40" />
+                <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-blue-600 dark:border-t-blue-500 animate-spin" />
+              </div>
+              <div className="text-center px-6">
+                <div className="text-[1rem] font-bold text-slate-900 dark:text-white mb-1">
+                  Redirecting to secure payment…
+                </div>
+                <div className="text-[0.8125rem] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  This can take up to 30 seconds. Please don't close this window or press back.
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 text-[0.6875rem] text-slate-400">
+                <Lock size={11} />
+                <span>Secured by Paystack</span>
+              </div>
+            </div>
+          )}
+
           {/* Header */}
           <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800">
             <div>

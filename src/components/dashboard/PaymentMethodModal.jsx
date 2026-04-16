@@ -7,15 +7,23 @@ import { createPortal } from "react-dom";
  *
  * Pre-payment step that appears when a provider supports more than one
  * payment method (Flexible Payment Options v1.2). Customer picks between
- * prepayment (card now) and cash on completion.
+ * prepayment (card now), cash on completion, and card-on-completion
+ * (two sub-modes: Add card now / Pay via link later).
+ *
+ * Commit semantics (April 2026):
+ *   - "prepayment"           → opens PaymentModal which has its own Pay confirm button
+ *   - "card_after_tokenize"  → Paystack page IS the commit (backend defers
+ *                              acceptance to the tokenize webhook)
+ *   - "cash"                 → requires an explicit Confirm click here
+ *   - "card_after"           → requires an explicit Confirm click here
  *
  * Props:
  *   isOpen           — boolean
  *   onClose          — close handler
- *   onSelect(method) — called with "prepayment" or "cash"
+ *   onSelect(method) — called with "prepayment" | "cash" | "card_after" | "card_after_tokenize"
  *   providerName     — provider display name
  *   amount           — total amount string or number
- *   paymentOptions   — provider.paymentOptions object (controls which options are shown)
+ *   paymentOptions   — provider.paymentOptions object
  */
 const PaymentMethodModal = ({
   isOpen,
@@ -26,9 +34,15 @@ const PaymentMethodModal = ({
   paymentOptions = { prepayment: true, cashOnCompletion: false, cardOnCompletion: false },
 }) => {
   const [view, setView] = useState("main");
+  // Tracks a tentative selection that requires explicit Confirm (cash / card_after).
+  // Prepayment and card_after_tokenize are committed at click time.
+  const [selectedMethod, setSelectedMethod] = useState(null);
 
   useEffect(() => {
-    if (isOpen) setView("main");
+    if (isOpen) {
+      setView("main");
+      setSelectedMethod(null);
+    }
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -36,20 +50,47 @@ const PaymentMethodModal = ({
   const amountStr =
     typeof amount === "number" ? `R ${amount.toLocaleString("en-ZA")}` : amount || "";
 
-  const handleSelect = (method) => {
+  const handleMethodClick = (method) => {
     if (method === "card_after") {
+      // Opening the sub-view is not a commit — reset any pending selection.
       setView("card_sub");
+      setSelectedMethod(null);
       return;
     }
-    onSelect(method);
+    if (method === "prepayment" || method === "card_after_tokenize") {
+      // Prepayment → PaymentModal's Pay button is the confirm.
+      // card_after_tokenize → Paystack card-save is the confirm.
+      onSelect(method);
+      return;
+    }
+    // Cash or "card_after" (Pay via link) → require explicit Confirm below.
+    setSelectedMethod((prev) => (prev === method ? null : method));
+  };
+
+  const handleConfirm = () => {
+    if (selectedMethod) onSelect(selectedMethod);
   };
 
   const handleClose = () => {
     setView("main");
+    setSelectedMethod(null);
     onClose();
   };
 
+  const confirmLabel =
+    selectedMethod === "cash"
+      ? "Confirm Cash Payment"
+      : selectedMethod === "card_after"
+        ? "Confirm Pay Via Link"
+        : "";
+
   const isCardSubView = view === "card_sub";
+
+  // Helper: ring + check indicator for the tentatively-selected card
+  const selectionRing = (isSelected, ringColor) =>
+    isSelected
+      ? { boxShadow: `0 0 0 2px ${ringColor}, 0 0 0 4px rgba(255,255,255,0.8)` }
+      : {};
 
   return createPortal(
     <div
@@ -66,7 +107,10 @@ const PaymentMethodModal = ({
           <div className="flex items-center gap-3">
             {isCardSubView && (
               <button
-                onClick={() => setView("main")}
+                onClick={() => {
+                  setView("main");
+                  setSelectedMethod(null);
+                }}
                 className="w-9 h-9 rounded-[10px] flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-neutral-100 dark:hover:bg-slate-800 transition-all"
                 aria-label="Back"
               >
@@ -97,7 +141,7 @@ const PaymentMethodModal = ({
         <div className="px-6 py-5 space-y-3">
           {/* Prepayment — always first, always available */}
           <button
-            onClick={() => handleSelect("prepayment")}
+            onClick={() => handleMethodClick("prepayment")}
             className="w-full text-left p-5 rounded-[16px] border-[1.5px] transition-all hover:-translate-y-px group"
             style={{
               borderColor: "#93c5fd",
@@ -133,14 +177,15 @@ const PaymentMethodModal = ({
             </div>
           </button>
 
-          {/* Cash on Completion */}
+          {/* Cash on Completion — selection only; requires Confirm below */}
           {paymentOptions.cashOnCompletion && (
             <button
-              onClick={() => handleSelect("cash")}
-              className="w-full text-left p-5 rounded-[16px] border-[1.5px] transition-all hover:-translate-y-px group"
+              onClick={() => handleMethodClick("cash")}
+              className="w-full text-left p-5 rounded-[16px] border-[1.5px] transition-all hover:-translate-y-px group relative"
               style={{
-                borderColor: "#bbf7d0",
+                borderColor: selectedMethod === "cash" ? "#16a34a" : "#bbf7d0",
                 background: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
+                ...selectionRing(selectedMethod === "cash", "#16a34a"),
               }}
             >
               <div className="flex items-start gap-4">
@@ -151,8 +196,15 @@ const PaymentMethodModal = ({
                   <Banknote className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-display font-bold text-[0.9375rem] text-slate-900 dark:text-white mb-1">
-                    Pay cash when done
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="font-display font-bold text-[0.9375rem] text-slate-900 dark:text-white">
+                      Pay cash when done
+                    </span>
+                    {selectedMethod === "cash" && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[0.6875rem] font-bold">
+                        <Check className="w-3 h-3" /> Selected
+                      </span>
+                    )}
                   </div>
                   <p className="text-[0.8125rem] text-slate-600 dark:text-slate-400 leading-snug">
                     Pay your technician directly in cash after service.
@@ -169,10 +221,10 @@ const PaymentMethodModal = ({
             </button>
           )}
 
-          {/* Card on Completion (Path B — pay via link) */}
+          {/* Card on Completion — opens sub-view with Add-card-now vs Pay-via-link */}
           {paymentOptions.cardOnCompletion && (
             <button
-              onClick={() => handleSelect("card_after")}
+              onClick={() => handleMethodClick("card_after")}
               className="w-full text-left p-5 rounded-[16px] border-[1.5px] transition-all hover:-translate-y-px group"
               style={{
                 borderColor: "#fde68a",
@@ -212,8 +264,9 @@ const PaymentMethodModal = ({
         {/* Card sub-selection: Add card now (tokenize) vs Pay via link later (Path B) */}
         {isCardSubView && (
           <div className="px-6 py-5 space-y-3">
+            {/* Add card now — Paystack card-save is the commit, so click immediately */}
             <button
-              onClick={() => onSelect("card_after_tokenize")}
+              onClick={() => handleMethodClick("card_after_tokenize")}
               className="w-full text-left p-5 rounded-[16px] border-[1.5px] transition-all hover:-translate-y-px group"
               style={{
                 borderColor: "#c4b5fd",
@@ -243,17 +296,22 @@ const PaymentMethodModal = ({
                       <strong className="text-slate-900 dark:text-white">{amountStr}</strong>
                     )}{" "}
                     after your service is complete — nothing more to do.
+                    <span className="block mt-1 text-[0.6875rem] text-slate-500 dark:text-slate-400">
+                      Your quote is only accepted once the card is saved.
+                    </span>
                   </p>
                 </div>
               </div>
             </button>
 
+            {/* Pay via link later — selection only; requires Confirm below */}
             <button
-              onClick={() => onSelect("card_after")}
-              className="w-full text-left p-5 rounded-[16px] border-[1.5px] transition-all hover:-translate-y-px group"
+              onClick={() => handleMethodClick("card_after")}
+              className="w-full text-left p-5 rounded-[16px] border-[1.5px] transition-all hover:-translate-y-px group relative"
               style={{
-                borderColor: "#fde68a",
+                borderColor: selectedMethod === "card_after" ? "#b45309" : "#fde68a",
                 background: "linear-gradient(135deg, #fffbeb, #fef3c7)",
+                ...selectionRing(selectedMethod === "card_after", "#b45309"),
               }}
             >
               <div className="flex items-start gap-4">
@@ -264,8 +322,15 @@ const PaymentMethodModal = ({
                   <Mail className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-display font-bold text-[0.9375rem] text-slate-900 dark:text-white mb-1">
-                    Pay via link later
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="font-display font-bold text-[0.9375rem] text-slate-900 dark:text-white">
+                      Pay via link later
+                    </span>
+                    {selectedMethod === "card_after" && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-700 text-white text-[0.6875rem] font-bold">
+                        <Check className="w-3 h-3" /> Selected
+                      </span>
+                    )}
                   </div>
                   <p className="text-[0.8125rem] text-slate-600 dark:text-slate-400 leading-snug">
                     We'll email you a secure payment link after your service is
@@ -282,13 +347,29 @@ const PaymentMethodModal = ({
         )}
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
+        <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-end gap-2">
           <button
             onClick={handleClose}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[10px] border-[1.5px] border-neutral-300 dark:border-neutral-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-semibold text-[0.8125rem] hover:bg-neutral-50 dark:hover:bg-slate-800 transition-all"
           >
             Cancel
           </button>
+          {selectedMethod && confirmLabel && (
+            <button
+              onClick={handleConfirm}
+              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-[10px] border-[1.5px] font-semibold text-[0.8125rem] text-white transition-all hover:-translate-y-px"
+              style={{
+                borderColor: selectedMethod === "cash" ? "#16a34a" : "#b45309",
+                background:
+                  selectedMethod === "cash"
+                    ? "linear-gradient(135deg, #16a34a, #15803d)"
+                    : "linear-gradient(135deg, #d97706, #b45309)",
+              }}
+            >
+              <Check className="w-3.5 h-3.5" />
+              {confirmLabel}
+            </button>
+          )}
         </div>
       </div>
     </div>,

@@ -91,6 +91,19 @@ const paymentService = {
   },
 
   /**
+   * Retry Card Tokenization (Path A) when the customer abandoned the
+   * Paystack redirect. Returns a fresh authorization_url for the same booking.
+   *
+   * @param {string} bookingId
+   */
+  retryCardTokenize: (bookingId) => {
+    return request({
+      method: "POST",
+      url: `/customer/payments/retry-card-tokenize/${bookingId}`,
+    });
+  },
+
+  /**
    * Verify Paystack Payment
    * @param {string} reference
    */
