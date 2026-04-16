@@ -243,7 +243,16 @@ const NewQuote = () => {
   }, []);
 
   const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Reset stale coordinates when the user edits the address by hand.
+    // Coordinates should only come from "Use My Location" or a fresh geocode
+    // on submit — they must not survive a manual city/suburb/address edit.
+    const ADDRESS_FIELDS = ["city", "suburb", "addressLine1", "postcode"];
+    setFormData((prev) => {
+      if (ADDRESS_FIELDS.includes(field) && prev[field] !== value) {
+        return { ...prev, [field]: value, coordinates: null };
+      }
+      return { ...prev, [field]: value };
+    });
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: null }));
     }

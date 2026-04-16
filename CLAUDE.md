@@ -841,6 +841,12 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 16 April 2026 (Quote Form — Reset Coordinates on Manual Address Edit)
+
+- **`NewQuote.jsx` — `handleChange` clears stale coordinates**: When the user manually edits `city`, `suburb`, `addressLine1`, or `postcode`, `formData.coordinates` is reset to `null`. Prevents stale coords from a prior "Use My Location" click (or a previous session) from being submitted alongside a manually-typed address. The submit-time Nominatim geocode still runs when coords are missing, so the backend receives either fresh coords or `null` — never stale ones.
+- **`RequestQuoteModal.jsx` — Same coordinate-reset logic**: Identical `ADDRESS_FIELDS` guard in the modal's `handleChange`.
+- **Why**: Backend workshop matching was fixed to rely on city text alone (see `autoscreen_node` changelog, same date), but keeping coordinate hygiene on the client prevents other subtle bugs where stale coords could drive incorrect mobile-mode geo searches.
+
 ### 2 April 2026 (Insurance R0 Banner — Show Total Job Value Instead of R0)
 
 - **`QuoteDetailPanel.jsx` — Confirmed provider banner insurance-aware**: R0 insurance claims previously showed `R 0.00` + "Paid in full" in the top confirmed-provider bar. Now shows the total job value (e.g. `R 1,300`) + "Insurance Covered" badge (green pill with `ShieldCheck` icon) when `isInsuranceClaim && isRegisteredProvider && paidAmount === 0 && totalJobValue > 0`. Non-zero excess insurance shows amount + "Excess Paid" badge. Normal bookings unchanged ("Paid in full"). `paidAmount` and `totalJobValue` use numeric coercion (`+()`) to handle potential string values from MongoDB/JSON. Insurance detection uses `acceptedResp.isInsuranceRegistered || booking.insuranceDetails.isRegisteredProvider` gate (matches BookingCard pattern).
