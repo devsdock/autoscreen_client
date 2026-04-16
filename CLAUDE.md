@@ -841,6 +841,19 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 16 April 2026 (Status + Timeline Audit — Commit-aware Gates for Post-Service Payments)
+
+- **Gap identified**: `BookingDetailDrawer` and `BookingCard` were gating "Book Appointment" CTA, "Scheduled" badge, `canReschedule`, `canGetDirections`, and provider-phone display on `paymentStatus === "paid"` (or "insurance_direct"). For cash / payment_link / tokenized-with-card bookings (`paymentStatus === "unpaid"` by design), these gates evaluated false — customers could accept a quote via "Pay Cash on Completion" or "Add card now", land on a `confirmed` booking, and find the drawer missing the Book Appointment CTA and showing "Confirmed" instead of "Scheduled" even after they scheduled a date.
+- **`BookingCard.jsx` — `isCommitted` flag + `isTokenizeAbandoned` carve-out**: New derived flags. `isCommitted = isPaid || cashConfirmed || (cardAfterConfirmed && !isTokenizeAbandoned)`. `isTokenizeAbandoned = cardAfterConfirmed && paymentSubMethod === "tokenized" && !cardAuth.authorizationCode` (protects against legacy orphans from before the deferred-acceptance refactor). Replaced `isPaid` with `isCommitted` in: `needsAppointment`, `canGetDirections`, and the provider/staff phone display gates. `isScheduled` simplified to `isCommitted && hasSchedule`.
+- **`BookingDetailDrawer.jsx` — Same `isCommitted` flag**: Status badge "scheduled" detection now requires `isCommitted` (was `paymentStatus paid|insurance_direct`). Book Appointment CTA fires on `isCommitted && !scheduledDate` (was `paymentStatus === "paid"`). CTA subtitle branches on the specific mode: "Payment confirmed…", "Booking confirmed — cash on completion…", "Card saved…", or "Booking confirmed — payment link will be sent after service…". `canReschedule` also now uses `isCommitted` so cash / payment_link / tokenized bookings can be rescheduled within the 24h window.
+- **Behavior per mode (post-fix)**:
+  - **Prepayment** (paid): unchanged — CTA appears, badge says "Scheduled", reschedule allowed.
+  - **Cash on Completion** (confirmed + unpaid + `paymentOption: "cash"`): CTA now appears with cash-specific copy; badge correctly flips to "Scheduled" once a date is picked; reschedule allowed.
+  - **Card — Pay via link** (confirmed + unpaid + `payment_link`): CTA appears, badge flips to "Scheduled", reschedule allowed.
+  - **Card — Add card now (tokenized with card on file)**: CTA appears, "Card Saved" banner already visible, reschedule allowed.
+  - **Tokenize abandoned** (legacy orphans): NOT committed — CTA and reschedule stay hidden; the existing `isCardSetupPending` retry banner from the earlier fix remains the user's path forward.
+- **Zero backend changes**: purely client-side gate reshape. Backend `statusHistory` entries are already correct for each mode.
+
 ### 16 April 2026 (PaymentMethodModal — Confirm Step for Cash & Payment_Link)
 
 - **Root issue**: Before this change, clicking any payment-method card in `PaymentMethodModal` was the irreversible commit — the backend immediately created the booking and rejected every other provider's response. For cash and payment_link this was too aggressive; customers who tapped "just to check" got locked into a provider with no undo.

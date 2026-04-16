@@ -66,10 +66,22 @@ const BookingCard = ({
   // Card-after Path B: status flips to "payment-pending" once provider marks Service Done
   const isPaymentPending =
     isCardAfterBooking && booking.status?.toLowerCase() === "payment-pending";
-  const isScheduled =
-    booking.status?.toLowerCase() === "confirmed" &&
-    hasSchedule &&
-    (isPaid || cashConfirmed || cardAfterConfirmed);
+  // Tokenize abandoned: booking exists in "confirmed" state but the Paystack
+  // tokenize redirect was never completed (legacy orphans from before the
+  // deferred-acceptance refactor). Treat as NOT committed — customer still
+  // needs to complete card setup.
+  const isTokenizeAbandoned =
+    cardAfterConfirmed &&
+    booking.paymentSubMethod === "tokenized" &&
+    !booking.cardAuth?.authorizationCode;
+  // Single source of truth: "committed" means the customer has made their
+  // payment arrangement, whether or not money has actually been collected.
+  // Covers: prepayment/insurance paid, cash-on-completion confirmed, card-
+  // after with a valid payment arrangement (payment_link or tokenized+card
+  // on file). Excludes tokenize-abandoned bookings.
+  const isCommitted =
+    isPaid || cashConfirmed || (cardAfterConfirmed && !isTokenizeAbandoned);
+  const isScheduled = isCommitted && hasSchedule;
 
   const quoteId =
     booking.quote?._id ||
@@ -77,11 +89,13 @@ const BookingCard = ({
     booking.quoteId ||
     booking.quoteRequestId;
 
-  const needsAppointment = category === "upcoming" && isPaid && !hasSchedule && quoteId;
+  const needsAppointment =
+    category === "upcoming" && isCommitted && !hasSchedule && quoteId;
   const canReschedule = isScheduled && category === "upcoming" && new Date(booking.scheduledDate) - new Date() > 24 * 3600000;
   const isWorkshop = booking.serviceLocationType === "workshop" || booking.locationType === "Workshop";
   const hasWorkshopAddress = !!booking.workshopAddress?.addressLine1;
-  const canGetDirections = isWorkshop && hasWorkshopAddress && category === "upcoming" && isPaid;
+  const canGetDirections =
+    isWorkshop && hasWorkshopAddress && category === "upcoming" && isCommitted;
 
   // Format time slot with duration-aware end time (only for new single-point slots like "09:00")
   const timeSlotStr = (() => {
@@ -253,12 +267,12 @@ const BookingCard = ({
               Technician: <span className="font-semibold text-slate-700 dark:text-slate-300">{booking.assignedStaffName}</span>
             </div>
           )}
-          {booking.assignedStaffName && booking.assignedStaffPhone && isPaid ? (
+          {booking.assignedStaffName && booking.assignedStaffPhone && isCommitted ? (
             <div className="flex items-center gap-1 mt-0.5">
               <Phone size={10} className="text-slate-400" />
               <span className="text-xs text-slate-400">{booking.assignedStaffPhone}</span>
             </div>
-          ) : isPaid && hasSchedule && booking.providerPhone ? (
+          ) : isCommitted && hasSchedule && booking.providerPhone ? (
             <div className="flex items-center gap-1 mt-0.5">
               <Phone size={10} className="text-slate-400" />
               <span className="text-xs text-slate-400">{booking.providerPhone}</span>

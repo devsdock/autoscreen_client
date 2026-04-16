@@ -239,6 +239,28 @@ const BookingDetailDrawer = ({
     booking?.quoteId ||
     booking?.quoteRequestId;
 
+  // Flexible Payment Options v1.2 — a booking is "committed" when the customer
+  // has made their payment arrangement, regardless of whether money has been
+  // collected yet. Covers prepayment/insurance paid + cash-on-completion +
+  // card-after (payment_link OR tokenized with card on file). Excludes tokenize
+  // orphans where the card-save redirect was abandoned.
+  const isPaidOrInsurance =
+    currentPaymentStatus === "paid" ||
+    currentPaymentStatus === "insurance_direct";
+  const isCashConfirmed =
+    booking?.paymentOption === "cash" && currentStatus === "confirmed";
+  const isCardAfterConfirmed =
+    booking?.paymentOption === "card_on_completion" &&
+    currentStatus === "confirmed";
+  const isTokenizeAbandoned =
+    isCardAfterConfirmed &&
+    booking?.paymentSubMethod === "tokenized" &&
+    !booking?.cardAuth?.authorizationCode;
+  const isCommitted =
+    isPaidOrInsurance ||
+    isCashConfirmed ||
+    (isCardAfterConfirmed && !isTokenizeAbandoned);
+
   const canCancel = [
     "confirmation",
     "accepted",
@@ -247,7 +269,10 @@ const BookingDetailDrawer = ({
     "searching",
     "awaiting-customer-approval",
   ].includes(currentStatus);
-  const canReschedule = currentStatus === "confirmed" && booking?.scheduledDate && (currentPaymentStatus === "paid" || currentPaymentStatus === "insurance_direct") &&
+  const canReschedule =
+    currentStatus === "confirmed" &&
+    booking?.scheduledDate &&
+    isCommitted &&
     new Date(booking.scheduledDate) - new Date() > 24 * 3600000;
   const canPay =
     currentPaymentStatus === "unpaid" &&
@@ -301,7 +326,9 @@ const BookingDetailDrawer = ({
                 booking.status?.toLowerCase() === "searching" &&
                 booking.quotes?.length > 0
                   ? "awaiting-customer-approval"
-                  : booking.status?.toLowerCase() === "confirmed" && booking.scheduledDate && (booking.paymentStatus?.toLowerCase() === "paid" || booking.paymentStatus?.toLowerCase() === "insurance_direct")
+                  : booking.status?.toLowerCase() === "confirmed" &&
+                      booking.scheduledDate &&
+                      isCommitted
                     ? (booking.rescheduledAt ? "rescheduled" : "scheduled")
                     : booking.status
               }
@@ -326,14 +353,22 @@ const BookingDetailDrawer = ({
             )}
           </div>
 
-          {/* Book Appointment CTA — paid but no schedule yet */}
-          {currentPaymentStatus === "paid" && !booking.scheduledDate && quoteId && (
+          {/* Book Appointment CTA — any committed booking without a schedule */}
+          {isCommitted && !booking.scheduledDate && quoteId && (
             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
               <div className="flex items-center gap-3">
                 <CalendarCheck size={20} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
                 <div className="flex-1">
                   <p className="font-semibold text-blue-800 dark:text-blue-200">Schedule Your Appointment</p>
-                  <p className="text-sm text-blue-600 dark:text-blue-400">Payment confirmed. Choose your preferred date and time.</p>
+                  <p className="text-sm text-blue-600 dark:text-blue-400">
+                    {isPaidOrInsurance
+                      ? "Payment confirmed. Choose your preferred date and time."
+                      : isCashConfirmed
+                        ? "Booking confirmed — cash on completion. Choose your preferred date and time."
+                        : booking.paymentSubMethod === "tokenized"
+                          ? "Card saved. Choose your preferred date and time."
+                          : "Booking confirmed — payment link will be sent after service. Choose your preferred date and time."}
+                  </p>
                 </div>
               </div>
               <button
