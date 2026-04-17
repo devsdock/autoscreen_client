@@ -283,21 +283,15 @@ const BookingDetailDrawer = ({
   const canReview =
     (currentStatus === "completed" || booking?.status === "Completed") &&
     (!booking?.rating || !booking?.rating?.score);
-  const canDownloadInvoice =
+  // Invoice is only available after payment has landed, regardless of payment
+  // mode. Prepayment: paid at booking. Cash: paid on cash-confirm. Card-after:
+  // paid after the payment link webhook. R0 insurance: "insurance_direct".
+  const isPaymentSettled =
     ["paid", "insurance_direct", "refunded", "partially_refunded", "partially refunded"].includes(
       currentPaymentStatus,
-    ) ||
-    currentStatus === "completed" ||
-    currentStatus === "completed-by-fitter";
-  const isInvoiceEnabled =
-    currentPaymentStatus === "paid" || currentPaymentStatus === "insurance_direct" ||
-    currentStatus === "completed" ||
-    currentStatus === "completed-by-fitter" ||
-    currentStatus === "confirmed" ||
-    currentStatus === "in-progress" ||
-    ["refunded", "partially_refunded", "partially refunded"].includes(
-      currentPaymentStatus,
     );
+  const canDownloadInvoice = isPaymentSettled;
+  const isInvoiceEnabled = isPaymentSettled;
 
   // Handle initial action (e.g., from deep link)
   useEffect(() => {

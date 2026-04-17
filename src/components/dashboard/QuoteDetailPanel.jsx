@@ -113,9 +113,13 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
 
   // Flexible Payment Options v1.2 — intercept accept flow when provider offers
   // multiple payment methods (cash and/or card-on-completion) so customer can pick.
+  // Phase 1 (April 2026): Insurance quotes with excess > 0 also use the picker.
+  // R0-excess insurance quotes skip the picker and run the existing auto-confirm flow.
   const handleAcceptAndPay = async (response) => {
-    // Insurance quotes always go through Paystack (post-payment models not supported)
     const isInsuranceResponse = response?.isInsuranceRegistered && quote?.hasInsurance;
+    const excess = response?.insuranceDetails?.customerExcess || 0;
+    const isR0Insurance = isInsuranceResponse && excess === 0;
+
     const providerOpts = response?.provider?.paymentOptions || {};
     const providerSupportsCash =
       !!providerOpts.cashOnCompletion &&
@@ -123,7 +127,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     const providerSupportsCardAfter = !!providerOpts.cardOnCompletion;
 
     if (
-      !isInsuranceResponse &&
+      !isR0Insurance &&
       (providerSupportsCash || providerSupportsCardAfter)
     ) {
       // Open method selection modal first
@@ -132,7 +136,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
       return;
     }
 
-    // Default prepayment flow
+    // Default prepayment flow (also handles R0 insurance via its own short-circuit)
     return handleAcceptPrepayment(response);
   };
 
