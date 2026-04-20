@@ -3,7 +3,7 @@
 > **Project:** AutoScreen Customer Dashboard
 > **Stack:** React + Vite, Zustand, React Router v6, Axios, Socket.IO
 > **Version:** 1.0.0
-> **Last Updated:** 25 March 2026 (NewQuote — 4-Step Refactor)
+> **Last Updated:** 17 April 2026 (Payment Success Page — Unified Post-Commit Landing)
 
 ---
 
@@ -685,6 +685,7 @@ const BASE_URL = import.meta.env.VITE_API_URL;
   /quotes/new               → NewQuote.jsx (request form)
   /quotes/:id               → QuoteDetailPage.jsx (detail wrapper)
   /quotes/:id/book-appointment → BookAppointment.jsx (post-payment scheduling)
+  /payment-success          → PaymentSuccess.jsx (unified post-commit landing, mode-aware)
   /bookings                 → Bookings.jsx
   /bookings/:id             → Bookings.jsx (detail mode)
   /bookings/:id/:action     → Bookings.jsx (action mode)
@@ -840,6 +841,36 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 ---
 
 ## Changelog
+
+### 20 April 2026 (PaymentSuccess — Loading Hang Fix, Full-Page Layout, Compact Sizing)
+
+- **Root cause — loading hang**: `PaymentSuccess.jsx` `useEffect` used a `cancelled` flag set in the cleanup. React 18 StrictMode runs effect → cleanup → effect again in dev. First run set `verifyRanRef.current = true` and fired the Paystack verify request. Cleanup set `cancelled = true`. Second run hit the `verifyRanRef` guard and returned early, so no new request. But when the first request resolved, the `cancelled` flag blocked `setVerifyState("success")` — leaving the page stuck on the spinner forever ("page was only loading, confirmation never came"). Removed the `cancelled` flag entirely. `verifyRanRef` alone prevents duplicate firing; state updates now always apply when the response arrives. No memory-leak concern — the component is a terminal landing page that doesn't unmount mid-request in practice.
+
+- **Root cause — full-page layout request**: `/dashboard/payment-success` was registered as a child of the `<DashboardLayout>`-wrapped block in `App.jsx`, so it rendered inside the dashboard shell with sidebar and header. User asked for a standalone Paystack-redirect-style landing page with no chrome.
+
+- **`App.jsx` — Route moved out of DashboardLayout**: Added a new top-level protected route for `/dashboard/payment-success` that wraps `PaymentSuccess` in `ProtectedRoute` directly (no layout). Removed the nested `payment-success` child route from inside the `/dashboard` block. URL path unchanged — backend callback URLs still point at `/dashboard/payment-success`. React Router's route order ensures the standalone route matches first.
+
+- **`PaymentSuccess.jsx` — Compact full-viewport styling**: Changed outer wrapper from `min-h-[70vh]` to `min-h-screen bg-slate-50 dark:bg-slate-950` so the page fills the viewport cleanly with no dashboard background bleed. Tightened card dimensions to guarantee fit on common laptop heights (<720px):
+  - Max width `560px → 520px`, outer padding `py-8 → py-6`
+  - Hero: padding `pt-8 pb-16 → pt-6 pb-12`, icon circle `64px → 48px`, title `text-[1.5rem] → text-xl`
+  - Overlap check badge: offset `-mt-8 → -mt-6`, diameter `56px → 44px`, inner check `40px → 32px`
+  - "What happens next": padding `p-4 → p-3`, label `0.75rem → 0.6875rem`, list text `0.875rem → 0.8125rem`, tighter line spacing and bullet vertical alignment
+  - Action buttons: padding `py-3 → py-2.5`, text `sm → 0.8125rem`, `type="button"` added for correctness
+- **Buttons confirmed as redirects**: "View My Bookings" → `navigate("/dashboard/bookings")`. "Book Your Appointment" → `navigate(\`/dashboard/quotes/:quoteId/book-appointment\`)` (or `/dashboard/bookings/:id` fallback when only `bookingId` present). React Router client-side navigation — no full reload.
+
+### 17 April 2026 (BookingDetailDrawer — 3-Button Footer Wrap Fix)
+
+- **Root cause**: `DrawerFooter` in `Drawer.jsx` defaults to `flex-col sm:flex-row sm:items-center` (from the 20 March mobile-responsive pass). `BookingDetailDrawer`'s footer passed `flex-col gap-3` hoping to stack vertically, but Tailwind's `sm:flex-row` won on desktop due to media-query specificity — "Confirm & Pay" and the inner 2-column `{ Reschedule, Cancel Booking }` grid ended up side-by-side at ~50% width each. The already-narrow 2-column grid then rendered "Cancel Booking" at ~25% drawer width, wrapping the text onto a second line and looking cramped.
+- **`BookingDetailDrawer.jsx` — `!flex-col !items-stretch`**: Changed `DrawerFooter className` from `"flex-col gap-3"` to `"!flex-col !items-stretch gap-3"`. The `!` important modifier wins over the shared `DrawerFooter`'s `sm:flex-row` / `sm:items-center` without touching the default component. Primary action ("Confirm & Pay") now gets its own full-width row, and the secondary-actions grid ({ Reschedule, Cancel Booking } / { Leave Review, Invoice, Reschedule, Cancel Booking }) sits below with its own 2-column layout at comfortable width. No visual change for bookings with only 1–2 footer actions.
+- **Zero regression**: `Drawer.jsx` default unchanged — other drawers that rely on `sm:flex-row` (e.g., any future drawer) still get the horizontal desktop layout. Only `BookingDetailDrawer`'s footer opts out.
+
+### 17 April 2026 (Payment Success Page — Unified Post-Commit Landing)
+
+- **New page `src/pages/dashboard/PaymentSuccess.jsx`**: Mode-aware success screen rendered at `/dashboard/payment-success` for every commit path — prepayment (Paystack verify), cash, card-on-completion pay-link, card-on-completion tokenize, R0 insurance. Reads `?mode=...&quoteId=...&bookingId=...&reference=...` query params. For `prepayment` and `card_tokenized` (Paystack-hosted redirects), auto-calls `paymentService.verifyPaystack(reference)` on mount and shows a spinner → celebration. Cash, pay-link, insurance land directly on the success state (backend already committed). Per-mode config controls hero gradient color (`emerald`/`amber`/`violet`), icon (`CreditCard`/`Banknote`/`Mail`/`Zap`/`Shield`), title, subtitle, and 3-bullet "What happens next" list. CTAs: "View My Bookings" (secondary) + "Book Your Appointment" (primary → `/dashboard/quotes/:quoteId/book-appointment`).
+- **`App.jsx` — route registered**: `<Route path="payment-success" element={<PaymentSuccess />} />` added inside the protected `/dashboard` layout. Import added alongside `BookAppointment`.
+- **Error branch**: If Paystack verification fails (network / reference invalid / backend returns `success: false`), the page renders a red alert card with "Payment not verified" message, error detail, and "Back to Quote" / "Contact Support" buttons. Failure toast also fired via `useDashboardStore.addToast`.
+- **Backend coordination** (see `autoscreen_node` changelog, same date): 6 callback/redirect URLs in `paymentController.js` rewritten to point at the new page. No frontend handler change needed in `QuoteDetailPanel.jsx` — the existing `if (res.redirect_url) window.location.href = res.redirect_url` paths automatically follow the new URL. `BookAppointment.jsx` verify-on-return logic left untouched as a fallback for any legacy URL still in flight.
+- **Zero regression**: `PaymentMethodModal` confirm step (cash / pay-link) unchanged. `PaymentModal` prepayment flow unchanged. All existing accept/verify/retry endpoints unchanged on the client. Dark mode supported throughout via existing `dark:` Tailwind utilities.
 
 ### 16 April 2026 (Status + Timeline Audit — Commit-aware Gates for Post-Service Payments)
 

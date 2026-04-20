@@ -9,6 +9,7 @@ import QuoteDetailPage from "./pages/dashboard/QuoteDetailPage";
 import NewQuote from "./pages/dashboard/NewQuote";
 import Bookings from "./pages/dashboard/Bookings";
 import BookAppointment from "./pages/dashboard/BookAppointment";
+import PaymentSuccess from "./pages/dashboard/PaymentSuccess";
 import Payments from "./pages/dashboard/Payments";
 import Profile from "./pages/dashboard/Profile";
 import Support from "./pages/dashboard/Support";
@@ -42,6 +43,16 @@ const App = () => {
       {/* Redirect root to dashboard */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/impersonate" element={<ImpersonatePage />} />
+
+      {/* Full-page Payment Success — no sidebar/header (Paystack redirect landing) */}
+      <Route
+        path="/dashboard/payment-success"
+        element={
+          <ProtectedRoute>
+            <PaymentSuccess />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Dashboard Routes - Protected */}
       <Route

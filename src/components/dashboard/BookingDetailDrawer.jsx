@@ -1110,7 +1110,15 @@ const BookingDetailDrawer = ({
                         <div className="flex justify-between items-center text-xs">
                           <span className="text-emerald-600 dark:text-emerald-400">Insurer Covers</span>
                           <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                            -{formatCurrency(booking.insuranceDetails.insurerPortion || 0)}
+                            -{formatCurrency(
+                              (+(booking.insuranceDetails.insurerPortion) || 0) > 0
+                                ? booking.insuranceDetails.insurerPortion
+                                : Math.max(
+                                    (+(booking.insuranceDetails.totalJobValue) || 0) -
+                                      (+(booking.insuranceDetails.customerExcess) || 0),
+                                    0
+                                  )
+                            )}
                           </span>
                         </div>
                         <div className="flex justify-between items-center text-xs font-semibold">
@@ -1150,8 +1158,8 @@ const BookingDetailDrawer = ({
                     <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-700">
                       <span className="text-sm font-bold text-slate-900 dark:text-white">
                         {booking.isInsuranceClaim && booking.insuranceDetails?.isRegisteredProvider
-                          ? "You Paid"
-                          : "Total Amount"}
+                          ? (isPaymentSettled ? "You Paid" : "Excess Due")
+                          : (isPaymentSettled ? "Total Amount" : "Total Due")}
                       </span>
                       <div className="text-right">
                         <span className="font-display font-bold text-primary-600 dark:text-primary-400 text-lg">
@@ -1234,7 +1242,7 @@ const BookingDetailDrawer = ({
           canDownloadInvoice ||
           canCancel ||
           canReschedule) && (
-          <DrawerFooter className="flex-col gap-3">
+          <DrawerFooter className="!flex-col !items-stretch gap-3">
             {canPay && (
               <Button onClick={handlePayNow} className="w-full">
                 <CreditCard size={16} />
@@ -1243,7 +1251,13 @@ const BookingDetailDrawer = ({
             )}
 
             {(canReview || canDownloadInvoice || canReschedule || canCancel) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+              <div
+                className={`grid ${
+                  [canReview, canDownloadInvoice, canReschedule, canCancel].filter(Boolean).length > 1
+                    ? "grid-cols-1 sm:grid-cols-2"
+                    : "grid-cols-1"
+                } gap-2 w-full`}
+              >
                 {canReview && (
                   <Button
                     variant="secondary"

@@ -926,20 +926,37 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                 const last4 = booking?.cardAuth?.last4;
                 const mode = booking?.paymentOption;
                 const subMode = booking?.paymentSubMethod;
+                const isSettled = ["paid", "insurance_direct", "refunded", "partially_refunded", "partially refunded"].includes(
+                  booking?.paymentStatus,
+                );
 
                 let badgeClass = "text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20";
                 let badgeInner = <><Check size={11} /> Paid in full</>;
 
-                if (isInsuranceClaim && isRegisteredProvider) {
+                // Payment-mode-specific "not yet paid" badges take priority when
+                // payment hasn't settled — avoids misleading the customer with
+                // "Excess Paid" / "Paid in full" before the money actually lands.
+                if (!isSettled && mode === "cash") {
+                  badgeClass = "text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/20";
+                  badgeInner = <><Clock size={11} /> Cash on Completion</>;
+                } else if (!isSettled && mode === "card_on_completion" && subMode === "payment_link") {
+                  badgeClass = "text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/20";
+                  badgeInner = <><Clock size={11} /> Pay After Service</>;
+                } else if (!isSettled && mode === "card_on_completion" && subMode === "tokenized") {
+                  badgeClass = "text-violet-700 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/20";
+                  badgeInner = last4
+                    ? <><CreditCard size={11} /> Card on File ••{last4}</>
+                    : <><Clock size={11} /> Auto-charge Pending</>;
+                } else if (isInsuranceClaim && isRegisteredProvider) {
                   badgeInner = paidAmount === 0
                     ? <><ShieldCheck size={11} /> Insurance Covered</>
                     : <><ShieldCheck size={11} /> Excess Paid</>;
                 } else if (mode === "cash") {
                   badgeClass = "text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/20";
-                  badgeInner = <><Check size={11} /> Cash on Completion</>;
+                  badgeInner = <><Check size={11} /> Cash Paid</>;
                 } else if (mode === "card_on_completion" && subMode === "payment_link") {
-                  badgeClass = "text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/20";
-                  badgeInner = <><Clock size={11} /> Pay After Service</>;
+                  badgeClass = "text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20";
+                  badgeInner = <><Check size={11} /> Paid After Service</>;
                 } else if (mode === "card_on_completion" && subMode === "tokenized" && last4) {
                   badgeClass = "text-violet-700 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/20";
                   badgeInner = <><CreditCard size={11} /> Card on File ••{last4}</>;

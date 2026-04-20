@@ -243,21 +243,8 @@ const BookingCard = ({
 
         {/* Provider */}
         <div className="flex-1 min-w-[110px]">
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-[.625rem] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-              Provider
-            </span>
-            {booking.providerBusinessType !== "individual" && booking.providerVatNumber && (
-              <span className="text-[0.5625rem] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-px rounded-full dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 flex-shrink-0">
-                VAT Registered
-              </span>
-            )}
-            {booking.isInsuranceClaim && booking.providerInsuranceApproved && (
-              <span className="text-[0.5625rem] font-medium bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-px rounded-full dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 flex-shrink-0 inline-flex items-center gap-0.5">
-                <ShieldCheck size={8} />
-                Insurance Approved
-              </span>
-            )}
+          <div className="text-[.625rem] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">
+            Provider
           </div>
           <div className="text-[.875rem] font-semibold text-slate-800 dark:text-white truncate">
             {booking.providerName}
@@ -283,6 +270,22 @@ const BookingCard = ({
               <span className="text-xs text-slate-400">{booking.providerRating.toFixed(1)}</span>
             </div>
           ) : null}
+          {((booking.providerBusinessType !== "individual" && booking.providerVatNumber) ||
+            (booking.isInsuranceClaim && booking.providerInsuranceApproved)) && (
+            <div className="flex flex-wrap items-center gap-1 mt-1">
+              {booking.providerBusinessType !== "individual" && booking.providerVatNumber && (
+                <span className="text-[0.5625rem] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-px rounded-full dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 flex-shrink-0">
+                  VAT Registered
+                </span>
+              )}
+              {booking.isInsuranceClaim && booking.providerInsuranceApproved && (
+                <span className="text-[0.5625rem] font-medium bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-px rounded-full dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 flex-shrink-0 inline-flex items-center gap-0.5">
+                  <ShieldCheck size={8} />
+                  Insurance Approved
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Service Type */}

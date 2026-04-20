@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
+  CreditCard,
 } from "lucide-react";
 import useDashboardStore, { formatCurrency } from "../../store/useDashboardStore";
 import quoteService from "../../services/quoteService";
@@ -26,16 +27,32 @@ import { NodeURL } from "../../services/api";
 
 // ─── Journey Progress Bar ────────────────────────────────────────────────────
 
-const STEPS = [
-  { label: "Sent" },
-  { label: "Providers" },
-  { label: "Reviewed" },
-  { label: "Paid" },
-  { label: "Book Appt" },
-  { label: "Confirmed" },
-];
+const buildSteps = ({ paymentOption, paymentSubMethod, isSettled }) => {
+  // Step 3 label adapts to payment mode + settlement. Non-settled cash /
+  // card-after shouldn't show "Paid" — it's misleading for a customer who
+  // hasn't handed over any money yet.
+  let paidLabel = "Paid";
+  if (!isSettled) {
+    if (paymentOption === "cash") paidLabel = "Cash Ready";
+    else if (paymentOption === "card_on_completion" && paymentSubMethod === "payment_link") paidLabel = "Pay Later";
+    else if (paymentOption === "card_on_completion" && paymentSubMethod === "tokenized") paidLabel = "Card Saved";
+  }
+  return [
+    { label: "Sent" },
+    { label: "Providers" },
+    { label: "Reviewed" },
+    { label: paidLabel },
+    { label: "Book Appt" },
+    { label: "Confirmed" },
+  ];
+};
 
-const JourneyProgress = ({ currentStep = 4 }) => (
+const JourneyProgress = ({ currentStep = 4, paymentOption, paymentSubMethod, paymentStatus }) => {
+  const isSettled = ["paid", "insurance_direct", "refunded", "partially_refunded", "partially refunded"].includes(
+    paymentStatus,
+  );
+  const STEPS = buildSteps({ paymentOption, paymentSubMethod, isSettled });
+  return (
   <div className="qdp-stepper bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 sm:p-5 mb-6 shadow-sm">
     <div className="flex items-center">
       {STEPS.map((step, i) => {
@@ -87,11 +104,49 @@ const JourneyProgress = ({ currentStep = 4 }) => (
       })}
     </div>
   </div>
-);
+  );
+};
 
 // ─── Provider Paid Bar ───────────────────────────────────────────────────────
 
-const ProviderPaidBar = ({ providerName, service, vehicle, amount, avatarUrl, isInsuranceClaim, isRegisteredProvider, totalJobValue }) => {
+const ProviderPaidBar = ({ providerName, service, vehicle, amount, avatarUrl, isInsuranceClaim, isRegisteredProvider, totalJobValue, paymentOption, paymentSubMethod, paymentStatus, cardLast4 }) => {
+  const isSettled = ["paid", "insurance_direct", "refunded", "partially_refunded", "partially refunded"].includes(
+    paymentStatus,
+  );
+  const renderBadge = () => {
+    if (!isSettled && paymentOption === "cash") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200 dark:border-emerald-800">
+          <Clock size={11} /> Cash on Completion
+        </span>
+      );
+    }
+    if (!isSettled && paymentOption === "card_on_completion" && paymentSubMethod === "payment_link") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-semibold border border-amber-200 dark:border-amber-800">
+          <Clock size={11} /> Pay After Service
+        </span>
+      );
+    }
+    if (!isSettled && paymentOption === "card_on_completion" && paymentSubMethod === "tokenized") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400 text-xs font-semibold border border-violet-200 dark:border-violet-800">
+          {cardLast4
+            ? <><CreditCard size={11} /> Card on File ••{cardLast4}</>
+            : <><Clock size={11} /> Auto-charge Pending</>}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200 dark:border-emerald-800">
+        {isInsuranceClaim && isRegisteredProvider ? (
+          amount === 0 ? (<><ShieldCheck size={11} /> Insurance Covered</>) : (<><ShieldCheck size={11} /> Excess Paid</>)
+        ) : (
+          <><Check size={11} /> Paid in full</>
+        )}
+      </span>
+    );
+  };
   const initials = (providerName || "?")
     .split(" ")
     .map((w) => w[0])
@@ -152,13 +207,7 @@ const ProviderPaidBar = ({ providerName, service, vehicle, amount, avatarUrl, is
         <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
           {formatCurrency(isInsuranceClaim && isRegisteredProvider && amount === 0 && totalJobValue > 0 ? totalJobValue : amount)}
         </span>
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200 dark:border-emerald-800">
-          {isInsuranceClaim && isRegisteredProvider ? (
-            amount === 0 ? (<><ShieldCheck size={11} /> Insurance Covered</>) : (<><ShieldCheck size={11} /> Excess Paid</>)
-          ) : (
-            <><Check size={11} /> Paid in full</>
-          )}
-        </span>
+        {renderBadge()}
       </div>
     </div>
   );
@@ -1238,7 +1287,13 @@ const BookAppointment = () => {
       </div>
 
       {/* Journey progress — hidden in reschedule mode */}
-      {!isReschedule && <JourneyProgress />}
+      {!isReschedule && (
+        <JourneyProgress
+          paymentOption={booking?.paymentOption}
+          paymentSubMethod={booking?.paymentSubMethod}
+          paymentStatus={booking?.paymentStatus}
+        />
+      )}
 
       {/* Provider paid bar — hidden in reschedule mode */}
       {!isReschedule && (
@@ -1251,6 +1306,10 @@ const BookAppointment = () => {
           isInsuranceClaim={isInsuranceClaim}
           isRegisteredProvider={isRegisteredProvider}
           totalJobValue={insuranceTotalJobValue}
+          paymentOption={booking?.paymentOption}
+          paymentSubMethod={booking?.paymentSubMethod}
+          paymentStatus={booking?.paymentStatus}
+          cardLast4={booking?.cardAuth?.last4}
         />
       )}
 
