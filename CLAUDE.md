@@ -3,7 +3,7 @@
 > **Project:** AutoScreen Customer Dashboard
 > **Stack:** React + Vite, Zustand, React Router v6, Axios, Socket.IO
 > **Version:** 1.0.0
-> **Last Updated:** 17 April 2026 (Payment Success Page — Unified Post-Commit Landing)
+> **Last Updated:** 21 April 2026 (PaymentMethodModal — Decimal Separator Fix)
 
 ---
 
@@ -841,6 +841,12 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 ---
 
 ## Changelog
+
+### 21 April 2026 (PaymentMethodModal — Decimal Separator Fix)
+
+- **Root cause**: `PaymentMethodModal.jsx` built the displayed amount with `amount.toLocaleString("en-ZA")`. South African locale uses comma as the decimal separator, so a value of `547.6` rendered as `R 547,6` in all three payment-method cards ("Pay now by card", "Pay cash when done", "Pay by card after service"). The portal's shared `formatCurrency` helper in `useDashboardStore.js` uses `"en-US"` (period decimal separator), so the modal was the odd one out.
+- **`src/components/dashboard/PaymentMethodModal.jsx:51`**: Changed `amount.toLocaleString("en-ZA")` → `amount.toLocaleString("en-US")`. Values like `547.6` now render as `R 547.6`, matching the rest of the portal (Payment Success rows, booking cards, invoices).
+- **No logic or API change** — display-only fix. Non-numeric `amount` props (already-formatted strings) continue to pass through unchanged.
 
 ### 21 April 2026 (PaymentSuccess — "7 Days" Text Removed)
 
