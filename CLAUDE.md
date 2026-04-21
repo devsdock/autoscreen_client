@@ -842,6 +842,14 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 21 April 2026 (PaymentSuccess — "7 Days" Text Removed)
+
+- **Root cause**: `PaymentMethodModal.jsx` was updated to drop the hardcoded "7 days" expiry language. `PaymentSuccess.jsx` still carried the same wording in two places (the `card_link` subtitle and the `card_link` "What happens next" bullet list). Showing a specific deadline to the customer commits the platform to that window — if payment is missed, revenue is at risk.
+- **`src/pages/dashboard/PaymentSuccess.jsx` — 2 strings scrubbed**:
+  - Line 48 (`MODE_CONFIG.card_link.subtitle`): "A secure payment link will be emailed to you once your service is complete. **~~You'll have 7 days to pay.~~**" — commitment dropped.
+  - Line 326 (`NEXT_STEPS.card_link[2]`): "**~~You have 7 days to complete payment.~~**" → "Pay straight from the email — takes under a minute." Mirrors the wording already used in `PaymentMethodModal.jsx`'s "Pay via link later" card so modal + success page stay consistent.
+- **No logic, API, or field changes** — only user-visible copy. Other modes (`prepayment`, `cash`, `card_tokenized`, `insurance`) unchanged.
+
 ### 20 April 2026 (PaymentSuccess — Loading Hang Fix, Full-Page Layout, Compact Sizing)
 
 - **Root cause — loading hang**: `PaymentSuccess.jsx` `useEffect` used a `cancelled` flag set in the cleanup. React 18 StrictMode runs effect → cleanup → effect again in dev. First run set `verifyRanRef.current = true` and fired the Paystack verify request. Cleanup set `cancelled = true`. Second run hit the `verifyRanRef` guard and returned early, so no new request. But when the first request resolved, the `cancelled` flag blocked `setVerifyState("success")` — leaving the page stuck on the spinner forever ("page was only loading, confirmation never came"). Removed the `cancelled` flag entirely. `verifyRanRef` alone prevents duplicate firing; state updates now always apply when the response arrives. No memory-leak concern — the component is a terminal landing page that doesn't unmount mid-request in practice.

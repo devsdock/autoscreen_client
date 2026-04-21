@@ -45,7 +45,7 @@ const MODE_CONFIG = {
     Icon: Mail,
     title: "Booking Confirmed",
     subtitle:
-      "A secure payment link will be emailed to you once your service is complete. You'll have 7 days to pay.",
+      "A secure payment link will be emailed to you once your service is complete.",
     next: { label: "Book Your Appointment", to: (ctx) => quoteBookUrl(ctx) },
   },
   card_tokenized: {
@@ -323,7 +323,7 @@ const NEXT_STEPS = {
   card_link: [
     "Pick a date and time for the service.",
     "After your service, we'll email you a secure payment link.",
-    "You have 7 days to complete payment.",
+    "Pay straight from the email — takes under a minute.",
   ],
   card_tokenized: [
     "Pick a date and time for the service.",
