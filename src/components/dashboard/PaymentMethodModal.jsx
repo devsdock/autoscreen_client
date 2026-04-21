@@ -48,7 +48,7 @@ const PaymentMethodModal = ({
   if (!isOpen) return null;
 
   const amountStr =
-    typeof amount === "number" ? `R ${amount.toLocaleString("en-US")}` : amount || "";
+    typeof amount === "number" ? `R ${amount.toLocaleString("en-US")}` : amount || "";
 
   const handleMethodClick = (method) => {
     if (method === "card_after") {

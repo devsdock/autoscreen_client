@@ -3,7 +3,7 @@
 > **Project:** AutoScreen Customer Dashboard
 > **Stack:** React + Vite, Zustand, React Router v6, Axios, Socket.IO
 > **Version:** 1.0.0
-> **Last Updated:** 21 April 2026 (PaymentMethodModal — Decimal Separator Fix)
+> **Last Updated:** 21 April 2026 (PaymentMethodModal — Decimal Separator & NBSP Fix)
 
 ---
 
@@ -848,7 +848,12 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 - **`src/components/dashboard/PaymentMethodModal.jsx:51`**: Changed `amount.toLocaleString("en-ZA")` → `amount.toLocaleString("en-US")`. Values like `547.6` now render as `R 547.6`, matching the rest of the portal (Payment Success rows, booking cards, invoices).
 - **No logic or API change** — display-only fix. Non-numeric `amount` props (already-formatted strings) continue to pass through unchanged.
 
-### 21 April 2026 (PaymentSuccess — "7 Days" Text Removed)
+### 21 April 2026 (PaymentMethodModal — Non-breaking Space Between "R" and Amount)
+
+
+- **Root cause**: Inside the narrow payment-method cards, the body copy inlines the amount via `<strong>{amountStr}</strong>` following descriptive text. The space between `R` and the number was a regular U+0020, so when text reflow pushed the amount near a line boundary the currency prefix "R" sometimes stayed on the end of one line while the digits (`547.6`) dropped to the next line — visually disconnecting the currency symbol from its value.
+- **`src/components/dashboard/PaymentMethodModal.jsx:51`**: Replaced the regular space in the `R ` literal with a non-breaking space (U+00A0). The two parts now form a single unbreakable token, so "R" and the amount always wrap together on the same line.
+- **No structural / CSS change** — the alternative (adding `whitespace-nowrap` to every `<strong>` usage, 5 spots) was rejected in favour of a single-char fix at the data source.
 
 - **Root cause**: `PaymentMethodModal.jsx` was updated to drop the hardcoded "7 days" expiry language. `PaymentSuccess.jsx` still carried the same wording in two places (the `card_link` subtitle and the `card_link` "What happens next" bullet list). Showing a specific deadline to the customer commits the platform to that window — if payment is missed, revenue is at risk.
 - **`src/pages/dashboard/PaymentSuccess.jsx` — 2 strings scrubbed**:
