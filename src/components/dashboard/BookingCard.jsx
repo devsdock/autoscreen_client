@@ -81,7 +81,7 @@ const BookingCard = ({
   // on file). Excludes tokenize-abandoned bookings.
   const isCommitted =
     isPaid || cashConfirmed || (cardAfterConfirmed && !isTokenizeAbandoned);
-  const isScheduled = isCommitted && hasSchedule;
+  const isScheduled = category === "upcoming" && isCommitted && hasSchedule;
 
   const quoteId =
     booking.quote?._id ||

@@ -329,21 +329,66 @@ const BookingDetailDrawer = ({
               type="booking"
               size="md"
             />
-            <StatusBadge
-              status={booking.paymentStatus}
-              type="payment"
-              size="md"
-            />
+            {(() => {
+              const pStatus = (booking.paymentStatus || "").toLowerCase();
+              const isSettled = ["paid", "insurance_direct", "refunded", "partially_refunded", "partially refunded"].includes(pStatus);
+              const isFpoMode = booking.paymentOption === "cash" || booking.paymentOption === "card_on_completion";
+
+              // Prepayment, or cash/card mode that has already settled — show the
+              // standard payment status badge ("Paid", "Refunded", etc.).
+              if (!isFpoMode || isSettled) {
+                return <StatusBadge status={booking.paymentStatus} type="payment" size="md" />;
+              }
+
+              // FPO — mode-aware pill instead of the misleading "Unpaid" label.
+              const pillBase = "inline-flex items-center gap-1.5 px-3 py-1 text-sm font-semibold rounded-full";
+              const dot = "w-[6px] h-[6px] rounded-full flex-shrink-0";
+
+              if (booking.paymentOption === "cash") {
+                return (
+                  <span className={`${pillBase} bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400`}>
+                    <span className={`${dot} bg-emerald-700 dark:bg-emerald-400`} />
+                    Cash on Completion
+                  </span>
+                );
+              }
+
+              // card_on_completion
+              if (currentStatus === "payment-pending") {
+                return (
+                  <span className={`${pillBase} bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400`}>
+                    <span className={`${dot} bg-red-700 dark:bg-red-400`} />
+                    Payment Required
+                  </span>
+                );
+              }
+              if (booking.cardAuth?.last4) {
+                return (
+                  <span className={`${pillBase} bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400`}>
+                    <span className={`${dot} bg-violet-700 dark:bg-violet-400`} />
+                    Card ••••{booking.cardAuth.last4}
+                  </span>
+                );
+              }
+              return (
+                <span className={`${pillBase} bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400`}>
+                  <span className={`${dot} bg-amber-700 dark:bg-amber-400`} />
+                  Pay After Service
+                </span>
+              );
+            })()}
             {booking?.serviceLocationType && booking.serviceLocationType !== "any" && (
-              <span
-                className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold"
-                style={{
-                  backgroundColor: booking.serviceLocationType === "mobile" ? "var(--color-blue-light)" : "var(--color-amber-light)",
-                  color: booking.serviceLocationType === "mobile" ? "#1d4ed8" : "#92400e",
-                }}
-              >
-                {booking.serviceLocationType === "mobile" ? "Mobile" : "Workshop"}
-              </span>
+              booking.serviceLocationType === "mobile" ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-semibold rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                  <span className="w-[6px] h-[6px] rounded-full bg-blue-700 dark:bg-blue-400 flex-shrink-0" />
+                  Mobile
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-semibold rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                  <span className="w-[6px] h-[6px] rounded-full bg-amber-700 dark:bg-amber-400 flex-shrink-0" />
+                  Workshop
+                </span>
+              )
             )}
           </div>
 

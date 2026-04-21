@@ -21,7 +21,7 @@ const EXPANDED_LIMIT = 50;
 // Status groups for separate API calls
 const STATUS_GROUPS = {
   actionRequired: "awaiting-customer-approval,completed-by-fitter",
-  upcoming: "confirmed,accepted,in-progress,searching",
+  upcoming: "confirmed,accepted,in-progress,searching,arrived,service-done,payment-pending",
   completed: "completed",
   cancelled: "cancelled,rejected,expired",
 };
