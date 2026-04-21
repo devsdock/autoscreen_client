@@ -176,6 +176,11 @@ export const mapBooking = (booking) => {
     // Normalize status to lowercase for comparison
     const currentStatus = status?.toLowerCase() || "pending";
 
+    // Workshop bookings: customer arrives at the provider's workshop, so the
+    // "arrived" step reads as "Customer Arrived". Mobile keeps existing copy.
+    const svcMode = booking.serviceLocationType || booking.quote?.serviceLocation?.type || "mobile";
+    const arrivedLabel = svcMode === "workshop" ? "Customer Arrived" : "Arrived at Location";
+
     // Determine if this booking came from a quote
     const isQuoteBased =
       booking.source === "QuoteAccepted" ||
@@ -302,7 +307,7 @@ export const mapBooking = (booking) => {
 
       // 6. Arrived at Location
       stages.push({
-        status: "Arrived at Location",
+        status: arrivedLabel,
         date: booking.actualTimes?.arrivedAt || null,
         completed: currentStatusLevel >= 5,
       });
@@ -395,7 +400,7 @@ export const mapBooking = (booking) => {
 
       // 5. Arrived at Location
       stages.push({
-        status: "Arrived at Location",
+        status: arrivedLabel,
         date: booking.actualTimes?.arrivedAt || null,
         completed: currentStatusLevel >= 5,
       });

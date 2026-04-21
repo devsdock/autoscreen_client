@@ -842,6 +842,12 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 21 April 2026 (Workshop Arrival — Timeline Wording)
+
+- **`src/utils/dataMappers.js` — `generateTimeline`**: For workshop bookings, the "Arrived at Location" timeline stage now renders as "Customer Arrived" (customer drove to the provider's workshop — they're the one arriving). Mobile bookings keep "Arrived at Location" (provider came to the customer). Mode resolved once at the top of `generateTimeline` from `booking.serviceLocationType || booking.quote?.serviceLocation?.type || "mobile"`, reused in both the quote-based timeline branch (stage 6) and the direct-booking branch (stage 5).
+- **No StatusBadge change**: The status badge component stays mode-agnostic — it shows "Arrived" for both modes. Workshop context comes from the timeline label + the existing "Workshop" pill on the drawer (both rendered in the same `BookingDetailDrawer` card).
+- **Backend paired** (same date, `autoscreen_node`): workshop bookings no longer fire the "Your technician has arrived!" customer notification + `sendTechnicianArrivedEmail`. Mobile bookings unchanged.
+
 ### 21 April 2026 (Bookings — "Arrived" Filter, Completed Badge, Mode-Aware Payment Pill, Workshop/Mobile Badge Parity)
 
 - **Root cause — "arrived" booking disappears from client list**: `Bookings.jsx` `STATUS_GROUPS.upcoming` filter was `"confirmed,accepted,in-progress,searching"`. Backend `Booking.js:204` defines `"arrived"` (provider/staff arrived at the location) as a valid intermediate status. When the provider or staff marked the booking arrived, the client's 4 status-filtered API calls all returned empty for it — the booking vanished from every tab. FPO Path-B states `service-done` and `payment-pending` had the same gap.
