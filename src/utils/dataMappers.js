@@ -661,7 +661,10 @@ export const mapQuote = (quote) => {
   };
 
   const responsesCount = quote.responseCount || quote.responses?.length || quote.responsesCount || 0;
-  const providerCount = quote.broadcastedTo?.length || quote.providerCount || 0;
+  // Temporary response cap per quote — display "X of min(3, broadcasted)".
+  const MAX_VISIBLE_PROVIDERS = 3;
+  const broadcastedCount = quote.broadcastedTo?.length || quote.providerCount || 0;
+  const providerCount = Math.min(MAX_VISIBLE_PROVIDERS, broadcastedCount);
 
   return {
     ...quote,

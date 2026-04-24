@@ -842,6 +842,11 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 24 April 2026 (Response Count Cap + Service Duration Label)
+
+- **`src/components/dashboard/ProviderResponseCard.jsx:403` — "Duration:" → "Service Duration:"**: Customers were confused whether the small "Duration 30min" label on each provider response card referred to the quote's 24h validity, travel time, or service completion time. Renamed to "Service Duration:" for clarity. Desktop timing column (line 467) shows just the raw formatted duration with no label — no change needed there.
+- **`src/utils/dataMappers.js` — `providerCount` capped at 3**: Paired with the backend response cap (max 3 responses per quote, see `autoscreen_node` changelog, same date). `providerCount` now resolves to `Math.min(MAX_VISIBLE_PROVIDERS, quote.broadcastedTo?.length || 0)` with `MAX_VISIBLE_PROVIDERS = 3`. A quote broadcast to 10 providers displays as "1 of 3 providers have responded" (not "1 of 10") in `QuoteDetailPanel.jsx:735` and as "3 sent · 1 replied" in `QuotesNew.jsx:165` — using the existing UI copy without any component-level change. When only 1 provider matches, still shows "1 of 1" (Math.min picks the smaller of 3 and 1). To revert later, change the constant here and the matching `MAX_RESPONSES_PER_QUOTE` in `autoscreen_node/controllers/provider/quoteController.js`.
+
 ### 21 April 2026 (Workshop Arrival — Timeline Wording)
 
 - **`src/utils/dataMappers.js` — `generateTimeline`**: For workshop bookings, the "Arrived at Location" timeline stage now renders as "Customer Arrived" (customer drove to the provider's workshop — they're the one arriving). Mobile bookings keep "Arrived at Location" (provider came to the customer). Mode resolved once at the top of `generateTimeline` from `booking.serviceLocationType || booking.quote?.serviceLocation?.type || "mobile"`, reused in both the quote-based timeline branch (stage 6) and the direct-booking branch (stage 5).

@@ -400,7 +400,7 @@ const ProviderResponseCard = ({
               className="text-slate-500 dark:text-slate-400"
             >
               <Clock size={13} />
-              Duration: {formatDuration(estimatedDuration)}
+              Service Duration: {formatDuration(estimatedDuration)}
             </div>
           ) : null}
         </div>
