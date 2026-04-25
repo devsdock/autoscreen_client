@@ -17,9 +17,7 @@ import {
 import useDashboardStore from "../../store/useDashboardStore";
 import useAuthStore from "../../store/useAuthStore";
 
-import logo from "../../assets/logo.png";
 import logoIcon from "../../assets/logo_icon.png";
-import logoWhite from "../../assets/logo_white.png";
 import logoIconWhite from "../../assets/logo_icon_white.png";
 
 // Top-level nav (no section label)
@@ -226,16 +224,16 @@ const DashboardSidebar = () => {
       >
         {/* Logo & Toggle */}
         <div
-          className={`h-16 flex items-center ${
+          className={`h-14 flex items-center ${
             sidebarCollapsed ? "justify-center px-1" : "justify-between px-4"
           } relative transition-all duration-300`}
         >
           <Link
             to="/dashboard"
-            className="flex items-center gap-3 overflow-hidden"
+            className={`flex items-center overflow-hidden ${sidebarCollapsed ? "gap-3" : "gap-2"}`}
           >
             {sidebarCollapsed ? (
-              <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+              <div className="w-11 h-11 flex items-center justify-center flex-shrink-0">
                 <img
                   src={logoIcon}
                   alt="AutoScreen"
@@ -250,15 +248,16 @@ const DashboardSidebar = () => {
             ) : (
               <>
                 <img
-                  src={logo}
+                  src={logoIcon}
                   alt="AutoScreen"
-                  className="h-8 object-contain dark:hidden"
+                  className="h-11 w-11 object-contain flex-shrink-0 dark:hidden"
                 />
                 <img
-                  src={logoWhite}
+                  src={logoIconWhite}
                   alt="AutoScreen"
-                  className="h-8 object-contain hidden dark:block"
+                  className="h-11 w-11 object-contain flex-shrink-0 hidden dark:block"
                 />
+                <span className="text-[1.5rem] font-black leading-none whitespace-nowrap text-[#DC2626] dark:text-white" style={{ letterSpacing: "-0.025em" }}>AutoScreen</span>
               </>
             )}
           </Link>

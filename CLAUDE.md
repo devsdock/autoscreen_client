@@ -842,6 +842,14 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 25 April 2026 (Sidebar Logo — Horizontal Lockup)
+
+- **`src/components/dashboard/DashboardSidebar.jsx` — sidebar logo block restructured**: Replaced the stacked vertical brand asset (`logo.png` / `logo_white.png`) with a horizontal lockup composed inline: `logo_icon.png` on the left + "AutoScreen" wordmark span on the right. The stacked PNG had its wordmark portion render too small at sidebar widths, so the wordmark is now rendered as live text for full readability.
+- **Lockup specs**: icon `h-11 w-11` (44px); wordmark `text-[1.5rem]` (24px) `font-black` with `letter-spacing: -0.025em` and `leading-none`; brand red `#DC2626` in light mode, white in dark mode; gap `gap-2` when expanded, `gap-3` when collapsed.
+- **Header height**: sidebar logo block reduced from `h-16` (64px) → `h-14` (56px) to tighten the gap between the logo and the first nav item. Bottom border under the logo block removed.
+- **Collapsed state**: unchanged — `logo_icon.png` / `logo_icon_white.png` shown alone in a `w-11 h-11` square.
+- **Imports trimmed**: unused `logo` and `logoWhite` imports removed.
+
 ### 24 April 2026 (Response Count Cap + Service Duration Label)
 
 - **`src/components/dashboard/ProviderResponseCard.jsx:403` — "Duration:" → "Service Duration:"**: Customers were confused whether the small "Duration 30min" label on each provider response card referred to the quote's 24h validity, travel time, or service completion time. Renamed to "Service Duration:" for clarity. Desktop timing column (line 467) shows just the raw formatted duration with no label — no change needed there.
