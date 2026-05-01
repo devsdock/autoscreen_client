@@ -82,8 +82,12 @@ const PaymentMethodModal = ({
     typeof amount === "number" ? `R ${amount.toLocaleString("en-US")}` : amount || "";
 
   const handleMethodClick = (method) => {
-    if (method === "card_after") {
-      // Opening the sub-view is not a commit — reset any pending selection.
+    // From the MAIN view, "card_after" opens the sub-view (Add card now / Pay
+    // via link). From the SUB-view, "card_after" is the Pay-via-link choice
+    // and should fall through to the selection-toggle path so Confirm appears.
+    // Without the `view !== "card_sub"` guard, the second click reset the
+    // selection (setSelectedMethod(null)) and the user could never proceed.
+    if (method === "card_after" && view !== "card_sub") {
       setView("card_sub");
       setSelectedMethod(null);
       return;
@@ -94,7 +98,8 @@ const PaymentMethodModal = ({
       onSelect(method);
       return;
     }
-    // Cash or "card_after" (Pay via link) → require explicit Confirm below.
+    // Cash or "card_after" (Pay via link, from sub-view) → require explicit
+    // Confirm below.
     setSelectedMethod((prev) => (prev === method ? null : method));
   };
 
