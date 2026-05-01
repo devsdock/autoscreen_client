@@ -54,7 +54,17 @@ const BookingCard = ({
   const pStatus = booking.paymentStatus?.toLowerCase();
   // Partial Payment (Points 1-2, April 2026): "deposit_paid" is treated as
   // committed — booking is confirmed even though balance is still owed.
-  const isDepositPaid = pStatus === "deposit_paid";
+  // Note: dataMappers.getNormalizedPaymentStatus() normalises the raw enum
+  // "deposit_paid" → "Deposit Paid" (with space). We must accept BOTH the
+  // raw enum (underscore) and the normalised label (lowercased space) so
+  // this check works regardless of upstream mapping. Also accept
+  // partialPayment.isActive as an authoritative fallback.
+  const isDepositPaid =
+    pStatus === "deposit_paid" ||
+    pStatus === "deposit paid" ||
+    (booking.partialPayment?.isActive === true &&
+      booking.balanceStatus === "pending" &&
+      Number(booking.depositAmount) > 0);
   const isPaid = pStatus === "paid" || pStatus === "insurance_direct" || isDepositPaid;
   const hasBalanceDue =
     booking.partialPayment?.isActive === true &&
