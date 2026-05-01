@@ -109,11 +109,35 @@ const JourneyProgress = ({ currentStep = 4, paymentOption, paymentSubMethod, pay
 
 // ─── Provider Paid Bar ───────────────────────────────────────────────────────
 
-const ProviderPaidBar = ({ providerName, service, vehicle, amount, avatarUrl, isInsuranceClaim, isRegisteredProvider, totalJobValue, paymentOption, paymentSubMethod, paymentStatus, cardLast4 }) => {
+const ProviderPaidBar = ({ providerName, service, vehicle, amount, avatarUrl, isInsuranceClaim, isRegisteredProvider, totalJobValue, paymentOption, paymentSubMethod, paymentStatus, cardLast4, partialPayment, depositAmount, balanceAmount, balanceStatus }) => {
   const isSettled = ["paid", "insurance_direct", "refunded", "partially_refunded", "partially refunded"].includes(
     paymentStatus,
   );
+  // Partial Payment (Points 1-2, April 2026) — when active and balance still
+  // pending, customer has paid only the deposit. Amount displayed should be
+  // the BALANCE owed at completion, not the full job total. Badge swaps to
+  // "Deposit Paid · Balance R X due (cash/card/etc)".
+  const isPartialPending =
+    partialPayment?.isActive === true &&
+    balanceStatus === "pending" &&
+    Number(balanceAmount) > 0;
+  const balanceMethodLabel =
+    paymentOption === "cash"
+      ? "in cash"
+      : paymentOption === "card_on_completion"
+        ? paymentSubMethod === "tokenized"
+          ? "auto-charged"
+          : "via link"
+        : "";
   const renderBadge = () => {
+    if (isPartialPending) {
+      // Single emerald-tinted badge summarising deposit + balance status
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-xs font-semibold border border-blue-200 dark:border-blue-800 whitespace-nowrap">
+          <Check size={11} /> Deposit Paid · Balance {balanceMethodLabel}
+        </span>
+      );
+    }
     if (!isSettled && paymentOption === "cash") {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200 dark:border-emerald-800">
@@ -203,11 +227,24 @@ const ProviderPaidBar = ({ providerName, service, vehicle, amount, avatarUrl, is
       </div>
 
       {/* Amount + badge */}
-      <div className="flex items-center gap-3 flex-shrink-0">
-        <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
-          {formatCurrency(isInsuranceClaim && isRegisteredProvider && amount === 0 && totalJobValue > 0 ? totalJobValue : amount)}
-        </span>
-        {renderBadge()}
+      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
+            {formatCurrency(
+              isPartialPending
+                ? Number(balanceAmount) || 0
+                : isInsuranceClaim && isRegisteredProvider && amount === 0 && totalJobValue > 0
+                  ? totalJobValue
+                  : amount
+            )}
+          </span>
+          {renderBadge()}
+        </div>
+        {isPartialPending && (
+          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+            Deposit {formatCurrency(Number(depositAmount) || 0)} paid · Total {formatCurrency(amount)}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -1310,6 +1347,10 @@ const BookAppointment = () => {
           paymentSubMethod={booking?.paymentSubMethod}
           paymentStatus={booking?.paymentStatus}
           cardLast4={booking?.cardAuth?.last4}
+          partialPayment={booking?.partialPayment}
+          depositAmount={booking?.depositAmount}
+          balanceAmount={booking?.balanceAmount}
+          balanceStatus={booking?.balanceStatus}
         />
       )}
 

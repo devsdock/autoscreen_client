@@ -52,7 +52,14 @@ const BookingCard = ({
 }) => {
   const category = getCategory(booking);
   const pStatus = booking.paymentStatus?.toLowerCase();
-  const isPaid = pStatus === "paid" || pStatus === "insurance_direct";
+  // Partial Payment (Points 1-2, April 2026): "deposit_paid" is treated as
+  // committed — booking is confirmed even though balance is still owed.
+  const isDepositPaid = pStatus === "deposit_paid";
+  const isPaid = pStatus === "paid" || pStatus === "insurance_direct" || isDepositPaid;
+  const hasBalanceDue =
+    booking.partialPayment?.isActive === true &&
+    booking.balanceStatus === "pending" &&
+    Number(booking.balanceAmount) > 0;
   const hasSchedule = !!booking.scheduledDate;
   const isCompletedByFitter = booking.status?.toLowerCase() === "completed-by-fitter";
   const isCompleted = booking.status?.toLowerCase() === "completed";
@@ -327,11 +334,20 @@ const BookingCard = ({
               return `R ${num.toLocaleString("en-US", { minimumFractionDigits: hasDecimals ? 2 : 0, maximumFractionDigits: 2, useGrouping: false })}`;
             })()}
           </span>
-          {isPaid && (
+          {isPaid && !hasBalanceDue && (
             <span className="text-xs font-normal text-slate-400">
               {booking.isInsuranceClaim && booking.insuranceDetails?.isRegisteredProvider
                 ? ((+(booking.price?.total) || 0) === 0 ? "Insurance Covered" : "Excess Paid")
                 : "Paid"}
+            </span>
+          )}
+          {/* Partial Payment — deposit paid, balance still due (Points 1-2, April 2026) */}
+          {hasBalanceDue && (
+            <span
+              className="inline-flex items-center gap-1 text-[0.6875rem] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
+              title={`Deposit R${booking.depositAmount} paid · Balance R${booking.balanceAmount} due at completion`}
+            >
+              Deposit Paid · Balance R{(+(booking.balanceAmount) || 0).toLocaleString("en-US")} due
             </span>
           )}
           {/* Cash on Completion indicator (Flexible Payment Options v1.2) */}

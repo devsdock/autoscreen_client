@@ -234,6 +234,21 @@ const paymentStatusConfig = {
     dot: "bg-green-700 dark:bg-green-400",
     label: "Paid",
   },
+  // Partial Payment (Points 1-2, April 2026): deposit landed, balance pending.
+  // Blue theme distinguishes from green "Paid" (full settlement) and amber
+  // "Unpaid" — signals committed-but-incomplete.
+  deposit_paid: {
+    color:
+      "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
+    dot: "bg-blue-700 dark:bg-blue-400",
+    label: "Deposit Paid",
+  },
+  "Deposit Paid": {
+    color:
+      "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
+    dot: "bg-blue-700 dark:bg-blue-400",
+    label: "Deposit Paid",
+  },
   Refunded: {
     color:
       "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400",

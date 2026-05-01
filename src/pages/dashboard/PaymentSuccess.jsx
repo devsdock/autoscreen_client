@@ -110,10 +110,16 @@ const PaymentSuccess = () => {
   const reference =
     searchParams.get("reference") || searchParams.get("trxref") || "";
 
-  // Only prepayment and card_tokenized arrive with a live Paystack ref to verify
-  const needsVerify = Boolean(
-    reference && (mode === "prepayment" || mode === "card_tokenized"),
-  );
+  // Auto-verify whenever Paystack returned with a reference. Originally
+  // limited to prepayment + card_tokenized modes — but Partial Payment
+  // (Points 1-2, April 2026) means cash + card_link ALSO go through
+  // Paystack first (deposit charge), so they too return with ?reference=
+  // and need verification before the user navigates onward. The verify
+  // endpoint is idempotent: if the booking is already committed (webhook
+  // beat us), it returns it; otherwise it calls processQuoteChargeSuccess
+  // to commit. Insurance R0 mode redirects without a reference, so it's
+  // unaffected.
+  const needsVerify = Boolean(reference);
 
   const [verifyState, setVerifyState] = useState(
     needsVerify ? "loading" : "idle",

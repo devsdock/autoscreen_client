@@ -159,7 +159,7 @@ const Insurance = () => {
   };
 
   const formatDate = (d) => { try { return new Date(d).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" }); } catch { return "—"; } };
-  const formatCurrency = (v) => { if (v == null) return "—"; return `R ${Number(v).toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; };
+  const formatCurrency = (v) => { if (v == null) return "—"; return `R ${Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; };
 
   /* ─── Loading skeleton ─── */
   if (loading) {

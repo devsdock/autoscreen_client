@@ -68,8 +68,12 @@ const Payments = () => {
   }, [addToast, searchQuery]);
 
   // Calculate summary stats
+  // Partial Payment (Points 1-2, April 2026): "Deposit Paid" status counts
+  // toward "totalSpent" (deposit landed) but the booking has balance pending.
+  // We separate balance-due into its own counter so customers see what they
+  // still owe.
   const totalSpent = payments
-    .filter((p) => p.status === "Paid")
+    .filter((p) => p.status === "Paid" || p.status === "Deposit Paid")
     .reduce((sum, p) => sum + p.amount, 0);
   const pendingTotal = payments
     .filter((p) => ["Unpaid", "Pending", "Processing"].includes(p.status))
@@ -78,7 +82,7 @@ const Payments = () => {
     .filter((p) => p.status === "Refunded")
     .reduce((sum, p) => sum + (p.refundAmount || p.amount), 0);
   const lastPaid = payments
-    .filter((p) => p.status === "Paid")
+    .filter((p) => p.status === "Paid" || p.status === "Deposit Paid")
     .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
   const tabs = [
@@ -87,7 +91,7 @@ const Payments = () => {
       value: "pending",
       label: "Pending",
       count: payments.filter(
-        (p) => p.status === "Unpaid" || p.status === "Pending",
+        (p) => p.status === "Unpaid" || p.status === "Pending" || p.status === "Deposit Paid",
       ).length,
     },
     {

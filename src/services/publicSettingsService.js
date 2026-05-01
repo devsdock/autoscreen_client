@@ -169,8 +169,26 @@ export const getCancellationPolicy = async () => {
   }
 };
 
+/**
+ * Fetch partial-payment configuration (Points 1-2, April 2026)
+ * Returns { isActive, depositPercentage, balancePercentage }.
+ */
+export const getPartialPaymentConfig = async () => {
+  try {
+    const response = await request({
+      method: "GET",
+      url: "/public/settings/partial-payment",
+    });
+    return response.data || { isActive: false, depositPercentage: 100, balancePercentage: 0 };
+  } catch (error) {
+    console.error("Failed to fetch partial-payment config:", error);
+    return { isActive: false, depositPercentage: 100, balancePercentage: 0 };
+  }
+};
+
 export default {
   getPublicSettings,
   getCommission,
   getCancellationPolicy,
+  getPartialPaymentConfig,
 };

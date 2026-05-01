@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { CreditCard, Banknote, Shield, Check, ArrowLeft, Zap, Mail, X } from "lucide-react";
 import { createPortal } from "react-dom";
+import { getPartialPaymentConfig } from "../../services/publicSettingsService";
 
 /**
  * PaymentMethodModal
@@ -38,14 +39,44 @@ const PaymentMethodModal = ({
   // Prepayment and card_after_tokenize are committed at click time.
   const [selectedMethod, setSelectedMethod] = useState(null);
 
+  // Partial Payment config (Points 1-2, April 2026). When active, all three
+  // modes charge a deposit upfront via Paystack. The card-tokenize sub-mode
+  // is hidden because real-deposit + tokenize is Phase 2.
+  const [partialConfig, setPartialConfig] = useState({
+    isActive: false,
+    depositPercentage: 100,
+    balancePercentage: 0,
+  });
+
   useEffect(() => {
     if (isOpen) {
       setView("main");
       setSelectedMethod(null);
+      getPartialPaymentConfig()
+        .then((data) => {
+          if (data?.isActive) setPartialConfig(data);
+          else
+            setPartialConfig({
+              isActive: false,
+              depositPercentage: 100,
+              balancePercentage: 0,
+            });
+        })
+        .catch(() => {});
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const numericAmount = typeof amount === "number" ? amount : Number(amount) || 0;
+  const partialActive = partialConfig.isActive && numericAmount > 0;
+  const depositAmt = partialActive
+    ? Math.round((numericAmount * partialConfig.depositPercentage) / 100 * 100) / 100
+    : numericAmount;
+  const balanceAmt = partialActive
+    ? Math.round((numericAmount - depositAmt) * 100) / 100
+    : 0;
+  const fmt = (n) => `R ${Number(n).toLocaleString("en-US")}`;
 
   const amountStr =
     typeof amount === "number" ? `R ${amount.toLocaleString("en-US")}` : amount || "";
@@ -144,7 +175,28 @@ const PaymentMethodModal = ({
           {/* Options */}
           {!isCardSubView && (
           <div className="px-5 py-4 space-y-2.5">
-            {/* Prepayment — always first, always available */}
+            {/* Partial Payment compact reminder (Points 1-2, April 2026)
+                Full explanation is shown by PartialPaymentIntroModal as
+                Step 1 — this is just a one-line reminder so the customer
+                doesn't lose context while picking the balance method. */}
+            {partialActive && (
+              <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-3 py-2">
+                <div className="flex items-center gap-2 text-[0.75rem] text-blue-900 dark:text-blue-200 leading-snug">
+                  <Shield className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                  <div>
+                    <strong>{fmt(depositAmt)} deposit charged now.</strong>{" "}
+                    Choose how to settle the {fmt(balanceAmt)} balance after service:
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Prepayment — hidden when partial is active.
+                When partial: customer chooses Cash or Card-on-Completion;
+                deposit% is charged via Paystack regardless. The prepayment
+                "Pay deposit by card" duplicate is removed because Pay-via-Link
+                already handles the deposit-now-balance-later case. */}
+            {!partialActive && (
             <button
               onClick={() => handleMethodClick("prepayment")}
               className="w-full text-left p-4 rounded-2xl border-[1.5px] transition-all hover:-translate-y-px group"
@@ -163,24 +215,33 @@ const PaymentMethodModal = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
                     <span className="font-bold text-[0.875rem] text-slate-900 dark:text-white">
-                      Pay now by card
+                      {partialActive ? "Pay deposit by card" : "Pay now by card"}
                     </span>
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-600 text-white text-[0.625rem] font-bold">
                       <Shield className="w-2.5 h-2.5" /> Recommended
                     </span>
                   </div>
                   <p className="text-[0.75rem] text-slate-600 dark:text-slate-400 leading-snug">
-                    Pay securely before your service with full platform protection.
-                    {amountStr && (
+                    {partialActive ? (
                       <>
-                        {" "}
-                        <strong className="text-slate-900 dark:text-white">{amountStr}</strong>
+                        Pay <strong className="text-slate-900 dark:text-white">{fmt(depositAmt)}</strong> deposit now via Paystack. Balance of <strong className="text-slate-900 dark:text-white">{fmt(balanceAmt)}</strong> charged via secure payment link after service.
+                      </>
+                    ) : (
+                      <>
+                        Pay securely before your service with full platform protection.
+                        {amountStr && (
+                          <>
+                            {" "}
+                            <strong className="text-slate-900 dark:text-white">{amountStr}</strong>
+                          </>
+                        )}
                       </>
                     )}
                   </p>
                 </div>
               </div>
             </button>
+            )}
 
             {/* Cash on Completion — selection only; requires Confirm below */}
             {paymentOptions.cashOnCompletion && (
@@ -212,12 +273,20 @@ const PaymentMethodModal = ({
                       )}
                     </div>
                     <p className="text-[0.75rem] text-slate-600 dark:text-slate-400 leading-snug">
-                      Pay your technician directly in cash after service.
-                      {amountStr && (
+                      {partialActive ? (
                         <>
-                          {" "}
-                          Have <strong className="text-slate-900 dark:text-white">{amountStr}</strong>{" "}
-                          ready.
+                          Pay <strong className="text-slate-900 dark:text-white">{fmt(depositAmt)}</strong> deposit now via Paystack. Pay the remaining <strong className="text-slate-900 dark:text-white">{fmt(balanceAmt)}</strong> in cash to your technician at completion.
+                        </>
+                      ) : (
+                        <>
+                          Pay your technician directly in cash after service.
+                          {amountStr && (
+                            <>
+                              {" "}
+                              Have <strong className="text-slate-900 dark:text-white">{amountStr}</strong>{" "}
+                              ready.
+                            </>
+                          )}
                         </>
                       )}
                     </p>
@@ -248,14 +317,22 @@ const PaymentMethodModal = ({
                       Pay by card after service
                     </div>
                     <p className="text-[0.75rem] text-slate-600 dark:text-slate-400 leading-snug">
-                      You'll receive a secure payment link by email once your
-                      service is complete.
-                      {amountStr && (
+                      {partialActive ? (
                         <>
-                          {" "}
-                          <strong className="text-slate-900 dark:text-white">
-                            {amountStr}
-                          </strong>
+                          Pay <strong className="text-slate-900 dark:text-white">{fmt(depositAmt)}</strong> deposit now via Paystack. We'll email a secure link for the <strong className="text-slate-900 dark:text-white">{fmt(balanceAmt)}</strong> balance once your service is complete.
+                        </>
+                      ) : (
+                        <>
+                          You'll receive a secure payment link by email once your
+                          service is complete.
+                          {amountStr && (
+                            <>
+                              {" "}
+                              <strong className="text-slate-900 dark:text-white">
+                                {amountStr}
+                              </strong>
+                            </>
+                          )}
                         </>
                       )}
                     </p>
@@ -266,10 +343,13 @@ const PaymentMethodModal = ({
           </div>
           )}
 
-          {/* Card sub-selection: Add card now (tokenize) vs Pay via link later (Path B) */}
+          {/* Card sub-selection: Add card now (tokenize / auto-charge) vs Pay via link later */}
           {isCardSubView && (
             <div className="px-5 py-4 space-y-2.5">
-              {/* Add card now — Paystack card-save is the commit, so click immediately */}
+              {/* Add card now — auto-charge after service.
+                  Partial OFF: R1 hold + R0 upfront (existing tokenize flow).
+                  Partial ON:  Deposit% charged now via Paystack + card saved
+                               for automatic balance% charge after service. */}
               <button
                 onClick={() => handleMethodClick("card_after_tokenize")}
                 className="w-full text-left p-4 rounded-2xl border-[1.5px] transition-all hover:-translate-y-px group"
@@ -295,15 +375,23 @@ const PaymentMethodModal = ({
                       </span>
                     </div>
                     <p className="text-[0.75rem] text-slate-600 dark:text-slate-400 leading-snug">
-                      Save your card securely (R1 charge, refunded instantly). We'll
-                      automatically charge{" "}
-                      {amountStr && (
-                        <strong className="text-slate-900 dark:text-white">{amountStr}</strong>
-                      )}{" "}
-                      after your service is complete — nothing more to do.
-                      <span className="block mt-1 text-[0.6875rem] text-slate-500 dark:text-slate-400">
-                        Your quote is only accepted once the card is saved.
-                      </span>
+                      {partialActive ? (
+                        <>
+                          Pay <strong className="text-slate-900 dark:text-white">{fmt(depositAmt)}</strong> deposit now via Paystack. Your card is saved and we'll automatically charge the <strong className="text-slate-900 dark:text-white">{fmt(balanceAmt)}</strong> balance after service — nothing more to do.
+                        </>
+                      ) : (
+                        <>
+                          Save your card securely (R1 charge, refunded instantly). We'll
+                          automatically charge{" "}
+                          {amountStr && (
+                            <strong className="text-slate-900 dark:text-white">{amountStr}</strong>
+                          )}{" "}
+                          after your service is complete — nothing more to do.
+                          <span className="block mt-1 text-[0.6875rem] text-slate-500 dark:text-slate-400">
+                            Your quote is only accepted once the card is saved.
+                          </span>
+                        </>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -338,12 +426,20 @@ const PaymentMethodModal = ({
                       )}
                     </div>
                     <p className="text-[0.75rem] text-slate-600 dark:text-slate-400 leading-snug">
-                      We'll email you a secure payment link the moment your
-                      service is complete. Pay{" "}
-                      {amountStr && (
-                        <strong className="text-slate-900 dark:text-white">{amountStr}</strong>
-                      )}{" "}
-                      straight from the email — takes under a minute.
+                      {partialActive ? (
+                        <>
+                          Pay <strong className="text-slate-900 dark:text-white">{fmt(depositAmt)}</strong> deposit now via Paystack. We'll email a payment link for the <strong className="text-slate-900 dark:text-white">{fmt(balanceAmt)}</strong> balance once service is complete.
+                        </>
+                      ) : (
+                        <>
+                          We'll email you a secure payment link the moment your
+                          service is complete. Pay{" "}
+                          {amountStr && (
+                            <strong className="text-slate-900 dark:text-white">{amountStr}</strong>
+                          )}{" "}
+                          straight from the email — takes under a minute.
+                        </>
+                      )}
                     </p>
                   </div>
                 </div>

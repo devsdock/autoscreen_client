@@ -33,8 +33,10 @@ import ProviderResponseCard from "./ProviderResponseCard";
 import Modal from "../ui/Modal";
 import PaymentModal from "./PaymentModal";
 import PaymentMethodModal from "./PaymentMethodModal";
+import PartialPaymentIntroModal from "./PartialPaymentIntroModal";
 import Tooltip from "../ui/Tooltip";
 import { useSettingsStore } from "../../store/useSettingsStore";
+import { getPartialPaymentConfig } from "../../services/publicSettingsService";
 
 const QuoteDetailPanel = ({ quote, onClose }) => {
   const navigate = useNavigate();
@@ -60,6 +62,25 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   const [sortFilter, setSortFilter] = useState("best-price");
   const [closePanelModal, setClosePanelModal] = useState(false);
   const [isRetryingTokenize, setIsRetryingTokenize] = useState(false);
+  // Partial Payment intro modal (Points 1-2, April 2026) — Step 1 of the
+  // accept flow when admin has enabled partial payment. Explains the
+  // deposit/balance split before the customer picks a payment method.
+  const [showPartialIntroModal, setShowPartialIntroModal] = useState(false);
+  const [partialConfig, setPartialConfig] = useState({
+    isActive: false,
+    depositPercentage: 100,
+    balancePercentage: 0,
+  });
+
+  // Fetch partial-payment config once when the panel mounts so we know
+  // whether to show the intro modal when the customer clicks Accept Quote.
+  useEffect(() => {
+    getPartialPaymentConfig()
+      .then((data) => {
+        if (data?.isActive) setPartialConfig(data);
+      })
+      .catch(() => {});
+  }, []);
 
   // Fetch latest details to ensure we have responses
   useEffect(() => {
@@ -115,7 +136,31 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   // multiple payment methods (cash and/or card-on-completion) so customer can pick.
   // Phase 1 (April 2026): Insurance quotes with excess > 0 also use the picker.
   // R0-excess insurance quotes skip the picker and run the existing auto-confirm flow.
+  // Partial Payment (Points 1-2, April 2026): when admin has enabled partial,
+  // a friendly intro modal explains the deposit/balance split BEFORE the
+  // customer picks a payment method. The actual flow that follows is the
+  // same as without partial — only an extra explainer step is inserted.
   const handleAcceptAndPay = async (response) => {
+    const isInsuranceResponse = response?.isInsuranceRegistered && quote?.hasInsurance;
+    const excess = response?.insuranceDetails?.customerExcess || 0;
+    const isR0Insurance = isInsuranceResponse && excess === 0;
+
+    // Partial active and customer owes a non-zero amount → show intro modal
+    // first. Insurance flows skip partial entirely (separate accounting).
+    if (partialConfig.isActive && !isR0Insurance && !isInsuranceResponse) {
+      setPendingAcceptResponse(response);
+      setShowPartialIntroModal(true);
+      return;
+    }
+
+    // Non-partial path (existing behavior, unchanged)
+    return continueAcceptAfterIntro(response);
+  };
+
+  // Continuation of the accept flow after the partial intro modal (or
+  // immediately when partial is inactive). Decides whether to open the
+  // payment-method picker or jump straight to PaymentModal (prepayment).
+  const continueAcceptAfterIntro = async (response) => {
     const isInsuranceResponse = response?.isInsuranceRegistered && quote?.hasInsurance;
     const excess = response?.insuranceDetails?.customerExcess || 0;
     const isR0Insurance = isInsuranceResponse && excess === 0;
@@ -130,7 +175,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
       !isR0Insurance &&
       (providerSupportsCash || providerSupportsCardAfter)
     ) {
-      // Open method selection modal first
+      // Open method selection modal next
       setPendingAcceptResponse(response);
       setShowPaymentMethodModal(true);
       return;
@@ -237,6 +282,13 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           responseId: response.id,
         });
         if (res.success) {
+          // Partial Payment (Points 1-2, April 2026) — backend returns a
+          // Paystack authorization_url when partial is active. Customer must
+          // pay the deposit% upfront before the booking is committed.
+          if (res.authorization_url) {
+            window.location.href = res.authorization_url;
+            return;
+          }
           addToast?.({
             type: "success",
             message: "Booking confirmed — cash on completion",
@@ -285,13 +337,15 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           subMode,
         });
         if (res.success) {
-          // Tokenize path: Paystack auth URL returned — redirect customer to enter card
+          // Partial Payment (Points 1-2, April 2026) OR tokenize path —
+          // both return a Paystack authorization_url that the customer must
+          // visit. Tokenize: card-save R1 hold. Partial: deposit% charge.
+          if (res.authorization_url) {
+            window.location.href = res.authorization_url;
+            return;
+          }
+          // Tokenize without auth URL is an error (no fallback for card-save)
           if (subMode === "tokenized") {
-            if (res.authorization_url) {
-              window.location.href = res.authorization_url;
-              return;
-            }
-            // Backend returned success but no auth URL — cannot collect card
             addToast?.({
               type: "error",
               message: "Could not start card setup. Please try again.",
@@ -300,10 +354,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           }
           addToast?.({
             type: "success",
-            message:
-              subMode === "tokenized"
-                ? "Card saved — we'll charge it automatically after service"
-                : "Booking confirmed — you'll receive a payment link after service",
+            message: "Booking confirmed — you'll receive a payment link after service",
           });
           if (res.redirect_url) {
             window.location.href = res.redirect_url;
@@ -929,14 +980,30 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                 const isSettled = ["paid", "insurance_direct", "refunded", "partially_refunded", "partially refunded"].includes(
                   booking?.paymentStatus,
                 );
+                // Partial Payment (Points 1-2, April 2026) — when active and
+                // balance pending, customer paid only the deposit. Headline
+                // amount becomes the BALANCE owed at completion + a deposit-
+                // paid sub-line for context.
+                const isPartialPending =
+                  booking?.partialPayment?.isActive === true &&
+                  booking?.balanceStatus === "pending" &&
+                  Number(booking?.balanceAmount) > 0;
+                const balanceMethodLabel =
+                  mode === "cash"
+                    ? "in cash"
+                    : mode === "card_on_completion"
+                      ? subMode === "tokenized"
+                        ? "auto-charged"
+                        : "via link"
+                      : "";
 
                 let badgeClass = "text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/20";
                 let badgeInner = <><Check size={11} /> Paid in full</>;
 
-                // Payment-mode-specific "not yet paid" badges take priority when
-                // payment hasn't settled — avoids misleading the customer with
-                // "Excess Paid" / "Paid in full" before the money actually lands.
-                if (!isSettled && mode === "cash") {
+                if (isPartialPending) {
+                  badgeClass = "text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/20";
+                  badgeInner = <><Check size={11} /> Deposit Paid · Balance {balanceMethodLabel}</>;
+                } else if (!isSettled && mode === "cash") {
                   badgeClass = "text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/20";
                   badgeInner = <><Clock size={11} /> Cash on Completion</>;
                 } else if (!isSettled && mode === "card_on_completion" && subMode === "payment_link") {
@@ -965,8 +1032,19 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                 return (
                   <div className="flex items-center justify-between sm:block sm:text-right sm:flex-shrink-0">
                     <div style={{ fontSize: "1.375rem", fontWeight: 800, lineHeight: 1 }} className="text-slate-900 dark:text-white">
-                      {formatCurrency(isInsuranceClaim && isRegisteredProvider && paidAmount === 0 && totalJobValue > 0 ? totalJobValue : paidAmount)}
+                      {formatCurrency(
+                        isPartialPending
+                          ? Number(booking.balanceAmount) || 0
+                          : isInsuranceClaim && isRegisteredProvider && paidAmount === 0 && totalJobValue > 0
+                            ? totalJobValue
+                            : paidAmount
+                      )}
                     </div>
+                    {isPartialPending && (
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Deposit {formatCurrency(Number(booking.depositAmount) || 0)} paid · Total {formatCurrency(paidAmount)}
+                      </div>
+                    )}
                     <div
                       style={{
                         display: "inline-flex",
@@ -1213,6 +1291,38 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
 
         {/* Request Date — removed per design request */}
       </div>
+
+      {/* Partial Payment intro (Points 1-2, April 2026) — Step 1 when partial is active */}
+      <PartialPaymentIntroModal
+        isOpen={showPartialIntroModal}
+        onCancel={() => {
+          setShowPartialIntroModal(false);
+          setPendingAcceptResponse(null);
+        }}
+        onContinue={() => {
+          setShowPartialIntroModal(false);
+          if (pendingAcceptResponse) {
+            // Forward to the existing accept-flow continuation. Do not clear
+            // pendingAcceptResponse — PaymentMethodModal/PaymentModal will use it.
+            continueAcceptAfterIntro(pendingAcceptResponse);
+          }
+        }}
+        total={(() => {
+          if (!pendingAcceptResponse) return 0;
+          const sub = pendingAcceptResponse.price || 0;
+          const vatRate = platformSettings?.vatPercentage || 0;
+          const vatAmt =
+            vatRate > 0 ? Math.round(sub * (vatRate / 100) * 100) / 100 : 0;
+          return sub + vatAmt;
+        })()}
+        depositPercentage={partialConfig.depositPercentage}
+        balancePercentage={partialConfig.balancePercentage}
+        providerName={
+          pendingAcceptResponse?.provider?.businessName ||
+          pendingAcceptResponse?.provider?.name ||
+          "This provider"
+        }
+      />
 
       {/* Payment Method Selection (Flexible Payment Options v1.2) */}
       <PaymentMethodModal

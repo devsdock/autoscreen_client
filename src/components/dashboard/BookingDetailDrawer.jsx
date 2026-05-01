@@ -1215,6 +1215,47 @@ const BookingDetailDrawer = ({
                         )}
                       </div>
                     </div>
+
+                    {/* Partial Payment breakdown (Points 1-2, April 2026) —
+                        STRICT gate: legacy non-partial bookings have no
+                        upfront payment. Require BOTH isActive===true AND
+                        depositAmount>0 so a half-populated record can never
+                        accidentally render the partial breakdown on legacy
+                        cash/card-after data. */}
+                    {booking.partialPayment?.isActive === true &&
+                      Number(booking.depositAmount) > 0 && (
+                      <div className="pt-3 mt-3 border-t border-dashed border-blue-300 dark:border-blue-700 space-y-1.5">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-blue-700 dark:text-blue-400 font-medium">
+                            Deposit Paid ({booking.partialPayment.depositPercentage}%)
+                          </span>
+                          <span className="font-semibold text-blue-700 dark:text-blue-400">
+                            {formatCurrency(booking.depositAmount || 0)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-700 dark:text-slate-300 font-medium">
+                            Balance {booking.balanceStatus === "paid" ? "Paid" : booking.balanceStatus === "waived" ? "Waived" : "Due at Completion"} ({booking.partialPayment.balancePercentage}%)
+                          </span>
+                          <span className={`font-semibold ${
+                            booking.balanceStatus === "paid"
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : booking.balanceStatus === "waived"
+                                ? "text-slate-500"
+                                : "text-amber-600 dark:text-amber-400"
+                          }`}>
+                            {formatCurrency(booking.balanceAmount || 0)}
+                          </span>
+                        </div>
+                        {booking.balanceStatus === "pending" && (
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 italic mt-1">
+                            {booking.balancePaymentMethod === "cash"
+                              ? "Pay in cash to your technician at completion."
+                              : "Payment link will be sent after service completion."}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Show Refund/Cancellation Breakdown */}
@@ -1392,14 +1433,37 @@ const BookingDetailDrawer = ({
 
               {cancelQuote.isPaid && (
                 <div className="bg-slate-50 dark:bg-slate-800/80 rounded-lg p-3 border border-slate-200 dark:border-slate-700 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">
-                      Booking Total:
-                    </span>
-                    <span className="font-medium text-slate-900 dark:text-slate-100">
-                      {formatCurrency(cancelQuote.bookingTotal)}
-                    </span>
-                  </div>
+                  {/* Partial Payment (Points 1-2, April 2026): when only the
+                      deposit was collected, show "Deposit Paid" / "Balance
+                      Waived" instead of "Booking Total" so the customer
+                      isn't confused by a R1,000 figure when they only paid
+                      R400 upfront. Refund math is already against the
+                      deposit (backend cancellation quote). */}
+                  {cancelQuote.partialDepositOnly ? (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600 dark:text-slate-400">
+                          Deposit Paid:
+                        </span>
+                        <span className="font-medium text-slate-900 dark:text-slate-100">
+                          {formatCurrency(cancelQuote.amountPaidUpfront ?? cancelQuote.depositAmount ?? 0)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-slate-500 dark:text-slate-400 text-xs">
+                        <span>Balance (waived on cancel):</span>
+                        <span>{formatCurrency(cancelQuote.balanceAmount ?? 0)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">
+                        Booking Total:
+                      </span>
+                      <span className="font-medium text-slate-900 dark:text-slate-100">
+                        {formatCurrency(cancelQuote.bookingTotal)}
+                      </span>
+                    </div>
+                  )}
 
                   {cancelQuote.cancellationFee > 0 && (
                     <div className="flex justify-between text-red-600 dark:text-red-400">
@@ -1441,11 +1505,13 @@ const BookingDetailDrawer = ({
                     <p className="text-xs text-slate-500 mt-2 pt-2 text-center italic">
                       Refunds are processed to your original payment method
                       within 3-5 business days.
+                      {cancelQuote.partialDepositOnly && " The remaining balance is waived — nothing more is owed."}
                     </p>
                   ) : cancelQuote.cancellationFee > 0 ? (
                     <p className="text-xs text-red-500 mt-2 pt-2 text-center italic">
-                      No refund available. The cancellation fee equals the full
-                      booking amount.
+                      {cancelQuote.partialDepositOnly
+                        ? "No refund available. The cancellation fee equals your deposit."
+                        : "No refund available. The cancellation fee equals the full booking amount."}
                     </p>
                   ) : null}
                 </div>

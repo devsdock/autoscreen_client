@@ -4,7 +4,10 @@ import useDashboardStore, {
   formatCurrency,
 } from "../../store/useDashboardStore";
 import paymentService from "../../services/paymentService";
-import { getCancellationPolicy } from "../../services/publicSettingsService";
+import {
+  getCancellationPolicy,
+  getPartialPaymentConfig,
+} from "../../services/publicSettingsService";
 
 const PAYSTACK_ALLOWED_HOSTS = [
   "https://checkout.paystack.com/",
@@ -22,9 +25,15 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
   const [surcharge, setSurcharge] = useState(0);
   const [variableFeeRate, setVariableFeeRate] = useState(0.029 * 1.15);
   const [policyText, setPolicyText] = useState("");
+  // Partial Payment config (Points 1-2, April 2026)
+  const [partialConfig, setPartialConfig] = useState({
+    isActive: false,
+    depositPercentage: 100,
+    balancePercentage: 0,
+  });
   const modalRef = useRef(null);
 
-  // Fetch fee rate and cancellation policy from backend
+  // Fetch fee rate, cancellation policy, and partial-payment config from backend
   useEffect(() => {
     paymentService
       .getPaystackConfig()
@@ -38,18 +47,39 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
         if (data.isActive && data.policyText) setPolicyText(data.policyText);
       })
       .catch(() => {});
+
+    getPartialPaymentConfig()
+      .then((data) => {
+        if (data?.isActive) setPartialConfig(data);
+      })
+      .catch(() => {});
   }, []);
 
-  // Calculate surcharge using fetched fee rate
+  // Partial Payment math — derived once per render. When inactive, deposit
+  // equals total and balance is 0 (legacy "Accept & Pay in Full" behavior).
+  // Insurance R0 quotes (where customer owes nothing) bypass partial logic.
+  const isInsuranceR0 = payment?.isInsuranceRegistered && payment?.amount === 0;
+  const partialActive =
+    partialConfig.isActive && !isInsuranceR0 && (payment?.amount || 0) > 0;
+  const depositAmount = partialActive
+    ? Math.round((payment.amount * partialConfig.depositPercentage) / 100 * 100) / 100
+    : (payment?.amount || 0);
+  const balanceAmount = partialActive
+    ? Math.round((payment.amount - depositAmount) * 100) / 100
+    : 0;
+
+  // Calculate surcharge — applied only to what Paystack actually charges
+  // (the deposit when partial active, otherwise the full amount).
   useEffect(() => {
-    if (coversFees && payment?.amount) {
+    const chargeAmount = partialActive ? depositAmount : payment?.amount;
+    if (coversFees && chargeAmount) {
       const calculatedSurcharge =
-        payment.amount / (1 - variableFeeRate) - payment.amount;
+        chargeAmount / (1 - variableFeeRate) - chargeAmount;
       setSurcharge(Math.round(calculatedSurcharge * 100) / 100);
     } else {
       setSurcharge(0);
     }
-  }, [coversFees, payment?.amount, variableFeeRate]);
+  }, [coversFees, payment?.amount, variableFeeRate, partialActive, depositAmount]);
 
   // Escape key + body scroll lock
   useEffect(() => {
@@ -163,14 +193,18 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
           <div className="flex items-start justify-between px-5 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800">
             <div>
               <h2 id="payment-modal-title" className="text-[1.25rem] font-bold text-slate-900 dark:text-white">
-                {payment.isInsuranceRegistered && payment.amount === 0
+                {isInsuranceR0
                   ? "Confirm Insurance Booking"
-                  : "Accept & Pay in Full"}
+                  : partialActive
+                    ? `Accept & Pay Deposit (${partialConfig.depositPercentage}%)`
+                    : "Accept & Pay in Full"}
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                {payment.isInsuranceRegistered && payment.amount === 0
+                {isInsuranceR0
                   ? "Your insurer covers the full cost — no payment needed"
-                  : "Lock in this quote with full payment"}
+                  : partialActive
+                    ? `Pay ${partialConfig.depositPercentage}% now, ${partialConfig.balancePercentage}% at completion`
+                    : "Lock in this quote with full payment"}
               </p>
             </div>
             <button
@@ -312,6 +346,31 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
                 <span>Total</span>
                 <span className="text-xl">{formatCurrency(payment.amount)}</span>
               </div>
+
+              {/* Partial Payment breakdown (Points 1-2, April 2026) */}
+              {partialActive && (
+                <div className="mt-3 pt-3 border-t border-dashed border-slate-300 dark:border-slate-600 space-y-2">
+                  <div className="flex justify-between text-sm py-0.5">
+                    <span className="font-semibold text-blue-700 dark:text-blue-400">
+                      Pay Now ({partialConfig.depositPercentage}% deposit)
+                    </span>
+                    <span className="font-bold text-blue-700 dark:text-blue-400">
+                      {formatCurrency(depositAmount)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm py-0.5">
+                    <span className="text-slate-600 dark:text-slate-400">
+                      Balance due at completion ({partialConfig.balancePercentage}%)
+                    </span>
+                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                      {formatCurrency(balanceAmount)}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 italic mt-1">
+                    Only the {partialConfig.depositPercentage}% deposit is charged today. The {partialConfig.balancePercentage}% balance is collected when the service is complete.
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Full Payment Note — only shown when cancellation policy is active */}
@@ -404,9 +463,11 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
               ) : (
                 <>
                   <CreditCard size={18} />
-                  {payment.isInsuranceRegistered && payment.amount === 0
+                  {isInsuranceR0
                     ? "Confirm Booking"
-                    : `Pay ${formatCurrency(payment.amount)}`}
+                    : partialActive
+                      ? `Pay Deposit ${formatCurrency(depositAmount)}`
+                      : `Pay ${formatCurrency(payment.amount)}`}
                 </>
               )}
             </button>

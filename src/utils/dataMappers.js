@@ -237,6 +237,46 @@ export const mapBooking = (booking) => {
       currentStatus === "completed";
     const isPaymentPending = currentStatus === "payment-pending";
 
+    // Partial Payment (Points 1-2, April 2026) — deposit % charged at acceptance,
+    // balance % collected at service-done. Drives 2 timeline events:
+    //   step 4: "Deposit Paid R{amount} ({pct}%)" replaces the standard
+    //           acceptance-time payment step
+    //   step 8.5: "Balance Paid R{amount} ({pct}%) via {method}" inserted
+    //           between Service Done and Completed when balanceStatus is "paid"
+    //
+    // IMPORTANT — strict gate: legacy non-partial bookings (cash + card-after
+    // pre-April 2026) have no upfront payment but also have no
+    // `partialPayment` subdoc OR have `isActive: false`. Both the deposit
+    // step replacement AND the balance step insertion must require BOTH
+    // `partialPayment.isActive === true` AND `depositAmount > 0` so a
+    // half-populated record can never accidentally trigger partial UI.
+    const _depositAmtRaw = Number(booking.depositAmount) || 0;
+    const _balanceAmtRaw = Number(booking.balanceAmount) || 0;
+    const isPartial =
+      booking.partialPayment?.isActive === true && _depositAmtRaw > 0;
+    const depositPct = booking.partialPayment?.depositPercentage || 0;
+    const balancePct = booking.partialPayment?.balancePercentage || 0;
+    const depositAmt = _depositAmtRaw;
+    const balanceAmt = _balanceAmtRaw;
+    const balancePaid = isPartial && booking.balanceStatus === "paid";
+    // Resolve balance method — "card" branch further distinguishes between
+    // auto-charge (saved card / tokenized) and link-based (Path B Pay-via-link)
+    // so the timeline copy matches what the customer actually experienced.
+    const _resolveBalanceMethodLabel = () => {
+      const m = booking.balancePaymentMethod;
+      if (m === "cash") return "Cash";
+      if (m === "eft") return "EFT";
+      if (m === "speed_point") return "Speed Point";
+      if (m === "card") {
+        if (booking.paymentSubMethod === "tokenized") return "Card (Auto-charge)";
+        if (booking.paymentSubMethod === "payment_link") return "Card (Pay Link)";
+        return "Card";
+      }
+      return "Card";
+    };
+    const balanceMethodLabel = _resolveBalanceMethodLabel();
+    const formatZAR = (n) => `R ${Number(n).toLocaleString("en-US")}`;
+
     if (isQuoteBased) {
       // Quote-based booking timeline
 
@@ -267,8 +307,20 @@ export const mapBooking = (booking) => {
         completed: true,
       });
 
-      // 4. Payment-model-specific confirmation step
-      if (isCash) {
+      // 4. Payment-model-specific confirmation step.
+      // Partial bookings (any acceptMode) show "Deposit Paid R{amount} ({pct}%)"
+      // — clearer than mode-specific labels because partial flow always charges
+      // a deposit at acceptance regardless of how the balance is collected.
+      if (isPartial) {
+        stages.push({
+          status: `Deposit Paid ${formatZAR(depositAmt)} (${depositPct}%)`,
+          date:
+            booking.actualTimes?.confirmedAt ||
+            booking.partialPayment?.snapshotAt ||
+            booking.createdAt,
+          completed: true,
+        });
+      } else if (isCash) {
         // Cash: no Paystack at acceptance — booking is immediately confirmed
         stages.push({
           status: "Cash Booking Confirmed",
@@ -337,6 +389,17 @@ export const mapBooking = (booking) => {
           status: "Awaiting Customer Payment",
           date: booking.paymentLink?.sentAt || null,
           completed: isPaid,
+        });
+      }
+
+      // 9.5. Balance Paid — partial bookings only, when balance leg has
+      // settled (cash collected, link paid, or auto-charge succeeded).
+      // Inserted between Service Done and Completed.
+      if (isPartial && balancePaid) {
+        stages.push({
+          status: `Balance Paid ${formatZAR(balanceAmt)} (${balancePct}%) via ${balanceMethodLabel}`,
+          date: booking.balancePaidAt || null,
+          completed: true,
         });
       }
 
@@ -443,6 +506,8 @@ export const mapBooking = (booking) => {
     const ps = booking.paymentStatus.toLowerCase();
     if (ps === "insurance_direct") return "Paid";
     if (ps === "partially_refunded") return "Partial Refund";
+    // Partial Payment (Points 1-2): deposit_paid renders as "Deposit Paid" pill
+    if (ps === "deposit_paid") return "Deposit Paid";
     return ps.charAt(0).toUpperCase() + ps.slice(1);
   };
 
@@ -526,6 +591,13 @@ export const mapBooking = (booking) => {
     cashReceipt: booking.cashReceipt || null,
     paymentLink: booking.paymentLink || null,
     cardAuth: booking.cardAuth || null,
+    // Partial Payment fields (Points 1-2, April 2026)
+    partialPayment: booking.partialPayment || null,
+    depositAmount: booking.depositAmount ?? null,
+    balanceAmount: booking.balanceAmount ?? null,
+    balanceStatus: booking.balanceStatus || null,
+    balancePaymentMethod: booking.balancePaymentMethod || null,
+    balancePaidAt: booking.balancePaidAt || null,
     refundAmount: booking.cancellation?.refundAmount || 0,
     price: {
       service:
