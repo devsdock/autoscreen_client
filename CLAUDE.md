@@ -842,6 +842,18 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 2 May 2026 (Partial Payment — Final Fixes)
+
+#### `src/components/dashboard/PaymentMethodModal.jsx` — Pay via link selection from sub-view
+- **Bug**: clicking "Pay via link" inside the card sub-view triggered `handleMethodClick("card_after")` which always went into the "open card_sub view + setSelectedMethod(null)" branch — re-opening the already-open sub-view AND clearing the user's pending selection. Confirm button never appeared, user could not proceed past the modal.
+- **Fix**: gated the sub-view-opening branch on `view !== "card_sub"`. From the main view: opens sub-view (existing behaviour). From the sub-view: `card_after` falls through to the selection-toggle path → `selectedMethod = "card_after"` → Confirm button appears → click → `onSelect("card_after")` fires → flow proceeds.
+- Commit: `e763a44`.
+
+#### `src/components/dashboard/BookingCard.jsx` — Partial booking now shows green Scheduled card
+- **Bug**: `dataMappers.getNormalizedPaymentStatus()` normalises raw backend `"deposit_paid"` enum → `"Deposit Paid"` (with space) before exposing on the booking object. `BookingCard.isDepositPaid` was lowercasing and comparing against `"deposit_paid"` (underscore) — never matched. Result: `isPaid` stayed false → `isCommitted` false → `isScheduled` false → card rendered blue with "Confirmed" badge instead of green with "Scheduled" badge for partial bookings that already had a scheduled date.
+- **Fix**: `isDepositPaid` check now accepts BOTH `"deposit_paid"` (raw enum) AND `"deposit paid"` (lowercased normalised label), with a fallback on `partialPayment.isActive === true && balanceStatus === "pending" && depositAmount > 0` for defence-in-depth.
+- Commit: `f6d4d4e`.
+
 ### 1 May 2026 (Partial Payment — Timeline Split Across All Portals)
 
 - **`src/utils/dataMappers.js` — `generateTimeline()` partial-aware**: Two-event timeline for partial bookings (deposit paid at acceptance + balance paid at service-done).
