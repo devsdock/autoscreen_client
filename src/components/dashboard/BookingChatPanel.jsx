@@ -291,23 +291,6 @@ export default function BookingChatPanel({ bookingId }) {
       )}
 
       <div className="border-t border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-900 flex gap-2 items-end">
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/jpg,image/png,image/webp"
-          hidden
-          onChange={onPickImage}
-        />
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={!canSend || busy}
-          className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
-          title="Attach image"
-          aria-label="Attach image"
-        >
-          <Paperclip className="w-5 h-5" />
-        </button>
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}

@@ -842,6 +842,10 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 5 May 2026 (Booking Chat — Image Upload Hidden)
+
+- **`src/components/dashboard/BookingChatPanel.jsx`**: Hidden the paperclip upload button + hidden `<input type="file">` from the chat composer. The composer is now text-only; the textarea + Send button take the full footer width. Backend `uploadImage` endpoint, store `uploadImage` action, image-message rendering in the transcript, and the `Paperclip` import / `fileRef` / `onPickImage` handler are all left in place — no other behaviour changes — so the feature can be re-enabled by restoring the JSX block alone.
+
 ### 5 May 2026 (Booking Chat — Round 2 Bug-Fixes from Manual Testing)
 
 Follow-up fixes after manual end-to-end testing.
