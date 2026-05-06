@@ -1,10 +1,12 @@
 import { io } from "socket.io-client";
 import useNotificationStore from "../store/useNotificationStore";
 import useDashboardStore from "../store/useDashboardStore";
+import useBookingChatStore from "../store/useBookingChatStore";
 import { NodeURL } from "./api";
 
 class SocketService {
   socket = null;
+  _activeChatId = null;
 
   connect(customerId) {
     if (this.socket) return;
@@ -16,14 +18,66 @@ class SocketService {
 
     this.socket.on("connect", () => {
       this.socket.emit("join-customer", customerId);
+      // Re-join the active chat room (if any) so a cold-mount race or a
+      // mid-conversation reconnect doesn't drop the user out of the
+      // booking-scoped broadcast.
+      if (this._activeChatId) {
+        this.socket.emit("join-chat", this._activeChatId);
+      }
     });
 
     this.socket.on("new-notification", (notification) => {
       // 1. Add to notification store
       useNotificationStore.getState().addNotification(notification);
 
-      // 2. Refresh relevant data based on notification type
+      // 2. Booking chat — bump unread badge for offline-recipient notifications.
+      // (When the user is in the chat, the dispatcher does NOT create a Notification
+      // record — it routes via socket only. So receiving this means the user is
+      // not currently in that chat → safe to bump.)
+      if (notification.type === "booking_chat_message") {
+        const bookingId = notification.data?.bookingId;
+        if (bookingId) useBookingChatStore.getState().bumpUnread(String(bookingId));
+      }
+
+      // 3. Refresh relevant data based on notification type
       this.refreshData(notification);
+    });
+
+    // Booking chat — live message broadcast for users currently in the chat room.
+    // Backend emits this via getIO().to(`chat_<bookingId>`).emit("booking_chat_message", ...)
+    //
+    // Race-safety: if the recipient just opened the panel and joined the room
+    // BEFORE their initial loadChat REST call returned, the socket event will
+    // arrive while `chats[bookingId]` is still undefined. `appendMessage`
+    // bails when there's no existing chat in store → the message would be
+    // dropped silently. Falling back to `loadChat` re-fetches the full
+    // transcript (which now includes the new message), so nothing is lost.
+    this.socket.on("booking_chat_message", (payload) => {
+      const bookingId = payload?.bookingId;
+      const message = payload?.message;
+      if (!bookingId || !message) return;
+      const id = String(bookingId);
+      const store = useBookingChatStore.getState();
+      if (store.chats[id]) {
+        store.appendMessage(id, message);
+      } else {
+        store.loadChat(id);
+      }
+    });
+
+    // Booking chat — status flipped to read_only after booking complete/cancel.
+    this.socket.on("booking_chat_status_changed", (payload) => {
+      const bookingId = payload?.bookingId;
+      if (!bookingId) return;
+      // Reload chat doc so canSendMessage flips to false in the UI.
+      useBookingChatStore.getState().refreshChat(String(bookingId));
+    });
+
+    // Booking chat — unread count update (used when not in the chat tab).
+    this.socket.on("booking_chat_unread_update", (payload) => {
+      const bookingId = payload?.bookingId;
+      if (!bookingId) return;
+      useBookingChatStore.getState().bumpUnread(String(bookingId));
     });
 
     this.socket.on("disconnect", () => { });
@@ -78,6 +132,33 @@ class SocketService {
         }
       }
     } catch (error) { }
+  }
+
+  /**
+   * Join the per-booking chat room so the backend's
+   * `io.to('chat_<bookingId>').emit('booking_chat_message', ...)` broadcast
+   * reaches this client. Without this, new messages only arrive via the
+   * in-app notification path (bell icon) and the open chat panel never
+   * receives the live event — user has to close + reopen to see them.
+   */
+  joinChat(bookingId) {
+    if (!bookingId) return;
+    const id = String(bookingId);
+    this._activeChatId = id;
+    if (this.socket?.connected) {
+      this.socket.emit("join-chat", id);
+    }
+    // If socket isn't connected yet, the connect-handler will rejoin once
+    // it fires. Same path covers reconnects.
+  }
+
+  leaveChat(bookingId) {
+    const id = bookingId ? String(bookingId) : this._activeChatId;
+    // Always clear the active id so the connect-handler doesn't re-emit
+    // join-chat for a panel that has unmounted.
+    if (this._activeChatId === id) this._activeChatId = null;
+    if (!this.socket || !id) return;
+    this.socket.emit("leave-chat", id);
   }
 
   disconnect() {

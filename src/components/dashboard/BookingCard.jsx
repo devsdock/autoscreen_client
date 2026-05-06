@@ -11,6 +11,7 @@ import {
   Navigation,
   Shield,
   ShieldCheck,
+  MessageSquare,
 } from "lucide-react";
 import { formatCurrency } from "../../store/useDashboardStore";
 import StatusBadge from "../ui/StatusBadge";
@@ -49,6 +50,7 @@ const BookingCard = ({
   onReschedule,
   onAcknowledge,
   onDirections,
+  onChat,
 }) => {
   const category = getCategory(booking);
   const pStatus = booking.paymentStatus?.toLowerCase();
@@ -113,6 +115,18 @@ const BookingCard = ({
   const hasWorkshopAddress = !!booking.workshopAddress?.addressLine1;
   const canGetDirections =
     isWorkshop && hasWorkshopAddress && category === "upcoming" && isCommitted;
+  // Chat-eligibility rule for the list card icon (matches drawer + provider):
+  //   - Any payment method that has actually collected money (paid /
+  //     deposit_paid / insurance_direct) → eligible.
+  //   - Cash on completion (committed, post-acceptance) → eligible — they
+  //     need to coordinate the on-site visit before money changes hands.
+  //   - Card on completion without a deposit → NOT eligible (no money yet).
+  // Restricted to "upcoming" — completed / cancelled rows hide the icon
+  // (the drawer still shows the read-only transcript when opened).
+  const canChat =
+    category === "upcoming" &&
+    (isPaid || cashConfirmed) &&
+    typeof onChat === "function";
 
   // Format time slot with duration-aware end time (only for new single-point slots like "09:00")
   const timeSlotStr = (() => {
@@ -361,7 +375,8 @@ const BookingCard = ({
             </span>
           )}
           {/* Cash on Completion indicator (Flexible Payment Options v1.2) */}
-          {isCashBooking && !isPaid && (
+          {/* Show whenever cash is still owed: full-cash unpaid OR partial-cash with balance due */}
+          {isCashBooking && (!isPaid || hasBalanceDue) && (
             <span className="inline-flex items-center gap-1 text-[0.6875rem] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
               Cash on Completion
             </span>
@@ -438,6 +453,20 @@ const BookingCard = ({
             >
               <Navigation size={12} />
               Directions
+            </button>
+          )}
+
+          {/* Chat with provider — opens drawer directly on Chat tab */}
+          {canChat && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onChat(booking);
+              }}
+              className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+            >
+              <MessageSquare size={12} />
+              Chat
             </button>
           )}
 

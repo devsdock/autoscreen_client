@@ -3,7 +3,7 @@
 > **Project:** AutoScreen Customer Dashboard
 > **Stack:** React + Vite, Zustand, React Router v6, Axios, Socket.IO
 > **Version:** 1.0.0
-> **Last Updated:** 21 April 2026 (PaymentMethodModal — Decimal Separator & NBSP Fix)
+> **Last Updated:** 5 May 2026 (Partial Payment — Cash on Completion Pill on Partial-Cash Bookings)
 
 ---
 
@@ -841,6 +841,57 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 ---
 
 ## Changelog
+
+### 5 May 2026 (Booking Chat — Round 2 Bug-Fixes from Manual Testing)
+
+Follow-up fixes after manual end-to-end testing.
+
+#### `BookingDetailDrawer.jsx` — Chat-availability rule tightened to match product spec
+- **Eligible**: paid statuses (`paid` / `deposit_paid` / `insurance_direct`) OR partial-payment with deposit OR cash-on-completion (committed). Card-on-completion WITHOUT a deposit is NOT eligible — there's no money on the platform yet. Card-on-completion WITH a partial deposit flips `paymentStatus` to `"deposit_paid"` and is covered by the paid branch.
+- Tab stays available on completed / cancelled bookings as a read-only history view (backend flips `BookingChat.status` to `"read_only"`, panel disables composer with banner).
+- `key={booking._id}` on `<BookingChatPanel>` forces a fresh remount on booking switch — no stale draft / scroll position / state pollution between conversations.
+- `activeView` reset effect rewritten as a single consolidated effect: when `isOpen && initialAction === "chat"` it sets to `"chat"`, otherwise resets to `"details"` on every booking change. Honors the `/dashboard/bookings/:id/chat` deep-link from the new BookingCard Chat button.
+
+#### `BookingCard.jsx` — Chat icon button on list cards
+- New `MessageSquare` icon button next to existing actions (Reschedule / Directions / Cancel). Same eligibility gate as the drawer: `category === "upcoming" && (isPaid || cashConfirmed)`. Hidden on completed / cancelled list rows (drawer still shows the read-only transcript).
+- `Bookings.jsx` `onChat` handler navigates to `/dashboard/bookings/:id/chat` — the existing URL-action pattern that the drawer reads via `useParams`.
+
+#### `useBookingChatStore.js` — Optimistic + race fixes
+- **Duplicate-on-send fix**: when the server echo of an own message arrives (`!_optimistic`), find the OLDEST optimistic message from the same sender (FIFO — sends are serial) and REPLACE it in-place. Resolves the bug where the sender saw their message twice until refresh — the optimistic message used the client clock and the server message used the server clock, so the previous `createdAt + sender.userId` dedup never matched. Falls through to the legacy `createdAt+sender` dedup as a backup for true server-echo duplicates.
+- (Existing) `appendMessage` still bails when `chats[bookingId]` doesn't exist — the socketService listener now handles that case (see below).
+
+#### `socketService.js` — Race-safe socket listener
+- `booking_chat_message` handler: when `chats[bookingId]` doesn't exist in store, fall back to `loadChat(bookingId)` instead of bailing. Prevents the dropped-message race where the panel just mounted and joined the room BEFORE the initial `loadChat` REST returned.
+
+### 5 May 2026 (Booking Chat — Point 3 Customer Side + Deposit-Paid Tab Gate Fix + Live Socket Room)
+
+Customer-side implementation of the in-platform Booking Chat (Point 3 from the partial-payment feedback PDF) plus 2 follow-up bug fixes from manual testing.
+
+#### `src/components/dashboard/BookingChatPanel.jsx` (NEW) — Chat UI
+- Inline chat panel rendered inside `BookingDetailDrawer` when the customer switches the drawer's `activeView` from `details` to `chat`. Shows message history, optimistic send, image attachments (paperclip → upload via `bookingChatService.uploadImage` → second POST with attachments), system messages, read-only banner when chat is closed.
+- `setActiveBookingId` driven by mount/unmount tells the store which chat is currently visible — used by the socket service's `bumpUnread` to skip incrementing the badge for the currently-viewed chat.
+
+#### `src/services/bookingChatService.js` + `src/store/useBookingChatStore.js` (NEW)
+- Service: `getMyChats`, `getMyChat`, `sendMessage`, `markRead`, `getUnreadCount`, `uploadImage` against `/api/customer/booking-chats/...`.
+- Store: `chats[bookingId]`, `unreadByBooking`, `globalUnread`, actions `loadChat` / `appendMessage` (with createdAt+sender dedup) / `bumpUnread` (skip when this chat is the active one) / `markChatRead` / `refreshGlobalUnread`.
+
+#### `src/components/dashboard/BookingDetailDrawer.jsx` — Chat tab
+- Tab switcher between Details ↔ Chat appears once the booking is committed. Unread badge on the Chat tab (sources `unreadByBooking[bookingId]` from the chat store).
+- **Bug fix — Chat tab not visible for partial-paid bookings**: the gating array `["deposit_paid", "paid", "insurance_direct"]` was compared against `paymentStatus.toLowerCase()`, but `dataMappers.getNormalizedPaymentStatus()` rewrites raw `"deposit_paid"` → `"Deposit Paid"` (title case with space) before the drawer ever sees it. After `.toLowerCase()` the value is `"deposit paid"` (with space) — never matches the underscored enum. Same bug class that previously hit `BookingCard.jsx`. Fix accepts BOTH the raw enum (`deposit_paid`) AND the normalized label (`deposit paid`, `paid`, `insurance direct`), plus a defence-in-depth fallback on `partialPayment.isActive === true && depositAmount > 0`.
+
+#### `src/services/socketService.js` — Live message broadcast wiring
+- New listeners for `booking_chat_message`, `booking_chat_status_changed`, `booking_chat_unread_update`. The first calls `appendMessage`, the others bump unread / refresh.
+- New `joinChat(bookingId)` and `leaveChat(bookingId)` methods.
+- **Critical bug fix — provider not receiving customer messages live**: backend `dispatchChatMessageNotifications` emits `io.to('chat_<bookingId>').emit("booking_chat_message", ...)` — only reaches sockets that joined that room. None of the chat panels (customer / provider / web staff / mobile staff) were emitting `join-chat` on mount. So the room was always empty, the live emit reached nobody, and recipients only saw the in-app notification (bell icon). Customer's BookingChatPanel mount effect now emits `joinChat` on mount and `leaveChat` on unmount.
+- **Important fix — rejoin on (re)connect**: `_activeChatId` tracked at the service level. The `socket.on("connect", ...)` handler now re-emits `join-chat` if there's an active chat. Closes two races: (1) cold-mount where the panel mounts before the socket finishes connecting, and (2) mid-conversation reconnects (Socket.IO auto-reconnects indefinitely). Reviewer flagged this as Important; addressed pre-merge.
+
+### 5 May 2026 (Partial Payment — Cash on Completion Pill on Partial-Cash Bookings)
+
+#### `src/components/dashboard/BookingCard.jsx` — Cash badge no longer suppressed once deposit lands
+- **Bug**: footer rendered the `Deposit Paid · Balance R… due` pill correctly on partial-cash bookings, but the companion `Cash on Completion` amber pill was missing. The matching `Pay After Service` pill on partial-card-after bookings rendered fine — visible asymmetry between the two FPO modes on the My Bookings list.
+- **Root cause — asymmetric guard**: the cash branch was gated on `isCashBooking && !isPaid`. Once the customer paid the deposit, `paymentStatus` flipped to `"deposit_paid"` → `isDepositPaid` true → `isPaid` true (line 68) → `!isPaid` false → cash pill suppressed. The card-after-service branch (`cardAfterConfirmed && !isPaymentPending && !cardAuth.last4`) had no `!isPaid` guard, so it survived the deposit-landed transition. Same component, two different gate shapes.
+- **Fix**: widened the cash branch to `isCashBooking && (!isPaid || hasBalanceDue)` at `src/components/dashboard/BookingCard.jsx:365`. Semantics: show "Cash on Completion" whenever cash is still owed — full-cash before any payment (`!isPaid`) OR partial-cash with the balance still pending (`hasBalanceDue`). After cash balance collection, `paymentStatus → "paid"` and `balanceStatus → "paid"`, so both flags go false and the pill correctly disappears.
+- **No drawer change needed**: `BookingDetailDrawer.jsx:393-415` already handled this case correctly — its `isSettled` array excludes `"deposit_paid"`, so the FPO mode-aware pill renders for partial-deposit-paid bookings without any extra logic.
 
 ### 2 May 2026 (Partial Payment — Final Fixes)
 

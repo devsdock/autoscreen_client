@@ -341,6 +341,11 @@ const Bookings = () => {
       window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`, "_blank");
     },
     onAcknowledge: (b) => setAcknowledgeBooking(b),
+    onChat: (b) => {
+      // Open the drawer on the Chat tab via the existing URL-action pattern
+      // (BookingDetailDrawer reads `initialAction` from the route param).
+      navigate(`/dashboard/bookings/${b.id}/chat`);
+    },
   });
 
   // ── Render states ──

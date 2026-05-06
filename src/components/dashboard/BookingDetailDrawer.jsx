@@ -32,10 +32,12 @@ import ConfirmModal from "../ui/ConfirmModal";
 import Modal, { ModalActions } from "../ui/Modal";
 import { Player } from "@lottiefiles/react-lottie-player";
 import PaymentModal from "./PaymentModal";
+import BookingChatPanel from "./BookingChatPanel";
 import useDashboardStore, {
   formatDate,
   formatCurrency,
 } from "../../store/useDashboardStore";
+import useBookingChatStore from "../../store/useBookingChatStore";
 import bookingService from "../../services/bookingService";
 import { downloadInvoice } from "../../utils/invoiceUtils";
 import { NodeURL } from "../../services/api";
@@ -62,6 +64,12 @@ const BookingDetailDrawer = ({
   const [previewImage, setPreviewImage] = useState(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [pendingPaymentAmount, setPendingPaymentAmount] = useState(null);
+  // Booking chat (Point 3 — May 2026): "details" | "chat"
+  const [activeView, setActiveView] = useState("details");
+  const chatUnreadByBooking = useBookingChatStore((s) => s.unreadByBooking);
+  const bookingChatUnread = booking?._id
+    ? Number(chatUnreadByBooking[booking._id] || 0)
+    : 0;
   const [convertedImages, setConvertedImages] = useState({});
 
   const rawDamageImages =
@@ -293,14 +301,65 @@ const BookingDetailDrawer = ({
   const canDownloadInvoice = isPaymentSettled;
   const isInvoiceEnabled = isPaymentSettled;
 
-  // Handle initial action (e.g., from deep link)
+  // Reset activeView whenever the drawer is closed OR the booking changes —
+  // BUT honor an explicit `initialAction === "chat"` deep-link by leaving
+  // activeView on "chat". Without this reset, switching from booking A's
+  // chat tab to booking B would leave the user staring at the wrong chat.
   useEffect(() => {
-    if (isOpen && initialAction) {
-      if (initialAction === "review" && canReview) {
-        setShowReviewModal(true);
-      }
+    if (isOpen && initialAction === "chat") {
+      setActiveView("chat");
+    } else {
+      setActiveView("details");
+    }
+  }, [isOpen, initialAction, booking?._id]);
+
+  // Handle deep-link review modal (separate effect — doesn't touch activeView).
+  useEffect(() => {
+    if (isOpen && initialAction === "review" && canReview) {
+      setShowReviewModal(true);
     }
   }, [isOpen, initialAction, canReview]);
+
+  // Booking chat is available once payment has at least committed.
+  // Note: dataMappers.getNormalizedPaymentStatus rewrites raw "deposit_paid" →
+  // "Deposit Paid" (title case, space) before this drawer sees it. Accept both
+  // the raw enum (underscore) AND the normalized label (space), and fall back
+  // to the partialPayment shape for defence-in-depth — same pattern used by
+  // BookingCard.jsx after the 2 May fix.
+  const chatPaymentStatuses = new Set([
+    "deposit_paid",
+    "deposit paid",
+    "paid",
+    "insurance_direct",
+    "insurance direct",
+  ]);
+  const isPartialDepositCommitted =
+    booking?.partialPayment?.isActive === true &&
+    Number(booking?.depositAmount) > 0;
+  // Chat-eligibility rule (customer + provider matching):
+  //   1. Any payment method that has actually collected money — paid in full,
+  //      deposit_paid (partial), or insurance_direct → chat available.
+  //   2. Cash on completion — chat available the moment the booking is
+  //      committed (post-acceptance, not awaiting-payment / cancelled). The
+  //      customer + provider need to coordinate the on-site visit BEFORE
+  //      money changes hands.
+  //   3. Card on completion (pay-link / auto-charge) — chat available ONLY
+  //      if a deposit was actually taken at acceptance (partial mode). A
+  //      bare card-on-completion with no deposit is not eligible — there's
+  //      no money on the platform yet.
+  // Chat tab stays available on completed / cancelled bookings as a
+  // READ-ONLY transcript view (backend flips status to "read_only").
+  const bs = String(booking?.status || "").toLowerCase();
+  const isCashCommitted =
+    booking?.paymentOption === "cash" &&
+    !["awaiting-payment", "cancelled", "rejected", "expired"].includes(bs);
+  const chatAvailable =
+    !!booking &&
+    (chatPaymentStatuses.has(
+      String(booking.paymentStatus || "").toLowerCase(),
+    ) ||
+      isPartialDepositCommitted ||
+      isCashCommitted);
 
   if (!booking) return null;
 
@@ -312,6 +371,47 @@ const BookingDetailDrawer = ({
         title={`Booking #${booking.reference}`}
         size="lg"
       >
+        {chatAvailable && (
+          <div className="flex border-b border-slate-200 dark:border-slate-700 mb-4 -mt-2">
+            <button
+              type="button"
+              onClick={() => setActiveView("details")}
+              className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${
+                activeView === "details"
+                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                  : "border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+              }`}
+            >
+              Details
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView("chat")}
+              className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+                activeView === "chat"
+                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                  : "border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              Chat
+              {bookingChatUnread > 0 && activeView !== "chat" && (
+                <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-red-600 text-white">
+                  {bookingChatUnread > 9 ? "9+" : bookingChatUnread}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+
+        {activeView === "chat" && chatAvailable ? (
+          <div className="-mb-6 h-[calc(100vh-220px)]">
+            {/* `key` forces a fresh mount when switching between bookings —
+                guards against stale draft text, scroll position, or any
+                React-reuse state pollution leaking between conversations. */}
+            <BookingChatPanel key={booking._id} bookingId={booking._id} />
+          </div>
+        ) : (
         <div className="space-y-6 mb-6">
           {/* Status Badges */}
           <div className="flex flex-wrap items-center gap-2">
@@ -1321,9 +1421,10 @@ const BookingDetailDrawer = ({
               </div>
             )}
         </div>
+        )}
 
-        {/* Actions */}
-        {(canPay ||
+        {/* Actions — hidden in chat view */}
+        {activeView !== "chat" && (canPay ||
           canReview ||
           canDownloadInvoice ||
           canCancel ||
