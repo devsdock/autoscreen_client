@@ -842,6 +842,14 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 7 May 2026 (Booking Chat — Role Accents + Customer-Facing "Technician" Label)
+
+- **`src/components/dashboard/BookingChatPanel.jsx` — Role-coloured non-self bubbles**: When customer + provider + staff are all in the same conversation, customer-facing bubbles now carry visual role disambiguation so the customer can tell who said what at a glance. Each non-self bubble gets a 4px coloured left border keyed to the sender role (blue for customer, purple for provider, emerald for staff) and a small uppercase pill (e.g. `PROVIDER`, `TECHNICIAN`) inline next to the sender name above the bubble. Self bubbles unchanged — keep the solid blue right-aligned style.
+- **Layout: name-first, pill-second**: Bubble label row reads `Mike Jenkins  [TECHNICIAN]` (name first, then role pill). Chat-app convention — eyes scan by who's talking before the role acts as secondary disambiguation.
+- **Customer-facing label override — staff renders as `Technician`**: A customer sees the technician sent by their booked provider, not "Staff" of AutoScreen — the latter is ambiguous from the customer's perspective. Provider + staff portals still display `STAFF` (their own internal team term). Customer + provider labels unchanged across all portals.
+- **Color system shared with admin transcript**: The same 3-colour palette (blue/customer, purple/provider, emerald/staff) is used by `BookingChatViewerPage.jsx` in the admin portal for transcript audit, so all surfaces are visually consistent.
+- **Dark-mode supported**: Each pill colour has a `dark:` variant matching the existing portal's dark theme.
+
 ### 7 May 2026 (Booking Chat — Image Upload Re-enabled)
 
 - **`src/components/dashboard/BookingChatPanel.jsx`**: Re-enabled the paperclip attach button + hidden `<input type="file">` in the chat composer (originally hidden on 5 May). Paperclip button sits to the LEFT of the textarea, matches send-button vertical alignment, has hover tint (blue accent matching the customer portal palette), disabled state when chat is read-only or send is in progress. `accept="image/jpeg,image/jpg,image/png,image/webp"` enforced at the input level; `onPickImage` handler (already in place) does in-browser MIME + 5MB size validation, then runs the existing 2-step upload (`uploadImage` → `sendMessage` with `attachments[].url`). Backend Multer config + error-handler whitelist already accept these formats — no backend change needed. Restored from the deliberate hide-and-keep pattern used on 5 May (handler/ref/import all left intact for easy re-enablement).

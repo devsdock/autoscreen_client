@@ -233,6 +233,22 @@ export default function BookingChatPanel({ bookingId }) {
               </div>
             );
           }
+          // Role accents on non-self bubbles so the customer can tell apart
+          // provider and staff messages at a glance when both are in the
+          // same conversation. Self bubbles keep the existing primary-blue.
+          const senderType = m.sender?.userType;
+          const accentBorder =
+            senderType === "provider"
+              ? "border-l-4 border-l-purple-400"
+              : senderType === "staff"
+                ? "border-l-4 border-l-emerald-400"
+                : "border-l-4 border-l-blue-400";
+          const rolePill =
+            senderType === "provider"
+              ? "text-purple-700 bg-purple-50 border-purple-200 dark:text-purple-300 dark:bg-purple-900/20 dark:border-purple-800/40"
+              : senderType === "staff"
+                ? "text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-900/20 dark:border-emerald-800/40"
+                : "text-blue-700 bg-blue-50 border-blue-200 dark:text-blue-300 dark:bg-blue-900/20 dark:border-blue-800/40";
           return (
             <div
               key={i}
@@ -242,12 +258,27 @@ export default function BookingChatPanel({ bookingId }) {
                 className={`max-w-[78%] rounded-2xl px-3 py-2 text-sm ${
                   isSelf
                     ? "bg-blue-600 text-white"
-                    : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700"
+                    : `bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 ${accentBorder}`
                 }`}
               >
-                {!isSelf && m.sender?.name && (
-                  <div className="text-[11px] font-semibold opacity-80 mb-0.5">
-                    {m.sender.name}
+                {!isSelf && (
+                  <div className="flex items-center gap-2 mb-1">
+                    {m.sender?.name && (
+                      <span className="text-[11px] font-medium text-slate-700 dark:text-slate-200">
+                        {m.sender.name}
+                      </span>
+                    )}
+                    {senderType ? (
+                      <span
+                        className={`inline-block px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide rounded border ${rolePill}`}
+                      >
+                        {/* Customer-facing label: staff is shown as
+                            "TECHNICIAN" (the person actually doing the work),
+                            since "Staff" is ambiguous to a customer who only
+                            knows they booked a provider. */}
+                        {senderType === "staff" ? "Technician" : senderType}
+                      </span>
+                    ) : null}
                   </div>
                 )}
                 {m.type === "image" && m.attachments?.[0]?.url && (
