@@ -18,6 +18,9 @@ const useBookingChatStore = create((set, get) => ({
   globalUnread: 0,
   loading: false,
   activeBookingId: null,      // which chat the user is currently viewing (suppresses bumpUnread)
+  // Per-booking typing indicator state, written by the socketService when
+  // chat-typing-start arrives. Shape: { [bookingId]: { userId, userType, name, expiresAt } }
+  typingByBooking: {},
 
   setActiveBookingId: (bookingId) => set({ activeBookingId: bookingId || null }),
 
@@ -143,6 +146,31 @@ const useBookingChatStore = create((set, get) => ({
   /** Called on chat close (read-only) — refresh the chat doc so canSendMessage flips. */
   refreshChat: async (bookingId) => get().loadChat(bookingId),
 
+  /** Typing indicator received from another participant. */
+  setTyping: (bookingId, payload) => {
+    if (!bookingId || !payload) return;
+    set((state) => ({
+      typingByBooking: {
+        ...state.typingByBooking,
+        [String(bookingId)]: {
+          userId: payload.userId || null,
+          userType: payload.userType || null,
+          name: payload.name || null,
+          expiresAt: Date.now() + 5000, // safety: drop after 5 s if stop event missed
+        },
+      },
+    }));
+  },
+
+  clearTyping: (bookingId) => {
+    if (!bookingId) return;
+    set((state) => {
+      const next = { ...state.typingByBooking };
+      delete next[String(bookingId)];
+      return { typingByBooking: next };
+    });
+  },
+
   /** Reset on logout. */
   clear: () =>
     set({
@@ -151,6 +179,7 @@ const useBookingChatStore = create((set, get) => ({
       globalUnread: 0,
       loading: false,
       activeBookingId: null,
+      typingByBooking: {},
     }),
 }));
 

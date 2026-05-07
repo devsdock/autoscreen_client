@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from "react";
-import { Paperclip, Send, AlertCircle, Lock } from "lucide-react";
+import { Paperclip, FileText, Image as ImageIcon, Send, AlertCircle, Lock, Download } from "lucide-react";
 import useBookingChatStore from "../../store/useBookingChatStore";
 import useAuthStore from "../../store/useAuthStore";
 import * as svc from "../../services/bookingChatService";
@@ -25,6 +25,49 @@ const relTime = (iso) => {
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+
+/**
+ * Force a browser download regardless of origin. The HTML `download`
+ * attribute is only honoured for same-origin URLs — anything served
+ * from a different host (or via ngrok) falls back to navigation. We
+ * fetch the asset as a blob and trigger an anchor click on a blob URL
+ * instead, which always downloads. Fallback to direct anchor (with
+ * download attr) if fetch fails — covers offline / CORS blocked.
+ */
+async function forceDownload(url, filename) {
+  try {
+    const res = await fetch(url, { credentials: "omit" });
+    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename || "download";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+  } catch (err) {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename || "download";
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+}
+const MAX_DOC_BYTES = 10 * 1024 * 1024;
+const ALLOWED_DOC_EXT = /\.(pdf|doc|docx|xls|xlsx|txt)$/i;
+const ALLOWED_DOC_MIMES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/plain",
+];
 
 const resolveImageUrl = (url) => {
   if (!url) return "";
@@ -54,10 +97,37 @@ export default function BookingChatPanel({ bookingId }) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const fileRef = useRef(null);
+  const docRef = useRef(null);
   const scrollRef = useRef(null);
+  const attachWrapRef = useRef(null);
+  // Typing-indicator emit/throttle. typingActiveRef tracks whether we've
+  // already fired chat-typing-start; typingTimerRef debounces stop after
+  // 3 s of no further keystrokes. Clean stop on unmount + send.
+  const typingActiveRef = useRef(false);
+  const typingTimerRef = useRef(null);
+
+  // Close the attach menu when clicking outside it.
+  useEffect(() => {
+    if (!attachMenuOpen) return;
+    const onDocMouseDown = (e) => {
+      if (
+        attachWrapRef.current &&
+        !attachWrapRef.current.contains(e.target)
+      ) {
+        setAttachMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [attachMenuOpen]);
 
   const chat = chats[bookingId];
+  // Typing payload received from another participant (provider/staff).
+  const typingPayload = useBookingChatStore((s) =>
+    bookingId ? s.typingByBooking[String(bookingId)] : null,
+  );
 
   useEffect(() => {
     setActiveBookingId(bookingId);
@@ -70,8 +140,55 @@ export default function BookingChatPanel({ bookingId }) {
     return () => {
       socketService.leaveChat(bookingId);
       setActiveBookingId(null);
+      // Force-stop typing on unmount so the recipient doesn't see a stale
+      // "is typing…" indicator after the customer closes the panel.
+      if (typingTimerRef.current) {
+        clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = null;
+      }
+      if (typingActiveRef.current) {
+        typingActiveRef.current = false;
+        socketService.sendTyping(bookingId, "stop", {
+          userId: String(user?._id || user?.id || ""),
+          userType: "customer",
+        });
+      }
     };
   }, [bookingId, loadChat, markChatRead, setActiveBookingId]);
+
+  // Typing indicator handlers — debounced 3 s. Called from textarea
+  // onChange. Idempotent: only fires chat-typing-start once until the
+  // 3-second window resets.
+  const emitStartTyping = () => {
+    if (!typingActiveRef.current) {
+      typingActiveRef.current = true;
+      socketService.sendTyping(bookingId, "start", {
+        userId: String(user?._id || user?.id || ""),
+        userType: "customer",
+        name: user?.firstName
+          ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}`
+          : user?.name || "Customer",
+      });
+    }
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      stopTypingNow();
+    }, 3000);
+  };
+
+  const stopTypingNow = () => {
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    if (typingActiveRef.current) {
+      typingActiveRef.current = false;
+      socketService.sendTyping(bookingId, "stop", {
+        userId: String(user?._id || user?.id || ""),
+        userType: "customer",
+      });
+    }
+  };
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -134,6 +251,7 @@ export default function BookingChatPanel({ bookingId }) {
     };
     appendMessage(bookingId, optimistic);
     setDraft("");
+    stopTypingNow();
 
     try {
       const res = await svc.sendMessage(bookingId, {
@@ -187,6 +305,50 @@ export default function BookingChatPanel({ bookingId }) {
       if (res.data?.message) appendMessage(bookingId, res.data.message);
     } catch (err) {
       setError(err?.message || "Failed to upload image");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onPickFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !canSend) return;
+    setError("");
+
+    const extOk = ALLOWED_DOC_EXT.test(file.name);
+    const mimeOk = ALLOWED_DOC_MIMES.includes(file.type);
+    if (!extOk && !mimeOk) {
+      setError("Only PDF, DOC, DOCX, XLS, XLSX, or TXT files are allowed.");
+      return;
+    }
+    if (file.size > MAX_DOC_BYTES) {
+      setError("File must be 10MB or smaller.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const upload = await svc.uploadFile(bookingId, file);
+      if (!upload?.success || !upload.data?.url) {
+        throw new Error(upload?.message || "Upload failed");
+      }
+      const res = await svc.sendMessage(bookingId, {
+        type: "file",
+        content: "",
+        attachments: [
+          {
+            url: upload.data.url,
+            mimeType: upload.data.mimeType,
+            sizeBytes: upload.data.sizeBytes,
+            originalFilename: upload.data.originalFilename || file.name,
+          },
+        ],
+      });
+      if (!res?.success) throw new Error(res?.message || "Failed to send");
+      if (res.data?.message) appendMessage(bookingId, res.data.message);
+    } catch (err) {
+      setError(err?.message || "Failed to upload file");
     } finally {
       setBusy(false);
     }
@@ -282,20 +444,87 @@ export default function BookingChatPanel({ bookingId }) {
                   </div>
                 )}
                 {m.type === "image" && m.attachments?.[0]?.url && (
-                  <a
-                    href={resolveImageUrl(m.attachments[0].url)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block mb-1"
-                  >
-                    <img
-                      src={resolveImageUrl(m.attachments[0].url)}
-                      alt="attachment"
-                      className="rounded-lg max-h-56 max-w-full"
-                    />
-                  </a>
+                  <div className="relative group mb-1">
+                    <a
+                      href={resolveImageUrl(m.attachments[0].url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block"
+                    >
+                      <img
+                        src={resolveImageUrl(m.attachments[0].url)}
+                        alt="attachment"
+                        className="rounded-lg max-h-56 max-w-full"
+                      />
+                    </a>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        forceDownload(
+                          resolveImageUrl(m.attachments[0].url),
+                          m.attachments[0].originalFilename ||
+                            `image-${Date.now()}.jpg`,
+                        );
+                      }}
+                      title="Download image"
+                      aria-label="Download image"
+                      className="absolute top-1.5 right-1.5 bg-black/55 hover:bg-black/80 text-white rounded-full p-1.5 opacity-80 group-hover:opacity-100 transition"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 )}
-                {m.content && m.content !== "[Image]" && (
+                {m.type === "file" && m.attachments?.[0]?.url && (
+                  <div
+                    className={`flex items-center gap-2 mb-1 pl-3 pr-1.5 py-1.5 rounded-lg border ${
+                      isSelf
+                        ? "bg-blue-700/40 border-blue-400 text-white"
+                        : "bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-slate-100"
+                    }`}
+                  >
+                    <Paperclip className="w-4 h-4 flex-shrink-0" />
+                    <a
+                      href={resolveImageUrl(m.attachments[0].url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 min-w-0 hover:underline"
+                    >
+                      <div className="text-xs font-medium truncate max-w-[180px]">
+                        {m.attachments[0].originalFilename || "Attachment"}
+                      </div>
+                      {m.attachments[0].sizeBytes ? (
+                        <div className={`text-[10px] ${isSelf ? "text-blue-100" : "text-slate-500"}`}>
+                          {Math.round(m.attachments[0].sizeBytes / 1024)} KB
+                        </div>
+                      ) : null}
+                    </a>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        forceDownload(
+                          resolveImageUrl(m.attachments[0].url),
+                          m.attachments[0].originalFilename || "file",
+                        );
+                      }}
+                      title="Download file"
+                      aria-label="Download file"
+                      className={`p-1.5 rounded-md flex-shrink-0 ${
+                        isSelf
+                          ? "hover:bg-white/20 text-white"
+                          : "hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200"
+                      }`}
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                {m.content &&
+                  m.content !== "[Image]" &&
+                  !m.content.startsWith("[File:") && (
                   <div className="whitespace-pre-wrap break-words">
                     {m.content}
                   </div>
@@ -321,6 +550,23 @@ export default function BookingChatPanel({ bookingId }) {
         </div>
       )}
 
+      {/* Typing indicator from another participant (provider/staff). */}
+      {typingPayload &&
+        typingPayload.expiresAt > Date.now() &&
+        String(typingPayload.userId || "") !== currentUserId && (
+          <div className="px-4 py-1.5 border-t border-slate-100 dark:border-slate-700/40">
+            <span className="inline-block text-[11px] text-slate-500 dark:text-slate-400 italic">
+              {typingPayload.name ||
+                (typingPayload.userType === "provider"
+                  ? "Provider"
+                  : typingPayload.userType === "staff"
+                    ? "Technician"
+                    : "Someone")}{" "}
+              is typing…
+            </span>
+          </div>
+        )}
+
       <div className="border-t border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-900 flex gap-2 items-end">
         <input
           ref={fileRef}
@@ -329,19 +575,68 @@ export default function BookingChatPanel({ bookingId }) {
           onChange={onPickImage}
           className="hidden"
         />
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={!canSend || busy}
-          title="Attach image"
-          aria-label="Attach image"
-          className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent flex-shrink-0"
-        >
-          <Paperclip className="w-5 h-5" />
-        </button>
+        <input
+          ref={docRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
+          onChange={onPickFile}
+          className="hidden"
+        />
+        <div ref={attachWrapRef} className="relative flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => setAttachMenuOpen((v) => !v)}
+            disabled={!canSend || busy}
+            title="Attach"
+            aria-label="Attach"
+            aria-haspopup="menu"
+            aria-expanded={attachMenuOpen}
+            className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+          >
+            <Paperclip className="w-5 h-5" />
+          </button>
+          {attachMenuOpen && (
+            <div
+              role="menu"
+              className="absolute bottom-full left-0 mb-2 w-44 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg overflow-hidden z-10"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAttachMenuOpen(false);
+                  fileRef.current?.click();
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60"
+              >
+                <ImageIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span>Image</span>
+              </button>
+              <div className="h-px bg-slate-100 dark:bg-slate-700" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAttachMenuOpen(false);
+                  docRef.current?.click();
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60"
+              >
+                <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <span>File</span>
+              </button>
+            </div>
+          )}
+        </div>
         <textarea
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            setDraft(v);
+            if (canSend && v.length > 0) emitStartTyping();
+            else stopTypingNow();
+          }}
+          onBlur={stopTypingNow}
           onKeyDown={onKeyDown}
           placeholder={canSend ? "Type a message…" : "Chat is read-only"}
           disabled={!canSend || busy}

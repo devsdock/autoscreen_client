@@ -32,6 +32,17 @@ export const uploadImage = (bookingId, file) => {
   });
 };
 
+export const uploadFile = (bookingId, file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return api({
+    method: "POST",
+    url: `/customer/booking-chats/${bookingId}/messages/upload-file`,
+    data: formData,
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
+
 export const markRead = (bookingId) =>
   api({ method: "POST", url: `/customer/booking-chats/${bookingId}/read` });
 

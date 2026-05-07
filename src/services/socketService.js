@@ -80,6 +80,18 @@ class SocketService {
       useBookingChatStore.getState().bumpUnread(String(bookingId));
     });
 
+    // Booking chat — typing indicator events. Backend broadcasts to
+    // `chat_<bookingId>` room with sender excluded, so we just write to
+    // store unconditionally.
+    this.socket.on("chat-typing-start", (payload) => {
+      if (!payload?.chatId) return;
+      useBookingChatStore.getState().setTyping(payload.chatId, payload);
+    });
+    this.socket.on("chat-typing-stop", (payload) => {
+      if (!payload?.chatId) return;
+      useBookingChatStore.getState().clearTyping(payload.chatId);
+    });
+
     this.socket.on("disconnect", () => { });
 
     this.socket.on("connect_error", (error) => { });
@@ -159,6 +171,25 @@ class SocketService {
     if (this._activeChatId === id) this._activeChatId = null;
     if (!this.socket || !id) return;
     this.socket.emit("leave-chat", id);
+  }
+
+  /**
+   * Emit a typing indicator to the chat room. Fires `chat-typing-start` /
+   * `chat-typing-stop` events; backend broadcasts to everyone else in the
+   * chat_<bookingId> room (sender excluded). Ephemeral — no DB write.
+   *
+   * `kind` is "start" or "stop"; `userInfo` carries the display data the
+   * recipient needs to render "Sarah is typing…".
+   */
+  sendTyping(bookingId, kind, userInfo = {}) {
+    if (!bookingId || !this.socket?.connected) return;
+    const event = kind === "start" ? "chat-typing-start" : "chat-typing-stop";
+    this.socket.emit(event, {
+      chatId: String(bookingId),
+      userId: userInfo.userId || null,
+      userType: userInfo.userType || "customer",
+      name: userInfo.name || null,
+    });
   }
 
   disconnect() {

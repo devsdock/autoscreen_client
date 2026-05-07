@@ -842,6 +842,34 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 7 May 2026 (Booking Chat — File Attachments + Typing Indicator + Single-Paperclip Popover)
+
+Customer portal mirror of the provider/staff upgrade. Pairs with backend file-upload + typing-indicator additions in `autoscreen_node`.
+
+#### `src/components/dashboard/BookingChatPanel.jsx` — Composer redesign
+- **Single attach icon → popover menu**: One paperclip button opens a small popover with "Image" and "File" options. Replaces the older two-icon attempt that looked cluttered.
+- **File attachments (NEW)**: PDF/DOC/DOCX/XLS/XLSX/TXT, 10 MB cap. Client-side MIME + extension + size guards before upload. 2-step `uploadFile` → `sendMessage({ type: "file", attachments: [...] })`.
+- **Image attachments unchanged**: Same `uploadImage` flow, just routed through the popover.
+
+#### `BookingChatPanel.jsx` — Bubble rendering
+- **File bubble (NEW)**: mime-aware icon, filename, size, separate download button. Previously, file-type messages from provider/staff rendered as the literal `[File: filename.pdf]` text — now rendered as a proper file card with download.
+- **Image bubble — separate download button (NEW)**: download icon overlaid on the bubble, in addition to lightbox tap.
+- **`forceDownload(url, filename)` helper**: Cross-origin-safe download via `fetch` + blob URL + programmatic `<a download>` click. The HTML `download` attribute alone is ignored cross-origin; backend returns `Access-Control-Allow-Origin: *` on `/uploads/*` so the fetch route works without auth.
+
+#### `BookingChatPanel.jsx` — Typing indicator
+- **Detection**: Emits `chat-typing-start` on first keystroke after idle, debounces 3 s, emits `chat-typing-stop`. Clears on send.
+- **Display**: Pill above the composer ("Sarah is typing…"). Customer-facing label uses real names — `STAFF` role pill displays as `TECHNICIAN` in the customer-facing surfaces, matching the rename established 7 May.
+- **Auto-clear**: 5 s safety timeout if the stop event is dropped.
+
+#### `src/store/useBookingChatStore.js`
+- **`typingByBooking`** + **`setTyping`** + **`clearTyping`** state. Mirrors the provider/staff stores for shared socket payload shape.
+
+#### `src/services/socketService.js`
+- New `chat-typing-start` / `chat-typing-stop` listeners + `sendTyping(bookingId, kind, userInfo)` emit helper.
+
+#### `src/services/bookingChatService.js`
+- **`uploadFile(bookingId, file, originalFilename)`** — new method calling `POST /api/customer/booking-chats/:bookingId/messages/upload-file`.
+
 ### 7 May 2026 (Booking Chat — Role Accents + Customer-Facing "Technician" Label)
 
 - **`src/components/dashboard/BookingChatPanel.jsx` — Role-coloured non-self bubbles**: When customer + provider + staff are all in the same conversation, customer-facing bubbles now carry visual role disambiguation so the customer can tell who said what at a glance. Each non-self bubble gets a 4px coloured left border keyed to the sender role (blue for customer, purple for provider, emerald for staff) and a small uppercase pill (e.g. `PROVIDER`, `TECHNICIAN`) inline next to the sender name above the bubble. Self bubbles unchanged — keep the solid blue right-aligned style.
