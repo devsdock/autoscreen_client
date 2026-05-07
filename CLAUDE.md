@@ -842,6 +842,10 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 7 May 2026 (Booking Chat — Image Upload Re-enabled)
+
+- **`src/components/dashboard/BookingChatPanel.jsx`**: Re-enabled the paperclip attach button + hidden `<input type="file">` in the chat composer (originally hidden on 5 May). Paperclip button sits to the LEFT of the textarea, matches send-button vertical alignment, has hover tint (blue accent matching the customer portal palette), disabled state when chat is read-only or send is in progress. `accept="image/jpeg,image/jpg,image/png,image/webp"` enforced at the input level; `onPickImage` handler (already in place) does in-browser MIME + 5MB size validation, then runs the existing 2-step upload (`uploadImage` → `sendMessage` with `attachments[].url`). Backend Multer config + error-handler whitelist already accept these formats — no backend change needed. Restored from the deliberate hide-and-keep pattern used on 5 May (handler/ref/import all left intact for easy re-enablement).
+
 ### 5 May 2026 (Booking Chat — Image Upload Hidden)
 
 - **`src/components/dashboard/BookingChatPanel.jsx`**: Hidden the paperclip upload button + hidden `<input type="file">` from the chat composer. The composer is now text-only; the textarea + Send button take the full footer width. Backend `uploadImage` endpoint, store `uploadImage` action, image-message rendering in the transcript, and the `Paperclip` import / `fileRef` / `onPickImage` handler are all left in place — no other behaviour changes — so the feature can be re-enabled by restoring the JSX block alone.
