@@ -654,27 +654,32 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                   <p className="font-display text-[15px] font-bold text-white leading-snug">—</p>
                 )}
               </div>
-              {/* Divider before Glass Supply */}
-              <div className="w-px bg-white/15 self-stretch hidden sm:block" />
-              {/* Glass Supply */}
-              <div className="w-full sm:flex-1 sm:min-w-0">
-                <p className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-1">Glass Supply</p>
-                {quote?.supplyType === "fitter_only" ? (
-                  <span
-                    className="inline-flex items-center mt-0.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
-                    style={{ backgroundColor: "rgba(254,243,199,0.9)", color: "#92400e" }}
-                  >
-                    Fitter Only
-                  </span>
-                ) : (
-                  <span
-                    className="inline-flex items-center mt-0.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
-                    style={{ backgroundColor: "rgba(219,234,254,0.9)", color: "#1d4ed8" }}
-                  >
-                    Glass + Fitting
-                  </span>
-                )}
-              </div>
+              {/* Glass Supply column — hidden for legacy quotes (created before
+                  supplyType was added to the schema). Renders only when the
+                  customer explicitly chose supply_install or fitter_only. */}
+              {quote?.supplyType && (
+                <>
+                  <div className="w-px bg-white/15 self-stretch hidden sm:block" />
+                  <div className="w-full sm:flex-1 sm:min-w-0">
+                    <p className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-1">Glass Supply</p>
+                    {quote.supplyType === "fitter_only" ? (
+                      <span
+                        className="inline-flex items-center mt-0.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
+                        style={{ backgroundColor: "rgba(254,243,199,0.9)", color: "#92400e" }}
+                      >
+                        Fitter Only
+                      </span>
+                    ) : (
+                      <span
+                        className="inline-flex items-center mt-0.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
+                        style={{ backgroundColor: "rgba(219,234,254,0.9)", color: "#1d4ed8" }}
+                      >
+                        Glass + Fitting
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
               {/* Insurance Status */}
               {quote?.hasInsurance && (
                 <>

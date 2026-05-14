@@ -144,6 +144,9 @@ const QuoteCard = ({ quote, onClick }) => {
             Service
           </div>
           <ServiceInfoCell row={quote} />
+          {/* Glass Supply pill — hidden for legacy quotes (created before
+              supplyType was added to the schema). Only renders when the
+              customer explicitly chose supply_install or fitter_only. */}
           {quote.supplyType && (
             <div className="mt-1.5">
               <span
