@@ -48,7 +48,10 @@ const paymentService = {
    * @returns {Object} { success, authorization_url, reference }
    */
   initializePaystack: (params, coversFees = false) => {
-    // Backward compat: if params is a string, treat as bookingId
+    // Backward compat: if params is a string, treat as bookingId.
+    // selectedQuality (when provided in params) is forwarded so the backend
+    // can resolve the customer-selected glass tier; null/undefined falls back
+    // to the legacy lowest-tier mirror server-side.
     const data = typeof params === "string"
       ? { bookingId: params, coversFees }
       : { ...params, coversFees };
@@ -67,11 +70,11 @@ const paymentService = {
    * @param {Object} params - { quoteId, responseId }
    * @returns {Object} { success, bookingId, bookingNumber, redirect_url }
    */
-  acceptCash: ({ quoteId, responseId }) => {
+  acceptCash: ({ quoteId, responseId, selectedQuality = null }) => {
     return request({
       method: "POST",
       url: "/customer/payments/accept-cash",
-      data: { quoteId, responseId },
+      data: { quoteId, responseId, selectedQuality },
     });
   },
 
@@ -80,13 +83,13 @@ const paymentService = {
    * Creates a confirmed booking. Customer pays later via a Paystack link
    * sent after the provider marks "Service Done".
    *
-   * @param {Object} params - { quoteId, responseId, subMode? ("payment_link" default) }
+   * @param {Object} params - { quoteId, responseId, subMode? ("payment_link" default), selectedQuality? }
    */
-  acceptCardAfter: ({ quoteId, responseId, subMode = "payment_link" }) => {
+  acceptCardAfter: ({ quoteId, responseId, subMode = "payment_link", selectedQuality = null }) => {
     return request({
       method: "POST",
       url: "/customer/payments/accept-card-after",
-      data: { quoteId, responseId, subMode },
+      data: { quoteId, responseId, subMode, selectedQuality },
     });
   },
 

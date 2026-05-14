@@ -33,9 +33,11 @@ import Modal from "../ui/Modal";
 import PaymentModal from "./PaymentModal";
 import PaymentMethodModal from "./PaymentMethodModal";
 import PartialPaymentIntroModal from "./PartialPaymentIntroModal";
+import GlassTypesExplainedModal from "./GlassTypesExplainedModal";
 import Tooltip from "../ui/Tooltip";
 import { useSettingsStore } from "../../store/useSettingsStore";
 import { getPartialPaymentConfig } from "../../services/publicSettingsService";
+import { formatGlassQuality } from "../../utils/dataMappers";
 
 const QuoteDetailPanel = ({ quote, onClose }) => {
   const navigate = useNavigate();
@@ -56,6 +58,14 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   // Flexible Payment Options v1.2 — method selection step
   const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
   const [pendingAcceptResponse, setPendingAcceptResponse] = useState(null);
+  // Customer-selected glass quality tier (when provider used tier pricing).
+  // Stored alongside pendingAcceptResponse so it survives the
+  // PartialPaymentIntroModal and PaymentMethodModal hand-offs and ends up on
+  // the eventual service call.
+  const [pendingSelectedQuality, setPendingSelectedQuality] = useState(null);
+  // Glass-types explainer modal (opened by the info icon inside
+  // ProviderResponseCard's tier picker).
+  const [glassTypesModalOpen, setGlassTypesModalOpen] = useState(false);
   const [isProcessingCash, setIsProcessingCash] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
   const [sortFilter, setSortFilter] = useState("best-price");
@@ -139,10 +149,15 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   // a friendly intro modal explains the deposit/balance split BEFORE the
   // customer picks a payment method. The actual flow that follows is the
   // same as without partial — only an extra explainer step is inserted.
-  const handleAcceptAndPay = async (response) => {
+  const handleAcceptAndPay = async (response, selectedQuality = null) => {
     const isInsuranceResponse = response?.isInsuranceRegistered && quote?.hasInsurance;
     const excess = response?.insuranceDetails?.customerExcess || 0;
     const isR0Insurance = isInsuranceResponse && excess === 0;
+
+    // Stash the customer-selected tier (null for legacy single-price quotes)
+    // so downstream service calls — including the ones that fire AFTER the
+    // PartialPaymentIntroModal / PaymentMethodModal hand-off — can read it.
+    setPendingSelectedQuality(selectedQuality);
 
     // Partial active and customer owes a non-zero amount → show intro modal
     // first. Insurance flows skip partial entirely (separate accounting).
@@ -153,13 +168,13 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     }
 
     // Non-partial path (existing behavior, unchanged)
-    return continueAcceptAfterIntro(response);
+    return continueAcceptAfterIntro(response, selectedQuality);
   };
 
   // Continuation of the accept flow after the partial intro modal (or
   // immediately when partial is inactive). Decides whether to open the
   // payment-method picker or jump straight to PaymentModal (prepayment).
-  const continueAcceptAfterIntro = async (response) => {
+  const continueAcceptAfterIntro = async (response, selectedQuality = null) => {
     const isInsuranceResponse = response?.isInsuranceRegistered && quote?.hasInsurance;
     const excess = response?.insuranceDetails?.customerExcess || 0;
     const isR0Insurance = isInsuranceResponse && excess === 0;
@@ -176,15 +191,16 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     ) {
       // Open method selection modal next
       setPendingAcceptResponse(response);
+      setPendingSelectedQuality(selectedQuality);
       setShowPaymentMethodModal(true);
       return;
     }
 
     // Default prepayment flow (also handles R0 insurance via its own short-circuit)
-    return handleAcceptPrepayment(response);
+    return handleAcceptPrepayment(response, selectedQuality);
   };
 
-  const handleAcceptPrepayment = async (response) => {
+  const handleAcceptPrepayment = async (response, selectedQuality = null) => {
     const providerName =
       response.provider?.businessName ||
       response.provider?.name ||
@@ -221,7 +237,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     if (isInsuranceRegistered && total === 0) {
       try {
         const res = await paymentService.initializePaystack(
-          { quoteId: quote.id, responseId: response.id },
+          { quoteId: quote.id, responseId: response.id, selectedQuality },
           false,
         );
         if (res.success && res.redirect_url) {
@@ -241,6 +257,9 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     setPaymentData({
       quoteId: quote.id,
       responseId: response.id,
+      // Customer-selected glass quality tier — forwarded by PaymentModal into
+      // the initializePaystack body. Null for legacy single-price quotes.
+      selectedQuality,
       amount: total,
       service: quote.serviceSelections?.map((s) => s.serviceName).join(", ") ||
         quote.serviceType || "Auto Glass Service",
@@ -265,12 +284,14 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   // Customer chose a payment method from the PaymentMethodModal
   const handlePaymentMethodSelected = async (method) => {
     const response = pendingAcceptResponse;
+    const selectedQuality = pendingSelectedQuality;
     setShowPaymentMethodModal(false);
     if (!response) return;
 
     if (method === "prepayment") {
       setPendingAcceptResponse(null);
-      return handleAcceptPrepayment(response);
+      setPendingSelectedQuality(null);
+      return handleAcceptPrepayment(response, selectedQuality);
     }
 
     if (method === "cash") {
@@ -279,6 +300,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
         const res = await paymentService.acceptCash({
           quoteId: quote.id,
           responseId: response.id,
+          selectedQuality,
         });
         if (res.success) {
           // Partial Payment (Points 1-2, April 2026) — backend returns a
@@ -319,6 +341,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
       } finally {
         setIsProcessingCash(false);
         setPendingAcceptResponse(null);
+        setPendingSelectedQuality(null);
       }
       return;
     }
@@ -334,6 +357,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           quoteId: quote.id,
           responseId: response.id,
           subMode,
+          selectedQuality,
         });
         if (res.success) {
           // Partial Payment (Points 1-2, April 2026) OR tokenize path —
@@ -381,6 +405,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
       } finally {
         setIsProcessingCash(false);
         setPendingAcceptResponse(null);
+        setPendingSelectedQuality(null);
       }
     }
   };
@@ -980,6 +1005,11 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                         Insurance Approved
                       </span>
                     )}
+                    {booking?.selectedGlassQuality && (
+                      <span className="text-[0.625rem] font-semibold uppercase tracking-wide bg-slate-100 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded-full dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
+                        {formatGlassQuality(booking.selectedGlassQuality, { suffix: "Glass" })}
+                      </span>
+                    )}
                   </div>
                   {/* Mobile: truncated + tooltip on tap */}
                   <Tooltip content={`${svcLabel}${vehicleLabel ? ` · ${vehicleLabel}` : ""}`} position="bottom" className="sm:!hidden block">
@@ -1257,8 +1287,9 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                   disabled={bookingIsConfirmed || isClosed}
                   bookingConfirmed={bookingIsConfirmed}
                   quoteData={quote}
-                  onAccept={() => handleAcceptAndPay(response)}
+                  onAccept={(selectedQuality = null) => handleAcceptAndPay(response, selectedQuality)}
                   onMessage={handleMessageProvider}
+                  onOpenGlassTypesModal={() => setGlassTypesModalOpen(true)}
                 />
               );
             };
@@ -1323,13 +1354,15 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
         onCancel={() => {
           setShowPartialIntroModal(false);
           setPendingAcceptResponse(null);
+          setPendingSelectedQuality(null);
         }}
         onContinue={() => {
           setShowPartialIntroModal(false);
           if (pendingAcceptResponse) {
             // Forward to the existing accept-flow continuation. Do not clear
-            // pendingAcceptResponse — PaymentMethodModal/PaymentModal will use it.
-            continueAcceptAfterIntro(pendingAcceptResponse);
+            // pendingAcceptResponse / pendingSelectedQuality —
+            // PaymentMethodModal/PaymentModal will use them.
+            continueAcceptAfterIntro(pendingAcceptResponse, pendingSelectedQuality);
           }
         }}
         total={(() => {
@@ -1450,6 +1483,14 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           setShowPaymentModal(false);
           if (quote?.id) fetchQuoteDetails(quote.id);
         }}
+      />
+
+      {/* Glass Types Explained Modal — opened from the info icon in
+          ProviderResponseCard's tier picker. Mounted once at the panel
+          level so all response cards share a single instance. */}
+      <GlassTypesExplainedModal
+        isOpen={glassTypesModalOpen}
+        onClose={() => setGlassTypesModalOpen(false)}
       />
 
       {/* Close Confirmation Modal */}

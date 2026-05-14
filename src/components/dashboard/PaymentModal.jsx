@@ -108,7 +108,13 @@ const PaymentModal = ({ payment, isOpen, onClose, onSuccess }) => {
 
     try {
       const params = payment.quoteId && payment.responseId
-        ? { quoteId: payment.quoteId, responseId: payment.responseId }
+        ? {
+            quoteId: payment.quoteId,
+            responseId: payment.responseId,
+            // Forward customer-selected glass quality tier (null for legacy
+            // single-price quotes — backend falls back to lowest-tier mirror).
+            selectedQuality: payment.selectedQuality ?? null,
+          }
         : { bookingId: payment.bookingId || payment.id };
 
       const res = await paymentService.initializePaystack(params, coversFees);

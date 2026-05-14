@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Star,
   BadgeCheck,
@@ -10,6 +11,7 @@ import {
   Phone,
   AlertTriangle,
   Wallet,
+  Info,
 } from "lucide-react";
 import { formatCurrency } from "../../store/useDashboardStore";
 import { formatDuration } from "../../utils/formatDuration";
@@ -17,8 +19,9 @@ import { NodeURL } from "../../services/api";
 
 const ProviderResponseCard = ({
   response,
-  onAccept,
+  onAccept,            // tier mode: invoked as onAccept(selectedQuality); legacy: invoked as onAccept()
   onMessage,
+  onOpenGlassTypesModal, // NEW — called when info icon is clicked
   isAccepted = false,
   isRejected = false,
   disabled = false,
@@ -37,6 +40,36 @@ const ProviderResponseCard = ({
     glassDetails,
     validUntil,
   } = response;
+
+  // Tier-mode activation gate (mirrors backend resolveSelectedTier rules)
+  const isTierMode =
+    response?.tierPricing?.isActive === true &&
+    Array.isArray(response?.tierPricing?.tiers) &&
+    response.tierPricing.tiers.length >= 1;
+
+  // Order tiers consistently: OEM > OEE > aftermarket
+  const TIER_ORDER = ["OEM", "OEE", "aftermarket"];
+  const orderedTiers = isTierMode
+    ? TIER_ORDER
+        .map((q) => response.tierPricing.tiers.find((t) => t.quality === q))
+        .filter(Boolean)
+    : [];
+
+  // Selected tier state (local — committed only on Accept & Pay)
+  const [selectedQuality, setSelectedQuality] = useState(null);
+
+  // First-view pulse on info icon (one-shot per browser)
+  const [hasSeenInfo, setHasSeenInfo] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("autoscreen-glass-types-explained-seen") === "1";
+  });
+
+  // Quality short-label + full-form tooltip text
+  const QUALITY_LABELS = {
+    OEM: { short: "OEM", full: "Original Equipment Manufacturer — factory-quality glass made by the original supplier." },
+    OEE: { short: "OEE", full: "Original Equipment Equivalent — same quality made by a different certified manufacturer." },
+    aftermarket: { short: "Generic", full: "Aftermarket / Generic — budget-friendly third-party glass." },
+  };
 
   // Handle deleted/missing provider — show disabled card
   const isProviderDeleted = !provider || provider.isDeleted;
@@ -118,6 +151,30 @@ const ProviderResponseCard = ({
     svcLines.push(quoteData.serviceType);
   }
   if (svcLines.length === 0) svcLines.push("Quote Response");
+
+  const InfoIconButton = ({ className = "" }) => (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!hasSeenInfo && typeof window !== "undefined") {
+          localStorage.setItem("autoscreen-glass-types-explained-seen", "1");
+          setHasSeenInfo(true);
+        }
+        onOpenGlassTypesModal?.();
+      }}
+      className={`relative inline-flex items-center justify-center w-5 h-5 rounded-full text-sky-500 hover:text-sky-600 transition-colors ${className}`}
+      aria-label="Learn about glass types"
+    >
+      {!hasSeenInfo && (
+        <span
+          className="absolute inset-0 rounded-full bg-sky-400/40 animate-ping"
+          aria-hidden="true"
+        />
+      )}
+      <Info size={16} className="relative" />
+    </button>
+  );
 
   return (
     <div
@@ -376,15 +433,14 @@ const ProviderResponseCard = ({
           </div>
 
           <div
-            style={{
-              fontSize: ".9375rem",
-              fontWeight: 700,
-              lineHeight: 1.5,
-            }}
+            style={{ fontSize: ".9375rem", fontWeight: 700, lineHeight: 1.5 }}
             className="text-slate-900 dark:text-white"
           >
             {svcLines.map((line, i) => (
-              <div key={i}>{line}</div>
+              <div key={i} className="flex items-center gap-1.5">
+                <span>{line}</span>
+                {i === 0 && isTierMode && <InfoIconButton />}
+              </div>
             ))}
           </div>
 
@@ -548,6 +604,9 @@ const ProviderResponseCard = ({
             ) : (
               <>
                 <div>
+                  {isTierMode && (
+                    <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">From</span>
+                  )}
                   <span
                     style={{ fontSize: ".9375rem", fontWeight: 600 }}
                     className="text-slate-900 dark:text-white"
@@ -573,14 +632,14 @@ const ProviderResponseCard = ({
                   }}
                   className="text-slate-400 dark:text-slate-500"
                 >
-                  Service amount
+                  {isTierMode ? "Lowest tier" : "Service amount"}
                 </div>
               </>
             )}
           </div>
 
-          {/* Accept Button */}
-          {!isAccepted && !isRejected && !disabled && !isProviderDeleted && (
+          {/* Accept Button — hide in tier mode (moves to tier-picker section below) */}
+          {!isTierMode && !isAccepted && !isRejected && !disabled && !isProviderDeleted && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -669,6 +728,165 @@ const ProviderResponseCard = ({
           )}
         </div>
       </div>
+
+      {/* ── Tier Picker (NEW, only in tier mode) ── */}
+      {isTierMode && !isAccepted && !isRejected && !disabled && !isProviderDeleted && (
+        <div className="px-3 sm:px-5 py-4 sm:py-5 border-b border-dashed border-slate-200 dark:border-slate-700">
+          <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+            Choose your glass quality
+          </h4>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            {orderedTiers.map((tier) => {
+              const isSelected = selectedQuality === tier.quality;
+              const isDimmed = selectedQuality !== null && !isSelected;
+              const labels = QUALITY_LABELS[tier.quality] || { short: tier.quality, full: tier.quality };
+
+              // Insurance-aware price display
+              const isInsuranceTier =
+                response.isInsuranceRegistered &&
+                typeof tier.customerExcess === "number";
+              const headlinePrice = isInsuranceTier ? tier.customerExcess : tier.price;
+              const insurerCovers = isInsuranceTier
+                ? (tier.insurerClaimAmount ?? ((tier.totalJobValue ?? 0) - (tier.customerExcess ?? 0)))
+                : null;
+
+              return (
+                <button
+                  key={tier.quality}
+                  type="button"
+                  onClick={() => setSelectedQuality(tier.quality)}
+                  disabled={isDimmed}
+                  className={`text-left p-3 rounded-[14px] border-[1.5px] transition-all ${
+                    isSelected
+                      ? "border-blue-500 bg-blue-50/40 dark:bg-blue-900/20 ring-2 ring-blue-500/30"
+                      : isDimmed
+                        ? "border-slate-200 dark:border-slate-700 opacity-55 cursor-not-allowed"
+                        : "border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                  }`}
+                  title={labels.full}
+                  aria-pressed={isSelected}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">
+                      {labels.short}
+                    </span>
+                    {isSelected && (
+                      <span className="text-[10px] font-semibold uppercase text-blue-600 bg-blue-100 dark:bg-blue-900/40 dark:text-blue-400 px-1.5 py-0.5 rounded">
+                        Selected
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xl font-extrabold text-slate-900 dark:text-white">
+                    {headlinePrice === 0 && isInsuranceTier
+                      ? <span className="text-emerald-600 dark:text-emerald-400 text-sm">Fully covered by insurer</span>
+                      : <>R {(headlinePrice || 0).toLocaleString()}</>
+                    }
+                  </div>
+                  {isInsuranceTier && headlinePrice > 0 && insurerCovers > 0 && (
+                    <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">
+                      Insurer covers R {insurerCovers.toLocaleString()}
+                    </div>
+                  )}
+                  {tier.warranty && (
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                      {tier.warranty} warranty
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Accept & Pay button — only when a tier is selected */}
+          {selectedQuality && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAccept(selectedQuality);
+                }}
+                style={{
+                  padding: ".5625rem 1.25rem",
+                  borderRadius: ".75rem",
+                  background: "linear-gradient(135deg, #2563EB, #1D4ED8)",
+                  color: "#fff",
+                  fontSize: ".875rem",
+                  fontWeight: 600,
+                  border: "none",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+                className="flex items-center justify-center hover:shadow-lg hover:-translate-y-px transition-all"
+              >
+                {(() => {
+                  const tier = orderedTiers.find((t) => t.quality === selectedQuality);
+                  const tierPrice = response.isInsuranceRegistered
+                    ? tier?.customerExcess ?? 0
+                    : tier?.price ?? 0;
+
+                  // R0 insurance → Accept & Confirm
+                  if (response.isInsuranceRegistered && tierPrice === 0) {
+                    return "Accept & Confirm";
+                  }
+
+                  // Provider offers cash/card-after → defer to payment-method picker
+                  const cashAvailable =
+                    !!response.provider?.paymentOptions?.cashOnCompletion &&
+                    (response.provider?.enforcement?.stage || 0) < 3;
+                  const cardAfterAvailable =
+                    !!response.provider?.paymentOptions?.cardOnCompletion;
+                  if (!response.isInsuranceRegistered && (cashAvailable || cardAfterAvailable)) {
+                    return "Accept Quote";
+                  }
+
+                  return `Accept & Pay  R ${tierPrice.toLocaleString()}`;
+                })()}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Accepted-state collapse view (NEW, only in tier mode AFTER acceptance) ── */}
+      {isTierMode && isAccepted && (
+        <div className="px-3 sm:px-5 py-3 border-b border-dashed border-slate-200 dark:border-slate-700 bg-emerald-50/40 dark:bg-emerald-900/10">
+          <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+            Glass quality selected
+          </div>
+          <div className="flex flex-wrap gap-3 items-center">
+            {orderedTiers.map((tier) => {
+              const isSelected =
+                quoteData?.booking?.selectedGlassQuality === tier.quality;
+              const labels = QUALITY_LABELS[tier.quality] || { short: tier.quality };
+              const isInsuranceTier =
+                response.isInsuranceRegistered &&
+                typeof tier.customerExcess === "number";
+              const displayPrice = isInsuranceTier ? tier.customerExcess : tier.price;
+              return (
+                <div
+                  key={tier.quality}
+                  className={`text-sm ${
+                    isSelected
+                      ? "font-bold text-emerald-700 dark:text-emerald-300"
+                      : "text-slate-400 dark:text-slate-500"
+                  }`}
+                >
+                  {labels.short} —{" "}
+                  {isInsuranceTier && (displayPrice || 0) === 0 ? (
+                    <span>Fully covered</span>
+                  ) : (
+                    <>R {(displayPrice || 0).toLocaleString()}</>
+                  )}
+                  {isSelected && <Check size={14} className="inline ml-1" />}
+                  {!isSelected && <span className="text-[11px] ml-1">(not selected)</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Footer ── */}
       <div

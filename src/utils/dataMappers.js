@@ -2,6 +2,25 @@ import { NodeURL } from "../services/api";
 import { formatDate, formatDateTime, formatTimeSlot } from "./dateUtils";
 
 // Helper functions for formatting
+
+/**
+ * Formats a customer-selected glass quality tier value (the DB enum
+ * "OEM" | "OEE" | "aftermarket") into a customer-facing label.
+ *
+ *   formatGlassQuality("aftermarket")              → "Generic"
+ *   formatGlassQuality("OEM")                       → "OEM"
+ *   formatGlassQuality("OEM", { suffix: "Glass" }) → "OEM Glass"
+ *   formatGlassQuality(null)                        → null  (caller skips render)
+ *
+ * Centralised so the "aftermarket → Generic" flip lives in one place
+ * across BookingCard, BookingDetailDrawer, QuoteDetailPanel, etc.
+ */
+export const formatGlassQuality = (quality, { suffix = "" } = {}) => {
+  if (!quality) return null;
+  const base = quality === "aftermarket" ? "Generic" : quality;
+  return suffix ? `${base} ${suffix}` : base;
+};
+
 export const formatServiceType = (serviceType) => {
   if (!serviceType) return "-";
   if (Array.isArray(serviceType)) {

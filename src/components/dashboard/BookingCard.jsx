@@ -14,6 +14,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { formatCurrency } from "../../store/useDashboardStore";
+import { formatGlassQuality } from "../../utils/dataMappers";
 import StatusBadge from "../ui/StatusBadge";
 
 // "Tue 14 Jan" format matching reference HTML
@@ -400,6 +401,15 @@ const BookingCard = ({
           {isPaymentPending && (
             <span className="inline-flex items-center gap-1 text-[0.6875rem] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 animate-pulse">
               Payment Required
+            </span>
+          )}
+          {/* Glass quality pill — only when customer picked a tier (null-safe for legacy bookings) */}
+          {booking.selectedGlassQuality && (
+            <span
+              className="inline-flex items-center text-[0.6875rem] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 uppercase tracking-wide dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+              title="Glass quality tier selected at acceptance"
+            >
+              {formatGlassQuality(booking.selectedGlassQuality)}
             </span>
           )}
         </div>

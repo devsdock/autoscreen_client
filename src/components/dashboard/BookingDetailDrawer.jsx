@@ -39,6 +39,7 @@ import useDashboardStore, {
 } from "../../store/useDashboardStore";
 import useBookingChatStore from "../../store/useBookingChatStore";
 import bookingService from "../../services/bookingService";
+import { formatGlassQuality } from "../../utils/dataMappers";
 import { downloadInvoice } from "../../utils/invoiceUtils";
 import { NodeURL } from "../../services/api";
 import { useNavigate } from "react-router-dom";
@@ -796,6 +797,19 @@ const BookingDetailDrawer = ({
                       </div>
                     )}
                   </div>
+
+                  {/* Glass Quality — only when customer picked a tier (null-safe for legacy bookings) */}
+                  {booking.selectedGlassQuality && (
+                    <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/30 rounded-lg border border-slate-100 dark:border-slate-800">
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                        Glass Quality
+                      </p>
+                      <p className="font-semibold text-slate-900 dark:text-white text-sm inline-flex items-center gap-1.5">
+                        <ShieldCheck size={14} className="text-blue-500" />
+                        {formatGlassQuality(booking.selectedGlassQuality)}
+                      </p>
+                    </div>
+                  )}
 
                   <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/30 rounded-lg border border-slate-100 dark:border-slate-800">
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
