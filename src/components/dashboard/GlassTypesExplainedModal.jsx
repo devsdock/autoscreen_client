@@ -154,7 +154,15 @@ function TierTab({ data }) {
   );
 }
 
-function CompareTab() {
+// Columns rendered in the compare table are gated on what the provider
+// actually offers. If a provider sent only OEE + Generic, OEM column is
+// hidden entirely — preventing the customer from expecting OEM from a
+// provider that doesn't supply it.
+function CompareTab({ availableTiers }) {
+  const showOem = availableTiers.includes("OEM");
+  const showOee = availableTiers.includes("OEE");
+  const showGeneric = availableTiers.includes("Generic");
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -163,15 +171,21 @@ function CompareTab() {
             <th className="text-left py-2 px-2 font-semibold text-slate-500 dark:text-slate-400 text-xs uppercase">
               Feature
             </th>
-            <th className="text-left py-2 px-2 font-semibold text-blue-600 dark:text-blue-400 text-xs uppercase">
-              OEM
-            </th>
-            <th className="text-left py-2 px-2 font-semibold text-blue-600 dark:text-blue-400 text-xs uppercase">
-              OEE
-            </th>
-            <th className="text-left py-2 px-2 font-semibold text-blue-600 dark:text-blue-400 text-xs uppercase">
-              Generic
-            </th>
+            {showOem && (
+              <th className="text-left py-2 px-2 font-semibold text-blue-600 dark:text-blue-400 text-xs uppercase">
+                OEM
+              </th>
+            )}
+            {showOee && (
+              <th className="text-left py-2 px-2 font-semibold text-blue-600 dark:text-blue-400 text-xs uppercase">
+                OEE
+              </th>
+            )}
+            {showGeneric && (
+              <th className="text-left py-2 px-2 font-semibold text-blue-600 dark:text-blue-400 text-xs uppercase">
+                Generic
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -183,32 +197,44 @@ function CompareTab() {
               <td className="py-2 px-2 font-medium text-slate-900 dark:text-white">
                 {row.label}
               </td>
-              <td className="py-2 px-2 text-slate-700 dark:text-slate-300">
-                {row.oem}
-              </td>
-              <td className="py-2 px-2 text-slate-700 dark:text-slate-300">
-                {row.oee}
-              </td>
-              <td className="py-2 px-2 text-slate-700 dark:text-slate-300">
-                {row.generic}
-              </td>
+              {showOem && (
+                <td className="py-2 px-2 text-slate-700 dark:text-slate-300">
+                  {row.oem}
+                </td>
+              )}
+              {showOee && (
+                <td className="py-2 px-2 text-slate-700 dark:text-slate-300">
+                  {row.oee}
+                </td>
+              )}
+              {showGeneric && (
+                <td className="py-2 px-2 text-slate-700 dark:text-slate-300">
+                  {row.generic}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
       </table>
       <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-sm space-y-1">
-        <div>
-          <strong className="text-slate-900 dark:text-white">OEM</strong> = Original
-          factory-quality glass
-        </div>
-        <div>
-          <strong className="text-slate-900 dark:text-white">OEE</strong> = Similar
-          quality to OEM at a lower price
-        </div>
-        <div>
-          <strong className="text-slate-900 dark:text-white">Generic</strong> =
-          Budget-friendly aftermarket option
-        </div>
+        {showOem && (
+          <div>
+            <strong className="text-slate-900 dark:text-white">OEM</strong> =
+            Original factory-quality glass
+          </div>
+        )}
+        {showOee && (
+          <div>
+            <strong className="text-slate-900 dark:text-white">OEE</strong> =
+            Similar quality to OEM at a lower price
+          </div>
+        )}
+        {showGeneric && (
+          <div>
+            <strong className="text-slate-900 dark:text-white">Generic</strong> =
+            Budget-friendly aftermarket option
+          </div>
+        )}
       </div>
     </div>
   );
@@ -218,6 +244,12 @@ export default function GlassTypesExplainedModal({
   isOpen,
   onClose,
   initialTab = "OEM",
+  // List of tier qualities the provider actually offers — used to gate
+  // the Compare view (columns + footer link). Modal-tab values: "OEM",
+  // "OEE", "Generic". Default to all three so the modal still works for
+  // any caller that doesn't supply the list (zero-regression for any
+  // future consumer outside the tier flow).
+  availableTiers = ["OEM", "OEE", "Generic"],
 }) {
   // "view" is either one of the tier keys (OEM/OEE/Generic) — single-tier
   // focus — or "Compare" which swaps the body to the side-by-side table.
@@ -231,6 +263,14 @@ export default function GlassTypesExplainedModal({
 
   const isCompareView = view === "Compare";
   const tierData = !isCompareView ? TIER_DATA[view] || TIER_DATA.OEM : null;
+
+  // Compare flow is only meaningful with 2+ tiers. With a single tier,
+  // there's nothing to compare against — hide the link entirely.
+  const canCompare = availableTiers.length >= 2;
+  const compareLabel =
+    availableTiers.length === 2
+      ? "Compare both options"
+      : "Compare all three tiers";
 
   return (
     <Modal
@@ -257,12 +297,19 @@ export default function GlassTypesExplainedModal({
           ONLY part that scrolls — the footer button stays pinned. */}
       <div className="flex flex-col gap-4 max-h-[calc(85vh-130px)]">
         <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-          {isCompareView ? <CompareTab /> : <TierTab data={tierData} />}
+          {isCompareView ? (
+            <CompareTab availableTiers={availableTiers} />
+          ) : (
+            <TierTab data={tierData} />
+          )}
         </div>
 
         <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-          {/* Toggle: tier view ↔ compare view */}
-          {isCompareView ? (
+          {/* Toggle: tier view ↔ compare view. Hidden entirely when the
+              provider offers only one tier (nothing to compare against).
+              When in compare view we always show the Back link so the
+              customer can return to their original tier. */}
+          {isCompareView && (
             <button
               type="button"
               onClick={() => setView(initialTab)}
@@ -271,15 +318,21 @@ export default function GlassTypesExplainedModal({
               <ArrowLeft size={14} />
               Back to {initialTab === "Generic" ? "Generic" : initialTab}
             </button>
-          ) : (
+          )}
+          {!isCompareView && canCompare && (
             <button
               type="button"
               onClick={() => setView("Compare")}
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors self-start sm:self-center"
             >
-              Compare all three tiers
+              {compareLabel}
               <ArrowRight size={14} />
             </button>
+          )}
+          {!isCompareView && !canCompare && (
+            // Placeholder keeps the Got it button right-aligned via
+            // justify-between when there's no compare link.
+            <span aria-hidden="true" />
           )}
 
           <button

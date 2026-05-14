@@ -12,6 +12,8 @@ import {
   Shield,
   ShieldCheck,
   MessageSquare,
+  Package,
+  Wrench,
 } from "lucide-react";
 import { formatCurrency } from "../../store/useDashboardStore";
 import { formatGlassQuality } from "../../utils/dataMappers";
@@ -403,15 +405,33 @@ const BookingCard = ({
               Payment Required
             </span>
           )}
-          {/* Glass quality pill — only when customer picked a tier (null-safe for legacy bookings) */}
-          {booking.selectedGlassQuality && (
-            <span
-              className="inline-flex items-center text-[0.6875rem] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 uppercase tracking-wide dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
-              title="Glass quality tier selected at acceptance"
-            >
-              {formatGlassQuality(booking.selectedGlassQuality)}
-            </span>
-          )}
+          {/* Glass quality pill REMOVED from list card per design feedback —
+              moved into BookingDetailDrawer Service Details section. Glass
+              Supply (Glass + Fitting / Fitter Only) stays on the card as a
+              job-type signal, but Glass Quality (OEM/OEE/Generic) belongs
+              inside service details below. */}
+          {/* Glass supply pill — Fitter Only / Glass + Fitting (null-safe).
+              Data lives on the Quote, comes through via booking.quote.supplyType
+              after the populate fix on the backend. */}
+          {(() => {
+            const supplyType = booking.supplyType || booking.quote?.supplyType;
+            if (!supplyType) return null;
+            const isFitterOnly = supplyType === "fitter_only";
+            return (
+              <span
+                className="inline-flex items-center gap-1 text-[0.6875rem] font-semibold px-2 py-0.5 rounded-full"
+                style={
+                  isFitterOnly
+                    ? { backgroundColor: "#ffedd5", color: "#c2410c" }
+                    : { backgroundColor: "#e0e7ff", color: "#4338ca" }
+                }
+                title={isFitterOnly ? "Customer brings their own glass" : "Provider supplies and installs glass"}
+              >
+                {isFitterOnly ? <Wrench size={10} /> : <Package size={10} />}
+                {isFitterOnly ? "Fitter Only" : "Glass + Fitting"}
+              </span>
+            );
+          })()}
         </div>
 
         {/* Actions */}

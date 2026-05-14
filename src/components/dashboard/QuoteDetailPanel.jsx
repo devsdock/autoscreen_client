@@ -67,9 +67,13 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   // ProviderResponseCard). `glassTypesModalTab` carries the tab the modal
   // should open on (OEM / OEE / Generic / Compare) so clicking the OEM
   // tier's info icon lands directly on the OEM explanation rather than a
-  // shared three-tier overview.
+  // shared three-tier overview. `glassTypesModalAvailableTiers` carries
+  // the list of tier qualities the originating provider actually offers
+  // so the modal's Compare view can scope its columns accordingly.
   const [glassTypesModalOpen, setGlassTypesModalOpen] = useState(false);
   const [glassTypesModalTab, setGlassTypesModalTab] = useState("OEM");
+  const [glassTypesModalAvailableTiers, setGlassTypesModalAvailableTiers] =
+    useState(["OEM", "OEE", "Generic"]);
   const [isProcessingCash, setIsProcessingCash] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
   const [sortFilter, setSortFilter] = useState("best-price");
@@ -155,7 +159,16 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   // same as without partial — only an extra explainer step is inserted.
   const handleAcceptAndPay = async (response, selectedQuality = null) => {
     const isInsuranceResponse = response?.isInsuranceRegistered && quote?.hasInsurance;
-    const excess = response?.insuranceDetails?.customerExcess || 0;
+    // Tier-aware excess — when the customer picked a glass-quality tier,
+    // use THAT tier's customerExcess for R0 detection. Otherwise fall
+    // back to the legacy lowest-tier mirror on response.insuranceDetails.
+    const selectedTier = selectedQuality
+      ? response?.tierPricing?.tiers?.find((t) => t.quality === selectedQuality)
+      : null;
+    const excess =
+      selectedTier?.customerExcess ??
+      response?.insuranceDetails?.customerExcess ??
+      0;
     const isR0Insurance = isInsuranceResponse && excess === 0;
 
     // Stash the customer-selected tier (null for legacy single-price quotes)
@@ -180,7 +193,17 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   // payment-method picker or jump straight to PaymentModal (prepayment).
   const continueAcceptAfterIntro = async (response, selectedQuality = null) => {
     const isInsuranceResponse = response?.isInsuranceRegistered && quote?.hasInsurance;
-    const excess = response?.insuranceDetails?.customerExcess || 0;
+    // Tier-aware excess — same fallback chain as handleAcceptAndPay. Without
+    // this, a quote with a R0 fully-covered lowest tier would skip the
+    // payment-method picker even when the customer picked a higher tier
+    // with a non-zero excess.
+    const selectedTier = selectedQuality
+      ? response?.tierPricing?.tiers?.find((t) => t.quality === selectedQuality)
+      : null;
+    const excess =
+      selectedTier?.customerExcess ??
+      response?.insuranceDetails?.customerExcess ??
+      0;
     const isR0Insurance = isInsuranceResponse && excess === 0;
 
     const providerOpts = response?.provider?.paymentOptions || {};
@@ -222,19 +245,39 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
       ? rawAvatar.startsWith("http") || rawAvatar.startsWith("data:") ? rawAvatar : `${NodeURL}${rawAvatar}`
       : null;
 
+    // Tier-aware: when the customer selected a glass quality tier, drive
+    // the PaymentModal's displayed amount from THAT tier's price (or
+    // customerExcess for insurance-registered tiers) — not the legacy
+    // lowest-tier mirror baked into response.price. Falls back to the
+    // mirror for legacy single-price quotes.
+    const selectedTier = selectedQuality
+      ? response.tierPricing?.tiers?.find((t) => t.quality === selectedQuality)
+      : null;
+    const isInsuranceRegistered = response.isInsuranceRegistered && quote.hasInsurance;
+    const tierSubtotal = isInsuranceRegistered
+      ? selectedTier?.customerExcess
+      : selectedTier?.price;
     // For insurance-registered providers, response.price = customer excess
-    const subtotal = response.price || 0;
+    const subtotal = tierSubtotal ?? response.price ?? 0;
     const vatRate = platformSettings?.vatPercentage || 0;
     const vatAmount = vatRate > 0 ? Math.round(subtotal * (vatRate / 100) * 100) / 100 : 0;
     const total = subtotal + vatAmount;
 
-    // Insurance info for display in PaymentModal
-    const isInsuranceRegistered = response.isInsuranceRegistered && quote.hasInsurance;
+    // Insurance info for display in PaymentModal — also tier-aware so the
+    // insurance breakdown (Total Job Value / Insurer Covers / You Pay)
+    // reflects the SELECTED tier's coverage scenario, not the lowest mirror.
+    const tierTotalJobValue = selectedTier?.totalJobValue;
+    const tierInsurerCovers =
+      selectedTier?.insurerClaimAmount ??
+      (selectedTier
+        ? (selectedTier.totalJobValue ?? 0) - (selectedTier.customerExcess ?? 0)
+        : undefined);
     const insuranceBreakdown = isInsuranceRegistered ? {
-      totalJobValue: response.insuranceDetails?.totalJobValue || 0,
-      customerExcess: response.insuranceDetails?.customerExcess || subtotal,
-      insurerCovers: response.insuranceDetails?.insurerClaimAmount ||
-        (response.insuranceDetails?.totalJobValue || 0) - (response.insuranceDetails?.customerExcess || subtotal),
+      totalJobValue: tierTotalJobValue ?? response.insuranceDetails?.totalJobValue ?? 0,
+      customerExcess: subtotal,
+      insurerCovers: tierInsurerCovers ??
+        response.insuranceDetails?.insurerClaimAmount ??
+        ((response.insuranceDetails?.totalJobValue || 0) - (response.insuranceDetails?.customerExcess || subtotal)),
     } : null;
 
     // R0 insurance — skip payment modal, call backend directly
@@ -1293,8 +1336,11 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                   quoteData={quote}
                   onAccept={(selectedQuality = null) => handleAcceptAndPay(response, selectedQuality)}
                   onMessage={handleMessageProvider}
-                  onOpenGlassTypesModal={(tab = "OEM") => {
+                  onOpenGlassTypesModal={(tab = "OEM", availableTiers) => {
                     setGlassTypesModalTab(tab);
+                    if (Array.isArray(availableTiers) && availableTiers.length > 0) {
+                      setGlassTypesModalAvailableTiers(availableTiers);
+                    }
                     setGlassTypesModalOpen(true);
                   }}
                 />
@@ -1374,7 +1420,18 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
         }}
         total={(() => {
           if (!pendingAcceptResponse) return 0;
-          const sub = pendingAcceptResponse.price || 0;
+          // Tier-aware: when the customer selected a glass quality tier,
+          // show THAT tier's price. Falls back to the lowest-tier mirror
+          // (response.price) for legacy single-price quotes.
+          const tier = pendingSelectedQuality
+            ? pendingAcceptResponse.tierPricing?.tiers?.find(
+                (t) => t.quality === pendingSelectedQuality,
+              )
+            : null;
+          const tierSub = pendingAcceptResponse.isInsuranceRegistered
+            ? tier?.customerExcess
+            : tier?.price;
+          const sub = tierSub ?? pendingAcceptResponse.price ?? 0;
           const vatRate = platformSettings?.vatPercentage || 0;
           const vatAmt =
             vatRate > 0 ? Math.round(sub * (vatRate / 100) * 100) / 100 : 0;
@@ -1396,6 +1453,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           if (!isProcessingCash) {
             setShowPaymentMethodModal(false);
             setPendingAcceptResponse(null);
+            setPendingSelectedQuality(null);
           }
         }}
         onSelect={handlePaymentMethodSelected}
@@ -1499,6 +1557,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
         isOpen={glassTypesModalOpen}
         onClose={() => setGlassTypesModalOpen(false)}
         initialTab={glassTypesModalTab}
+        availableTiers={glassTypesModalAvailableTiers}
       />
 
       {/* Close Confirmation Modal */}

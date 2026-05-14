@@ -17,6 +17,8 @@ import {
   ChevronRight,
   ShieldCheck,
   CreditCard,
+  Package,
+  Wrench,
 } from "lucide-react";
 import useDashboardStore, { formatCurrency } from "../../store/useDashboardStore";
 import quoteService from "../../services/quoteService";
@@ -658,7 +660,21 @@ const AppointmentSummary = ({
   slotsNeeded = 2,
   isReschedule = false,
   isWorkshop = false,
+  selectedGlassQuality = null,
+  supplyType = null,
 }) => {
+  // Display labels: "aftermarket" enum → "Generic" customer-facing label.
+  const glassQualityLabel = selectedGlassQuality
+    ? selectedGlassQuality === "aftermarket"
+      ? "Generic"
+      : selectedGlassQuality
+    : null;
+  const supplyLabel =
+    supplyType === "fitter_only"
+      ? "Fitter Only"
+      : supplyType === "supply_install"
+        ? "Glass + Fitting"
+        : null;
   const slotDuration = slotsNeeded * 30;
   const endTime = selectedSlot
     ? computeEndTime(selectedSlot, slotDuration)
@@ -700,6 +716,45 @@ const AppointmentSummary = ({
         </>
       ),
     },
+    // Glass Quality — only when the customer picked a tier (null for legacy single-price)
+    ...(glassQualityLabel
+      ? [
+          {
+            label: "Glass Quality",
+            value: (
+              <span className="inline-flex items-center gap-1.5">
+                <ShieldCheck size={14} className="text-blue-500" />
+                {glassQualityLabel}
+              </span>
+            ),
+          },
+        ]
+      : []),
+    // Glass Supply — only when supplyType is set on the originating quote
+    ...(supplyLabel
+      ? [
+          {
+            label: "Glass Supply",
+            value: (
+              <span
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold"
+                style={
+                  supplyType === "fitter_only"
+                    ? { backgroundColor: "#ffedd5", color: "#c2410c" }
+                    : { backgroundColor: "#e0e7ff", color: "#4338ca" }
+                }
+              >
+                {supplyType === "fitter_only" ? (
+                  <Wrench size={12} />
+                ) : (
+                  <Package size={12} />
+                )}
+                {supplyLabel}
+              </span>
+            ),
+          },
+        ]
+      : []),
     { label: "Location", value: location },
   ];
 
@@ -1406,6 +1461,10 @@ const BookAppointment = () => {
               slotsNeeded={slotsNeeded}
               isReschedule={isReschedule}
               isWorkshop={isWorkshop}
+              // Customer-selected glass quality tier (null for legacy single-price)
+              selectedGlassQuality={booking?.selectedGlassQuality || null}
+              // Glass supply choice from the original quote (Glass + Fitting / Fitter Only)
+              supplyType={booking?.supplyType || booking?.quote?.supplyType || quote?.supplyType || null}
             />
           )}
         </div>

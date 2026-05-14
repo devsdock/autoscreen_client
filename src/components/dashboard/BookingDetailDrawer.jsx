@@ -22,6 +22,8 @@ import {
   Navigation,
   Users,
   ShieldCheck,
+  Package,
+  Wrench,
 } from "lucide-react";
 import Drawer, { DrawerFooter } from "../ui/Drawer";
 import StatusBadge from "../ui/StatusBadge";
@@ -810,6 +812,33 @@ const BookingDetailDrawer = ({
                       </p>
                     </div>
                   )}
+
+                  {/* Glass Supply — only when supplyType is set on the originating quote.
+                      Pulls from booking.supplyType (rare) or booking.quote.supplyType
+                      (populated by the customer getBookings + getBooking endpoints). */}
+                  {(() => {
+                    const supplyType = booking.supplyType || booking.quote?.supplyType;
+                    if (!supplyType) return null;
+                    const isFitterOnly = supplyType === "fitter_only";
+                    return (
+                      <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/30 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                          Glass Supply
+                        </p>
+                        <span
+                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold"
+                          style={
+                            isFitterOnly
+                              ? { backgroundColor: "#ffedd5", color: "#c2410c" }
+                              : { backgroundColor: "#e0e7ff", color: "#4338ca" }
+                          }
+                        >
+                          {isFitterOnly ? <Wrench size={12} /> : <Package size={12} />}
+                          {isFitterOnly ? "Fitter Only" : "Glass + Fitting"}
+                        </span>
+                      </div>
+                    );
+                  })()}
 
                   <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-800/30 rounded-lg border border-slate-100 dark:border-slate-800">
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
