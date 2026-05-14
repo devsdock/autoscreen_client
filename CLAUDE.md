@@ -842,6 +842,16 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 14 May 2026 (Glass Supply Question — Hidden for Repair/Film, Replacement-only Gate)
+
+Fix for the customer-reported bug where the "Do you have replacement glass?" card appeared for Glass Repair and Anti-Smash and Grab Film quotes — service types that don't involve supplying any glass at all. The original gate at [NewQuote.jsx:1102](src/pages/dashboard/NewQuote.jsx) checked only `formData.glassTypes.length > 0`, which fires for every service type because all three (`replacement` / `repair` / `tinting`) populate the same `glassTypes` array. Repair injects resin into existing glass; Film applies onto existing glass — neither has a supply decision for the customer to make. Asking it confused customers and risked them picking "Yes, I already have the glass" (which routes the quote as `fitter_only` — labour only, no materials).
+
+- **`src/pages/dashboard/NewQuote.jsx` — Render gate tightened**: The supply choice card now renders only when `formData.serviceSelections` contains at least one entry with `serviceType === "replacement"`, in addition to the existing glass-types-non-empty check. `serviceType` is the canonical ID assigned in `handleToggleService` (line 404-410) — `"replacement"` for any service whose name contains "replacement", `"repair"` for repair, `"tinting"` for Anti-Smash and Grab Film. Multi-service quotes that include Replacement keep the card; pure Repair or Film quotes (single or combined) no longer see it.
+- **`src/pages/dashboard/NewQuote.jsx` — Validation matched**: Both `validateStep(2)` and the aggregate `validate()` now compute `hasReplacementService` from `serviceSelections` and only require `supplyType` when that flag is true AND glass types are selected. Repair/Film-only quotes pass validation without a supply pick.
+- **`src/pages/dashboard/NewQuote.jsx` — Payload force-null for non-replacement**: The submit payload now sends `supplyType: null` whenever no replacement service is selected, regardless of whether the customer previously picked a value and then changed their mind by removing the replacement service. Avoids leaking stale `supply_install` / `fitter_only` into Repair/Film quotes.
+- **`RequestQuoteModal.jsx` not touched**: The modal variant has never had a `supplyType` field (grep returns no matches) — it relies on the backend schema where the field is now optional (default removed per 14 May earlier entry). Bug never existed there.
+- **Build verified**: `npx vite build` passes with zero errors.
+
 ### 14 May 2026 (Payment Type rename — Insurance step/section relabelled)
 
 UI-only copy rename in both quote forms. No payload, validation, field key, or icon changes.

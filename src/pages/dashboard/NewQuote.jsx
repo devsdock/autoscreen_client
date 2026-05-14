@@ -546,7 +546,10 @@ const NewQuote = () => {
         newErrors.serviceType = "Service type is required";
       if (!formData.glassTypes || formData.glassTypes.length === 0)
         newErrors.glassType = "Glass type is required";
-      if (formData.glassTypes && formData.glassTypes.length > 0 && !formData.supplyType)
+      const hasReplacementService = (formData.serviceSelections || []).some(
+        (s) => s.serviceType === "replacement",
+      );
+      if (hasReplacementService && formData.glassTypes && formData.glassTypes.length > 0 && !formData.supplyType)
         newErrors.supplyType = "Please tell us whether you have the glass or need it supplied";
       if (!formData.vehicleImages.frontView) newErrors.frontView = "Front of vehicle photo is required";
       if (!formData.vehicleImages.vinLicenceDisc) newErrors.vinLicenceDisc = "VIN / Licence disc photo is required";
@@ -593,7 +596,10 @@ const NewQuote = () => {
       newErrors.serviceType = "Service type is required";
     if (!formData.glassTypes || formData.glassTypes.length === 0)
       newErrors.glassType = "Glass type is required";
-    if (formData.glassTypes && formData.glassTypes.length > 0 && !formData.supplyType)
+    const hasReplacementService = (formData.serviceSelections || []).some(
+      (s) => s.serviceType === "replacement",
+    );
+    if (hasReplacementService && formData.glassTypes && formData.glassTypes.length > 0 && !formData.supplyType)
       newErrors.supplyType = "Please tell us whether you have the glass or need it supplied";
     if (!formData.city) {
       newErrors.city = "City is required";
@@ -731,7 +737,9 @@ const NewQuote = () => {
           return lower.replace(/\s+/g, "-").replace(/[()]/g, "");
         }),
         serviceSelections: formData.serviceSelections,
-        supplyType: formData.supplyType,
+        supplyType: (formData.serviceSelections || []).some((s) => s.serviceType === "replacement")
+          ? formData.supplyType
+          : null,
         serviceLocation: {
           type: formData.serviceMode || "mobile",
           address: {
@@ -1099,8 +1107,9 @@ const NewQuote = () => {
                 <p className="text-red-500 text-sm mt-2 mb-4">{errors.glassType}</p>
               )}
 
-              {/* Glass Supply Choice — appears after Glass Type sections, before Vehicle Features */}
-              {formData.glassTypes && formData.glassTypes.length > 0 && (
+              {/* Glass Supply Choice — only shown when at least one Replacement service is selected */}
+              {formData.glassTypes && formData.glassTypes.length > 0 &&
+                (formData.serviceSelections || []).some((s) => s.serviceType === "replacement") && (
                 <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mb-6">
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
                     <Package size={14} className="text-slate-400 dark:text-slate-500" />
