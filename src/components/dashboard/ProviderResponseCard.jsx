@@ -16,6 +16,7 @@ import {
 import { formatCurrency } from "../../store/useDashboardStore";
 import { formatDuration } from "../../utils/formatDuration";
 import { NodeURL } from "../../services/api";
+import Tooltip from "../ui/Tooltip";
 
 const ProviderResponseCard = ({
   response,
@@ -58,18 +59,32 @@ const ProviderResponseCard = ({
   // Selected tier state (local — committed only on Accept & Pay)
   const [selectedQuality, setSelectedQuality] = useState(null);
 
-  // First-view pulse on info icon (one-shot per browser)
-  const [hasSeenInfo, setHasSeenInfo] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem("autoscreen-glass-types-explained-seen") === "1";
+  // Per-tier first-view pulse on info icon (one-shot per browser, per tier).
+  // localStorage keys: autoscreen-glass-tier-{quality}-seen. Each tier's pulse
+  // stops only when THAT specific icon has been clicked, so the customer
+  // sees a visible "more info available here" cue on every tier they haven't
+  // yet explored. Initial state map keyed by quality.
+  const [seenTiers, setSeenTiers] = useState(() => {
+    if (typeof window === "undefined") return { OEM: true, OEE: true, aftermarket: true };
+    return {
+      OEM: localStorage.getItem("autoscreen-glass-tier-OEM-seen") === "1",
+      OEE: localStorage.getItem("autoscreen-glass-tier-OEE-seen") === "1",
+      aftermarket: localStorage.getItem("autoscreen-glass-tier-aftermarket-seen") === "1",
+    };
   });
 
-  // Quality short-label + full-form tooltip text
+  // Quality short-label (for the card heading) + short-form tooltip text.
+  // The longer full explanation lives in the modal — tooltip stays a single
+  // line so the portal's Tooltip component (whitespace-nowrap) renders cleanly.
   const QUALITY_LABELS = {
-    OEM: { short: "OEM", full: "Original Equipment Manufacturer — factory-quality glass made by the original supplier." },
-    OEE: { short: "OEE", full: "Original Equipment Equivalent — same quality made by a different certified manufacturer." },
-    aftermarket: { short: "Generic", full: "Aftermarket / Generic — budget-friendly third-party glass." },
+    OEM: { short: "OEM", tooltip: "Original Equipment Manufacturer" },
+    OEE: { short: "OEE", tooltip: "Original Equipment Equivalent" },
+    aftermarket: { short: "Generic", tooltip: "Aftermarket / Generic Glass" },
   };
+
+  // Map our internal quality key to the modal's tab value.
+  // ("aftermarket" → "Generic" since the modal tab is labelled Generic.)
+  const tabForQuality = (q) => (q === "aftermarket" ? "Generic" : q);
 
   // Handle deleted/missing provider — show disabled card
   const isProviderDeleted = !provider || provider.isDeleted;
@@ -152,29 +167,40 @@ const ProviderResponseCard = ({
   }
   if (svcLines.length === 0) svcLines.push("Quote Response");
 
-  const InfoIconButton = ({ className = "" }) => (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        if (!hasSeenInfo && typeof window !== "undefined") {
-          localStorage.setItem("autoscreen-glass-types-explained-seen", "1");
-          setHasSeenInfo(true);
-        }
-        onOpenGlassTypesModal?.();
-      }}
-      className={`relative inline-flex items-center justify-center w-5 h-5 rounded-full text-sky-500 hover:text-sky-600 transition-colors ${className}`}
-      aria-label="Learn about glass types"
-    >
-      {!hasSeenInfo && (
-        <span
-          className="absolute inset-0 rounded-full bg-sky-400/40 animate-ping"
-          aria-hidden="true"
-        />
-      )}
-      <Info size={16} className="relative" />
-    </button>
-  );
+  // Per-tier info icon. Each tier card mounts its own — clicking it opens
+  // the explainer modal scoped to THAT tier. Pulse animation fires only
+  // while the customer hasn't yet explored that specific tier.
+  //
+  // Mobile hit-area note: the visible Info glyph stays 16px, but the BUTTON
+  // is padded out (p-1.5 on touch, p-1 on hover-capable) so the actual tap
+  // target meets the 36-40px minimum recommended for thumb-driven UIs.
+  const TierInfoIcon = ({ quality, className = "" }) => {
+    const hasSeen = seenTiers[quality] ?? true;
+    const labels = QUALITY_LABELS[quality] || { short: quality };
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!hasSeen && typeof window !== "undefined") {
+            localStorage.setItem(`autoscreen-glass-tier-${quality}-seen`, "1");
+            setSeenTiers((prev) => ({ ...prev, [quality]: true }));
+          }
+          onOpenGlassTypesModal?.(tabForQuality(quality));
+        }}
+        className={`relative inline-flex items-center justify-center p-1.5 -m-1.5 rounded-full text-sky-500 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-500/10 transition-colors ${className}`}
+        aria-label={`Learn about ${labels.short} glass`}
+      >
+        {!hasSeen && (
+          <span
+            className="absolute inset-1 rounded-full bg-sky-400/50 animate-ping pointer-events-none"
+            aria-hidden="true"
+          />
+        )}
+        <Info size={16} className="relative" />
+      </button>
+    );
+  };
 
   return (
     <div
@@ -437,10 +463,7 @@ const ProviderResponseCard = ({
             className="text-slate-900 dark:text-white"
           >
             {svcLines.map((line, i) => (
-              <div key={i} className="flex items-center gap-1.5">
-                <span>{line}</span>
-                {i === 0 && isTierMode && <InfoIconButton />}
-              </div>
+              <div key={i}>{line}</div>
             ))}
           </div>
 
@@ -740,7 +763,10 @@ const ProviderResponseCard = ({
             {orderedTiers.map((tier) => {
               const isSelected = selectedQuality === tier.quality;
               const isDimmed = selectedQuality !== null && !isSelected;
-              const labels = QUALITY_LABELS[tier.quality] || { short: tier.quality, full: tier.quality };
+              const labels = QUALITY_LABELS[tier.quality] || {
+                short: tier.quality,
+                tooltip: tier.quality,
+              };
 
               // Insurance-aware price display
               const isInsuranceTier =
@@ -751,31 +777,57 @@ const ProviderResponseCard = ({
                 ? (tier.insurerClaimAmount ?? ((tier.totalJobValue ?? 0) - (tier.customerExcess ?? 0)))
                 : null;
 
+              const selectTier = () => !isDimmed && setSelectedQuality(tier.quality);
+              const handleKeyDown = (e) => {
+                if (isDimmed) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  selectTier();
+                }
+              };
+
               return (
-                <button
+                // role="button" instead of native <button> so we can legally
+                // nest the per-tier info-icon <button> + the premium <Tooltip>
+                // wrapper inside the card. Keyboard + ARIA semantics preserved.
+                <div
                   key={tier.quality}
-                  type="button"
-                  onClick={() => setSelectedQuality(tier.quality)}
-                  disabled={isDimmed}
-                  className={`text-left p-3 rounded-[14px] border-[1.5px] transition-all ${
+                  role="button"
+                  tabIndex={isDimmed ? -1 : 0}
+                  aria-pressed={isSelected}
+                  aria-disabled={isDimmed}
+                  onClick={selectTier}
+                  onKeyDown={handleKeyDown}
+                  className={`relative text-left p-3 rounded-[14px] border-[1.5px] transition-all outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 ${
                     isSelected
-                      ? "border-blue-500 bg-blue-50/40 dark:bg-blue-900/20 ring-2 ring-blue-500/30"
+                      ? "border-blue-500 bg-blue-50/40 dark:bg-blue-900/20 ring-2 ring-blue-500/30 cursor-pointer"
                       : isDimmed
                         ? "border-slate-200 dark:border-slate-700 opacity-55 cursor-not-allowed"
-                        : "border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                        : "border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
                   }`}
-                  title={labels.full}
-                  aria-pressed={isSelected}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-bold text-slate-900 dark:text-white">
-                      {labels.short}
-                    </span>
-                    {isSelected && (
-                      <span className="text-[10px] font-semibold uppercase text-blue-600 bg-blue-100 dark:bg-blue-900/40 dark:text-blue-400 px-1.5 py-0.5 rounded">
-                        Selected
+                    {/* OEM/OEE/Generic label — premium Tooltip on hover/focus
+                        with the full form (e.g. "Original Equipment
+                        Manufacturer"). Replaces the native title attribute
+                        so the tooltip matches the portal's design DNA
+                        (dark slate-900 chip, white text, subtle arrow). */}
+                    <Tooltip content={labels.tooltip} position="top">
+                      <span className="text-sm font-bold text-slate-900 dark:text-white cursor-help">
+                        {labels.short}
                       </span>
-                    )}
+                    </Tooltip>
+                    <div className="flex items-center gap-1.5">
+                      {isSelected && (
+                        <span className="text-[10px] font-semibold uppercase text-blue-600 bg-blue-100 dark:bg-blue-900/40 dark:text-blue-400 px-1.5 py-0.5 rounded">
+                          Selected
+                        </span>
+                      )}
+                      {/* Per-tier info icon — pulses until the customer
+                          clicks it. Click opens the explainer modal scoped
+                          to this tier (no need to scan all three tabs). */}
+                      <TierInfoIcon quality={tier.quality} />
+                    </div>
                   </div>
                   <div className="text-xl font-extrabold text-slate-900 dark:text-white">
                     {headlinePrice === 0 && isInsuranceTier
@@ -793,14 +845,16 @@ const ProviderResponseCard = ({
                       {tier.warranty} warranty
                     </div>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
 
-          {/* Accept & Pay button — only when a tier is selected */}
+          {/* Accept & Pay button — only when a tier is selected.
+              Mobile: full-width for thumb-friendly tapping. Desktop:
+              right-aligned at content width (existing convention). */}
           {selectedQuality && (
-            <div className="flex justify-end">
+            <div className="flex sm:justify-end">
               <button
                 type="button"
                 onClick={(e) => {
@@ -808,7 +862,7 @@ const ProviderResponseCard = ({
                   onAccept(selectedQuality);
                 }}
                 style={{
-                  padding: ".5625rem 1.25rem",
+                  padding: ".625rem 1.25rem",
                   borderRadius: ".75rem",
                   background: "linear-gradient(135deg, #2563EB, #1D4ED8)",
                   color: "#fff",
@@ -818,7 +872,7 @@ const ProviderResponseCard = ({
                   cursor: "pointer",
                   whiteSpace: "nowrap",
                 }}
-                className="flex items-center justify-center hover:shadow-lg hover:-translate-y-px transition-all"
+                className="w-full sm:w-auto flex items-center justify-center hover:shadow-lg hover:-translate-y-px transition-all"
               >
                 {(() => {
                   const tier = orderedTiers.find((t) => t.quality === selectedQuality);

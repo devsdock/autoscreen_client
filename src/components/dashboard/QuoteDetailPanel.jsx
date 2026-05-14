@@ -63,9 +63,13 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   // PartialPaymentIntroModal and PaymentMethodModal hand-offs and ends up on
   // the eventual service call.
   const [pendingSelectedQuality, setPendingSelectedQuality] = useState(null);
-  // Glass-types explainer modal (opened by the info icon inside
-  // ProviderResponseCard's tier picker).
+  // Glass-types explainer modal (opened by the per-tier info icon inside
+  // ProviderResponseCard). `glassTypesModalTab` carries the tab the modal
+  // should open on (OEM / OEE / Generic / Compare) so clicking the OEM
+  // tier's info icon lands directly on the OEM explanation rather than a
+  // shared three-tier overview.
   const [glassTypesModalOpen, setGlassTypesModalOpen] = useState(false);
+  const [glassTypesModalTab, setGlassTypesModalTab] = useState("OEM");
   const [isProcessingCash, setIsProcessingCash] = useState(false);
   const [paymentData, setPaymentData] = useState(null);
   const [sortFilter, setSortFilter] = useState("best-price");
@@ -1289,7 +1293,10 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                   quoteData={quote}
                   onAccept={(selectedQuality = null) => handleAcceptAndPay(response, selectedQuality)}
                   onMessage={handleMessageProvider}
-                  onOpenGlassTypesModal={() => setGlassTypesModalOpen(true)}
+                  onOpenGlassTypesModal={(tab = "OEM") => {
+                    setGlassTypesModalTab(tab);
+                    setGlassTypesModalOpen(true);
+                  }}
                 />
               );
             };
@@ -1491,6 +1498,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
       <GlassTypesExplainedModal
         isOpen={glassTypesModalOpen}
         onClose={() => setGlassTypesModalOpen(false)}
+        initialTab={glassTypesModalTab}
       />
 
       {/* Close Confirmation Modal */}

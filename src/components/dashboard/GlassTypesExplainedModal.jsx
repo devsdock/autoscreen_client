@@ -1,7 +1,6 @@
-import { useState } from "react";
-import { ShieldCheck, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ShieldCheck, Check, ArrowLeft, ArrowRight } from "lucide-react";
 import Modal from "../ui/Modal";
-import Tabs from "../ui/Tabs";
 
 const TIER_DATA = {
   OEM: {
@@ -215,15 +214,23 @@ function CompareTab() {
   );
 }
 
-export default function GlassTypesExplainedModal({ isOpen, onClose }) {
-  const [activeTab, setActiveTab] = useState("OEM");
+export default function GlassTypesExplainedModal({
+  isOpen,
+  onClose,
+  initialTab = "OEM",
+}) {
+  // "view" is either one of the tier keys (OEM/OEE/Generic) — single-tier
+  // focus — or "Compare" which swaps the body to the side-by-side table.
+  const [view, setView] = useState(initialTab);
 
-  const tabs = [
-    { value: "OEM", label: "OEM" },
-    { value: "OEE", label: "OEE" },
-    { value: "Generic", label: "Generic" },
-    { value: "Compare", label: "Compare" },
-  ];
+  // Reset to the caller-chosen tier every time the modal opens, so each
+  // tier's pulse-icon click lands directly on its own explanation.
+  useEffect(() => {
+    if (isOpen) setView(initialTab);
+  }, [isOpen, initialTab]);
+
+  const isCompareView = view === "Compare";
+  const tierData = !isCompareView ? TIER_DATA[view] || TIER_DATA.OEM : null;
 
   return (
     <Modal
@@ -232,28 +239,49 @@ export default function GlassTypesExplainedModal({ isOpen, onClose }) {
       title={
         <span className="inline-flex items-center gap-2">
           <ShieldCheck size={20} className="text-blue-500" />
-          Auto Glass Types Explained
+          {isCompareView
+            ? "Glass Quality Comparison"
+            : "Auto Glass Types Explained"}
         </span>
       }
-      description="Understanding OEM, OEE, and Generic glass"
+      description={
+        isCompareView
+          ? "Side-by-side comparison of OEM, OEE, and Generic glass"
+          : "Understanding OEM, OEE, and Generic glass"
+      }
       size="lg"
     >
-      <div className="space-y-4">
-        <Tabs
-          tabs={tabs}
-          activeTab={activeTab}
-          onChange={setActiveTab}
-          variant="underline"
-        />
-
-        <div className="min-h-[320px] max-h-[60vh] overflow-y-auto pr-1">
-          {activeTab === "OEM" && <TierTab data={TIER_DATA.OEM} />}
-          {activeTab === "OEE" && <TierTab data={TIER_DATA.OEE} />}
-          {activeTab === "Generic" && <TierTab data={TIER_DATA.Generic} />}
-          {activeTab === "Compare" && <CompareTab />}
+      {/* Flex-column layout with max-height so the WHOLE modal (Modal.jsx
+          header + this body) stays within ~85vh on any screen size.
+          The content area `flex-1 min-h-0 overflow-y-auto` is the
+          ONLY part that scrolls — the footer button stays pinned. */}
+      <div className="flex flex-col gap-4 max-h-[calc(85vh-130px)]">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+          {isCompareView ? <CompareTab /> : <TierTab data={tierData} />}
         </div>
 
-        <div className="flex justify-end pt-2 border-t border-slate-200 dark:border-slate-700">
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+          {/* Toggle: tier view ↔ compare view */}
+          {isCompareView ? (
+            <button
+              type="button"
+              onClick={() => setView(initialTab)}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors self-start sm:self-center"
+            >
+              <ArrowLeft size={14} />
+              Back to {initialTab === "Generic" ? "Generic" : initialTab}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setView("Compare")}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors self-start sm:self-center"
+            >
+              Compare all three tiers
+              <ArrowRight size={14} />
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onClose}
