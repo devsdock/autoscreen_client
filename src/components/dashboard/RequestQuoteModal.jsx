@@ -1201,11 +1201,11 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                     <Shield size={14} className="text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                    Insurance Coverage
+                    Payment Type
                   </h4>
                 </div>
                 <p className="text-[13px] text-slate-500 dark:text-slate-400 mb-3 ml-9">
-                  Is this repair covered by your car insurance?
+                  How will you be paying for this repair?
                 </p>
 
                 <div className="grid grid-cols-1 gap-2 mb-3">
@@ -1236,7 +1236,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                       Yes, I have a claim reference
                     </div>
                     <div className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      I've already lodged a claim with my insurer
+                      Insurance with claim reference
                     </div>
                   </button>
 
@@ -1267,7 +1267,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                       Yes, but I need to lodge a claim
                     </div>
                     <div className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      I haven't contacted my insurer yet
+                      Insurance, claim pending
                     </div>
                   </button>
 
@@ -1306,10 +1306,10 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                       )}
                     </div>
                     <div className="font-semibold text-sm text-slate-900 dark:text-white pr-6">
-                      No, I'll pay myself
+                      Private Pay
                     </div>
                     <div className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      I'm not using insurance for this repair
+                      I'll pay for this repair myself (cash or card)
                     </div>
                   </button>
                 </div>

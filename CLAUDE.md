@@ -3,7 +3,7 @@
 > **Project:** AutoScreen Customer Dashboard
 > **Stack:** React + Vite, Zustand, React Router v6, Axios, Socket.IO
 > **Version:** 1.0.0
-> **Last Updated:** 5 May 2026 (Partial Payment — Cash on Completion Pill on Partial-Cash Bookings)
+> **Last Updated:** 14 May 2026 (Payment Type rename — Insurance step/section relabelled)
 
 ---
 
@@ -841,6 +841,15 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 ---
 
 ## Changelog
+
+### 14 May 2026 (Payment Type rename — Insurance step/section relabelled)
+
+UI-only copy rename in both quote forms. No payload, validation, field key, or icon changes.
+
+- **`src/pages/dashboard/NewQuote.jsx`**: Stepper step 3 label `"Insurance"` → `"Payment Type"`. Step 3 H3 heading `"Insurance Coverage"` → `"Payment Type"`. Step 3 subheading `"Is this repair covered by your car insurance?"` → `"How will you be paying for this repair?"`. Radio card descriptions updated: `yes_with_claim` → `"Insurance with claim reference"`, `yes_pending` → `"Insurance, claim pending"`, `no` title `"No, I'll pay myself"` → `"Private Pay"`, `no` description → `"I'll pay for this repair myself (cash or card)"`.
+- **`src/components/dashboard/RequestQuoteModal.jsx`**: Same set of copy changes applied to the modal's Insurance Coverage section (compact variant).
+- **Payload unchanged**: `hasInsurance: formData.insuranceOption !== "no"`, `insuranceOption` field key, `"yes_with_claim"` / `"yes_pending"` / `"no"` enum values, `insuranceDetails` payload structure, `claimStatus` values, `Shield` icon import — all untouched.
+- **Build verified**: `npm run build` passes with zero errors.
 
 ### 14 May 2026 (Glass Supply Badge — Label Refinement + Icon Removal on Detail)
 

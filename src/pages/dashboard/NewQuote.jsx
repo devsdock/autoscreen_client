@@ -797,7 +797,7 @@ const NewQuote = () => {
   const steps = [
     { label: "Vehicle Details", icon: Car },
     { label: "Service Info", icon: Wrench },
-    { label: "Insurance", icon: Shield },
+    { label: "Payment Type", icon: Shield },
     { label: "Location", icon: MapPin },
   ];
 
@@ -1296,7 +1296,7 @@ const NewQuote = () => {
             </div>
           )}
 
-          {/* Step 3: Insurance */}
+          {/* Step 3: Payment Type */}
           {currentStep === 3 && (
             <div>
               <div className="mb-1">
@@ -1305,10 +1305,10 @@ const NewQuote = () => {
                 </span>
               </div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight mb-0.5">
-                Insurance Coverage
+                Payment Type
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                Is this repair covered by your car insurance?
+                How will you be paying for this repair?
               </p>
 
               <div className="space-y-3">
@@ -1340,7 +1340,7 @@ const NewQuote = () => {
                       Yes, I have a claim reference
                     </div>
                     <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                      I've already lodged a claim with my insurer
+                      Insurance with claim reference
                     </div>
                   </button>
 
@@ -1455,7 +1455,7 @@ const NewQuote = () => {
                       Yes, but I need to lodge a claim
                     </div>
                     <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                      I haven't contacted my insurer yet
+                      Insurance, claim pending
                     </div>
                   </button>
 
@@ -1560,10 +1560,10 @@ const NewQuote = () => {
                       )}
                     </div>
                     <div className="font-semibold text-[15px] text-slate-900 dark:text-white pr-6">
-                      No, I'll pay myself
+                      Private Pay
                     </div>
                     <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                      I'm not using insurance for this repair
+                      I'll pay for this repair myself (cash or card)
                     </div>
                   </button>
                 </div>
