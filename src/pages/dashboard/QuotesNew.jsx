@@ -12,6 +12,8 @@ import {
   CheckCircle2,
   XCircle,
   Shield,
+  Package,
+  Wrench,
 } from "lucide-react";
 import { QuoteCardSkeleton } from "../../components/skeletons/CardSkeleton";
 import useDashboardStore, {
@@ -142,6 +144,24 @@ const QuoteCard = ({ quote, onClick }) => {
             Service
           </div>
           <ServiceInfoCell row={quote} />
+          {quote.supplyType && (
+            <div className="mt-1.5">
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold"
+                style={
+                  quote.supplyType === "fitter_only"
+                    ? { backgroundColor: "#fef3c7", color: "#92400e" }
+                    : { backgroundColor: "#dbeafe", color: "#1d4ed8" }
+                }
+              >
+                {quote.supplyType === "fitter_only" ? (
+                  <><Wrench size={10} /> Fitter Only</>
+                ) : (
+                  <><Package size={10} /> Glass + Fitting</>
+                )}
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex-1 min-w-[120px]">
           <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">

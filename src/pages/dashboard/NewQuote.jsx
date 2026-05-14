@@ -4,6 +4,7 @@ import {
   Check,
   Car,
   Wrench,
+  Package,
   MapPin,
   ArrowLeft,
   ArrowRight,
@@ -64,6 +65,7 @@ const NewQuote = () => {
     vehicleYear: new Date().getFullYear().toString(),
     serviceTypes: [],
     glassTypes: [],
+    supplyType: null, // "supply_install" | "fitter_only"
     serviceSelections: [],
     city: "",
     postcode: "",
@@ -544,6 +546,8 @@ const NewQuote = () => {
         newErrors.serviceType = "Service type is required";
       if (!formData.glassTypes || formData.glassTypes.length === 0)
         newErrors.glassType = "Glass type is required";
+      if (formData.glassTypes && formData.glassTypes.length > 0 && !formData.supplyType)
+        newErrors.supplyType = "Please tell us whether you have the glass or need it supplied";
       if (!formData.vehicleImages.frontView) newErrors.frontView = "Front of vehicle photo is required";
       if (!formData.vehicleImages.vinLicenceDisc) newErrors.vinLicenceDisc = "VIN / Licence disc photo is required";
       if (!formData.vehicleImages.damagePhotos.length) newErrors.damagePhotos = "At least one damage photo is required";
@@ -589,6 +593,8 @@ const NewQuote = () => {
       newErrors.serviceType = "Service type is required";
     if (!formData.glassTypes || formData.glassTypes.length === 0)
       newErrors.glassType = "Glass type is required";
+    if (formData.glassTypes && formData.glassTypes.length > 0 && !formData.supplyType)
+      newErrors.supplyType = "Please tell us whether you have the glass or need it supplied";
     if (!formData.city) {
       newErrors.city = "City is required";
     } else {
@@ -631,7 +637,7 @@ const NewQuote = () => {
       // Go to step with errors
       if (errors.vehicleMake || errors.vehicleModel || errors.vehicleYear) {
         setCurrentStep(1);
-      } else if (errors.serviceType || errors.glassType || errors.frontView || errors.vinLicenceDisc || errors.damagePhotos) {
+      } else if (errors.serviceType || errors.glassType || errors.supplyType || errors.frontView || errors.vinLicenceDisc || errors.damagePhotos) {
         setCurrentStep(2);
       } else if (errors.insurerId || errors.claimNumber) {
         setCurrentStep(3);
@@ -725,6 +731,7 @@ const NewQuote = () => {
           return lower.replace(/\s+/g, "-").replace(/[()]/g, "");
         }),
         serviceSelections: formData.serviceSelections,
+        supplyType: formData.supplyType,
         serviceLocation: {
           type: formData.serviceMode || "mobile",
           address: {
@@ -1078,6 +1085,77 @@ const NewQuote = () => {
                 )}
               {errors.glassType && (
                 <p className="text-red-500 text-sm mt-2 mb-4">{errors.glassType}</p>
+              )}
+
+              {/* Glass Supply Choice — appears after Glass Type sections, before Vehicle Features */}
+              {formData.glassTypes && formData.glassTypes.length > 0 && (
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 mb-6">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1.5">
+                    <Package size={14} className="text-slate-400 dark:text-slate-500" />
+                    Do you have replacement glass? <span className="text-red-500">*</span>
+                  </label>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    Tell us whether you need new glass or already have it.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, supplyType: "supply_install" }));
+                        if (errors.supplyType) setErrors((prev) => ({ ...prev, supplyType: null }));
+                      }}
+                      className={`relative p-5 rounded-xl border text-left transition-all ${
+                        formData.supplyType === "supply_install"
+                          ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-2 ring-primary-500/20 dark:ring-primary-400/20"
+                          : "border-slate-200 dark:border-slate-700 hover:border-primary-300 hover:bg-slate-50 dark:hover:border-primary-600/50 dark:hover:bg-slate-800/50"
+                      }`}
+                    >
+                      {formData.supplyType === "supply_install" && (
+                        <div className="absolute top-3 right-3 w-5 h-5 bg-primary-600 text-white rounded-full flex items-center justify-center">
+                          <Check size={12} strokeWidth={3} />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 mb-1">
+                        <Package size={16} className="text-primary-600 dark:text-primary-400" />
+                        <div className="font-semibold text-slate-900 dark:text-white pr-6">No — I need glass supplied</div>
+                      </div>
+                      <div className="text-sm text-slate-500 dark:text-slate-400">
+                        The provider supplies the glass and fits it (most common).
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, supplyType: "fitter_only" }));
+                        if (errors.supplyType) setErrors((prev) => ({ ...prev, supplyType: null }));
+                      }}
+                      className={`relative p-5 rounded-xl border text-left transition-all ${
+                        formData.supplyType === "fitter_only"
+                          ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 ring-2 ring-primary-500/20 dark:ring-primary-400/20"
+                          : "border-slate-200 dark:border-slate-700 hover:border-primary-300 hover:bg-slate-50 dark:hover:border-primary-600/50 dark:hover:bg-slate-800/50"
+                      }`}
+                    >
+                      {formData.supplyType === "fitter_only" && (
+                        <div className="absolute top-3 right-3 w-5 h-5 bg-primary-600 text-white rounded-full flex items-center justify-center">
+                          <Check size={12} strokeWidth={3} />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 mb-1">
+                        <Wrench size={16} className="text-primary-600 dark:text-primary-400" />
+                        <div className="font-semibold text-slate-900 dark:text-white pr-6">Yes — I already have the glass</div>
+                      </div>
+                      <div className="text-sm text-slate-500 dark:text-slate-400">
+                        I'll provide the glass myself. I just need a fitter to fit it.
+                      </div>
+                    </button>
+                  </div>
+
+                  {errors.supplyType && (
+                    <p className="text-red-500 text-sm mt-2">{errors.supplyType}</p>
+                  )}
+                </div>
               )}
 
               {/* Vehicle Features - Only for Windscreen */}

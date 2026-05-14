@@ -842,6 +842,26 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 14 May 2026 (Glass Supply Badge — Label Refinement + Icon Removal on Detail)
+
+Two polish changes to the badges shipped on 13 May. No logic / API / state changes — purely the rendered label string and the presence of inline Lucide icons.
+
+- **Both files — supply_install label changed**: `"Need Glass"` → `"Glass + Fitting"`. Reads naturally next to the existing `"Fitter Only"` label so the two options pair as a phrase pair (Glass + Fitting vs Fitter Only) instead of one being a noun and the other an adverb. Customer-facing only; email labels in `autoscreen_node/utils/sendEmail.js` keep their longer sentence-fitting wording ("Provider supplies and installs glass" / "Customer brings their own glass").
+- **`src/components/dashboard/QuoteDetailPanel.jsx` — icons removed from the GLASS SUPPLY column pills**: Both `<Package size={11} />` and `<Wrench size={11} />` icon usages inside the pill `<span>`s are gone. Container class trimmed from `inline-flex items-center gap-1 ...` to `inline-flex items-center ...` (no gap needed without an icon). The `Package` and `Wrench` imports were dropped from the lucide-react import block — verified no other usage in the file before deletion.
+- **`src/pages/dashboard/QuotesNew.jsx` — icons kept**: The smaller list-card pill keeps its inline icons (`Package size={10}` / `Wrench size={10}`). At the compact list-card size the icon gives the eye an anchor; at the larger detail-card pill size the label alone is plenty.
+
+### 13 May 2026 (Glass Supply Badge — List + Detail)
+
+Phase 2 of the Glass Supply Choice feature. Surfaces `supplyType` in two places so customers and reviewers can see the choice at a glance without opening the full quote form.
+
+- **`src/components/dashboard/QuoteDetailPanel.jsx` — new "GLASS SUPPLY" column in the blue gradient header card**: Added `Package` to the lucide-react import block (alongside the existing `Wrench`). A new column is inserted after the "SERVICE MODE" column and before the conditional "INSURANCE" column. A divider `<div className="w-px bg-white/15 self-stretch hidden sm:block" />` precedes it. Heading: `text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-1`. When `quote.supplyType === "fitter_only"`: amber pill (`rgba(254,243,199,0.9)` background, `#92400e` color) with `<Wrench size={11} />` inline icon and label "Fitter Only". All other values (including `"supply_install"` and legacy quotes without the field): blue pill (`rgba(219,234,254,0.9)` background, `#1d4ed8` color) with `<Package size={11} />` inline icon and label "Need Glass". Matches the exact JSX structure of the existing Service Mode column.
+- **`src/pages/dashboard/QuotesNew.jsx` — inline Glass Supply pill in the Service column of the quote list card**: Added `Package` and `Wrench` to the lucide-react import block. A `{quote.supplyType && ...}` conditional renders a small `mt-1.5` pill directly below `<ServiceInfoCell row={quote} />`. `fitter_only` → amber (`#fef3c7` / `#92400e`) + `<Wrench size={10} />` + "Fitter Only". All other values → blue (`#dbeafe` / `#1d4ed8`) + `<Package size={10} />` + "Need Glass". The pill is gated on `quote.supplyType` being truthy — legacy quotes without the field render nothing extra.
+- **`src/utils/dataMappers.js` not touched**: `mapQuote` uses `...quote` spread (line 742) so `supplyType` flows through to both consumers automatically. No explicit mapping needed.
+
+### 13 May 2026 (Glass Supply Choice)
+
+- **`src/pages/dashboard/NewQuote.jsx` — "Do you have replacement glass?" card selector added to Step 2**: New `supplyType: null` field in `formData` (initial state). `Package` imported from `lucide-react` (alongside the existing `Wrench`). The two-card selector (`"No — I need glass supplied"` → `"supply_install"`, `"Yes — I already have the glass"` → `"fitter_only"`) renders between the Glass Type per-service sections and the Vehicle Features block, gated on `formData.glassTypes.length > 0`. Validated in both `validateStep` (case 2) and the aggregate `validate()` function; error routes to step 2 in `handleSubmit`. `supplyType` included in the quote submission payload. `RequestQuoteModal.jsx` is intentionally untouched — the backend schema default (`"supply_install"`) ensures that flow continues to work without the field. Cards use the portal's `primary-500`/`primary-50`/`primary-600` Tailwind v3 palette to match existing service-selection cards. Mobile-responsive: `grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4`.
+
 ### 7 May 2026 (Booking Chat — File Attachments + Typing Indicator + Single-Paperclip Popover)
 
 Customer portal mirror of the provider/staff upgrade. Pairs with backend file-upload + typing-indicator additions in `autoscreen_node`.
