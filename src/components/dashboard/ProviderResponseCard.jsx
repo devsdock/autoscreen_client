@@ -167,6 +167,12 @@ const ProviderResponseCard = ({
   }
   if (svcLines.length === 0) svcLines.push("Quote Response");
 
+  // List of tier modal-tab values this provider actually offers ("OEM" /
+  // "OEE" / "Generic"). Forwarded to the modal so the Compare view only
+  // shows columns the provider has quoted — prevents the customer from
+  // expecting tiers the provider doesn't supply.
+  const availableTierTabs = orderedTiers.map((t) => tabForQuality(t.quality));
+
   // Per-tier info icon. Each tier card mounts its own — clicking it opens
   // the explainer modal scoped to THAT tier. Pulse animation fires only
   // while the customer hasn't yet explored that specific tier.
@@ -186,7 +192,7 @@ const ProviderResponseCard = ({
             localStorage.setItem(`autoscreen-glass-tier-${quality}-seen`, "1");
             setSeenTiers((prev) => ({ ...prev, [quality]: true }));
           }
-          onOpenGlassTypesModal?.(tabForQuality(quality));
+          onOpenGlassTypesModal?.(tabForQuality(quality), availableTierTabs);
         }}
         className={`relative inline-flex items-center justify-center p-1.5 -m-1.5 rounded-full text-sky-500 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-500/10 transition-colors ${className}`}
         aria-label={`Learn about ${labels.short} glass`}
@@ -589,11 +595,17 @@ const ProviderResponseCard = ({
             gap: ".625rem",
             paddingTop: isBest || isAccepted ? "1.625rem" : undefined,
           }}
-          className={`flex flex-col justify-center ${response.isInsuranceRegistered ? "items-stretch sm:w-[210px]" : "items-center sm:items-end sm:w-[148px]"} border-t sm:border-t-0 border-dashed border-slate-200 dark:border-slate-700 p-3 sm:p-[1.125rem]`}
+          className={`flex flex-col justify-center ${response.isInsuranceRegistered && !isTierMode ? "items-stretch sm:w-[210px]" : "items-center sm:items-end sm:w-[148px]"} border-t sm:border-t-0 border-dashed border-slate-200 dark:border-slate-700 p-3 sm:p-[1.125rem]`}
         >
           {/* Price */}
-          <div className={`${response.isInsuranceRegistered ? "w-full" : "text-center sm:text-right"}`}>
-            {response.isInsuranceRegistered ? (
+          <div className={`${response.isInsuranceRegistered && !isTierMode ? "w-full" : "text-center sm:text-right"}`}>
+            {/* Insurance breakdown table renders only in legacy single-price
+                mode. In tier mode + insurance, the column collapses to the
+                compact "From R X excess / Lowest tier" pattern (matching the
+                non-insurance tier-mode display) because per-tier insurance
+                breakdowns live INSIDE the tier picker section below — showing
+                the lowest-tier numbers up here would conflict with the picker. */}
+            {response.isInsuranceRegistered && !isTierMode ? (
               <div style={{ width: "100%" }}>
                 {/* Table-style breakdown */}
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".8125rem", textAlign: "left" }}>
@@ -625,39 +637,82 @@ const ProviderResponseCard = ({
                 </div>
               </div>
             ) : (
-              <>
-                <div>
-                  {isTierMode && (
-                    <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">From</span>
-                  )}
-                  <span
-                    style={{ fontSize: ".9375rem", fontWeight: 600 }}
-                    className="text-slate-900 dark:text-white"
-                  >
-                    R
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "1.75rem",
-                      fontWeight: 800,
-                      letterSpacing: "-.02em",
-                      lineHeight: 1,
-                    }}
-                    className="text-slate-900 dark:text-white"
-                  >
-                    {price ? price.toLocaleString() : "0"}
-                  </span>
-                </div>
-                <div
-                  style={{
-                    fontSize: ".625rem",
-                    marginTop: ".25rem",
-                  }}
-                  className="text-slate-400 dark:text-slate-500"
-                >
-                  {isTierMode ? "Lowest tier" : "Service amount"}
-                </div>
-              </>
+              (() => {
+                // When the customer has accepted a tier, show THAT tier's price
+                // (and quality label) instead of the lowest-tier "From R X" mirror.
+                // Falls back to the lowest-tier mirror for tier-mode quotes still
+                // awaiting acceptance, and to response.price for legacy single-price.
+                const acceptedQuality = isAccepted
+                  ? quoteData?.booking?.selectedGlassQuality
+                  : null;
+                const acceptedTier =
+                  isTierMode && acceptedQuality
+                    ? orderedTiers.find((t) => t.quality === acceptedQuality)
+                    : null;
+                const isAcceptedInsuranceTier =
+                  acceptedTier &&
+                  response.isInsuranceRegistered &&
+                  typeof acceptedTier.customerExcess === "number";
+                const displayPrice = acceptedTier
+                  ? isAcceptedInsuranceTier
+                    ? acceptedTier.customerExcess
+                    : acceptedTier.price
+                  : price;
+                const showFromPrefix = isTierMode && !acceptedTier;
+                const subLabel = acceptedTier
+                  ? (QUALITY_LABELS[acceptedTier.quality]?.short || acceptedTier.quality) +
+                    " — selected"
+                  : isTierMode
+                    ? "Lowest tier"
+                    : "Service amount";
+                return (
+                  <>
+                    <div>
+                      {showFromPrefix && (
+                        <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">From</span>
+                      )}
+                      <span
+                        style={{ fontSize: ".9375rem", fontWeight: 600 }}
+                        className={
+                          acceptedTier
+                            ? "text-emerald-700 dark:text-emerald-400"
+                            : "text-slate-900 dark:text-white"
+                        }
+                      >
+                        R
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "1.75rem",
+                          fontWeight: 800,
+                          letterSpacing: "-.02em",
+                          lineHeight: 1,
+                        }}
+                        className={
+                          acceptedTier
+                            ? "text-emerald-700 dark:text-emerald-400"
+                            : "text-slate-900 dark:text-white"
+                        }
+                      >
+                        {displayPrice ? displayPrice.toLocaleString() : "0"}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: ".625rem",
+                        marginTop: ".25rem",
+                      }}
+                      className={
+                        acceptedTier
+                          ? "text-emerald-600 dark:text-emerald-500 font-semibold uppercase tracking-wider"
+                          : "text-slate-400 dark:text-slate-500"
+                      }
+                    >
+                      {subLabel}
+                    </div>
+                  </>
+                );
+              })()
             )}
           </div>
 
@@ -777,9 +832,13 @@ const ProviderResponseCard = ({
                 ? (tier.insurerClaimAmount ?? ((tier.totalJobValue ?? 0) - (tier.customerExcess ?? 0)))
                 : null;
 
-              const selectTier = () => !isDimmed && setSelectedQuality(tier.quality);
+              // BEFORE payment all tiers remain clickable so the customer
+              // can freely change their mind (e.g. pick OEM, then switch to
+              // OEE). Non-selected cards get a subtle visual de-emphasis
+              // only — NOT pointer-events-none. The post-payment "frozen"
+              // view lives in the accepted-state collapse block below.
+              const selectTier = () => setSelectedQuality(tier.quality);
               const handleKeyDown = (e) => {
-                if (isDimmed) return;
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
                   selectTier();
@@ -793,17 +852,16 @@ const ProviderResponseCard = ({
                 <div
                   key={tier.quality}
                   role="button"
-                  tabIndex={isDimmed ? -1 : 0}
+                  tabIndex={0}
                   aria-pressed={isSelected}
-                  aria-disabled={isDimmed}
                   onClick={selectTier}
                   onKeyDown={handleKeyDown}
-                  className={`relative text-left p-3 rounded-[14px] border-[1.5px] transition-all outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 ${
+                  className={`relative text-left p-3 rounded-[14px] border-[1.5px] cursor-pointer transition-all outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 ${
                     isSelected
-                      ? "border-blue-500 bg-blue-50/40 dark:bg-blue-900/20 ring-2 ring-blue-500/30 cursor-pointer"
+                      ? "border-blue-500 bg-blue-50/40 dark:bg-blue-900/20 ring-2 ring-blue-500/30"
                       : isDimmed
-                        ? "border-slate-200 dark:border-slate-700 opacity-55 cursor-not-allowed"
-                        : "border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
+                        ? "border-slate-200 dark:border-slate-700 opacity-70 hover:opacity-100 hover:border-blue-300 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                        : "border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">

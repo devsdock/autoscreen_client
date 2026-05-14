@@ -695,7 +695,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
           message:
             `Quote submitted, but no fitters approved by ${insurerName || "your insurer"} are available in your area.` +
             (privateFitterCount > 0
-              ? ` ${privateFitterCount} other fitter${privateFitterCount === 1 ? " is" : "s are"} available for a private-pay quote — you can resubmit with payment type set to "Private Pay" if you'd like to receive their responses.`
+              ? ` ${privateFitterCount} other fitter${privateFitterCount === 1 ? " is" : "s are"} available for a private-pay quote — you can resubmit without insurance if you'd like to receive their responses.`
               : ""),
         });
       } else {
@@ -1318,10 +1318,10 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                       )}
                     </div>
                     <div className="font-semibold text-sm text-slate-900 dark:text-white pr-6">
-                      Private Pay
+                      No, I'll pay myself
                     </div>
                     <div className="text-[13px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      I'll pay for this repair myself (cash or card)
+                      I'm not using insurance for this repair
                     </div>
                   </button>
                 </div>
