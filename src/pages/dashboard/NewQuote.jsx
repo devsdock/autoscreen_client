@@ -769,14 +769,26 @@ const NewQuote = () => {
       console.log("Quote created:", response);
 
       const { addToast } = useDashboardStore.getState();
-      addToast({
-        type: "success",
-        message:
-          response?.message ||
-          `Quote submitted! ${
-            response?.data?.providersNotified || 0
-          } providers notified.`,
-      });
+      if (response?.insurerFallback?.noInsurerApprovedFitters) {
+        const { insurerName, privateFitterCount } = response.insurerFallback;
+        addToast({
+          type: "warning",
+          message:
+            `Quote submitted, but no fitters approved by ${insurerName || "your insurer"} are available in your area.` +
+            (privateFitterCount > 0
+              ? ` ${privateFitterCount} other fitter${privateFitterCount === 1 ? " is" : "s are"} available for a private-pay quote — you can resubmit with payment type set to "Private Pay" if you'd like to receive their responses.`
+              : ""),
+        });
+      } else {
+        addToast({
+          type: "success",
+          message:
+            response?.message ||
+            `Quote submitted! ${
+              response?.data?.providersNotified || 0
+            } providers notified.`,
+        });
+      }
 
       const quoteId = response?.data?._id || response?.data?.quoteNumber;
       navigate(`/dashboard/quotes/${quoteId}`);
