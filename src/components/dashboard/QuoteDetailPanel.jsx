@@ -383,6 +383,8 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           message:
             err?.response?.data?.error ||
             err?.response?.data?.message ||
+            err?.error ||
+            err?.message ||
             "Failed to confirm cash booking",
         });
       } finally {
@@ -447,6 +449,8 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           message:
             err?.response?.data?.error ||
             err?.response?.data?.message ||
+            err?.error ||
+            err?.message ||
             "Failed to confirm card-after booking",
         });
       } finally {
@@ -481,6 +485,8 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
         message:
           err?.response?.data?.error ||
           err?.response?.data?.message ||
+          err?.error ||
+          err?.message ||
           "Could not restart card setup. Please try again.",
       });
     } finally {
