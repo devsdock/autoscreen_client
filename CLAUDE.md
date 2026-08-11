@@ -842,6 +842,15 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 11 August 2026 (AUT-002 — WhatsApp Consent Checkbox + Opt-in Defaults)
+
+Consent capture for the WhatsApp notification channel (backend: `autoscreen_node` same-date entry).
+
+- **`NewQuote.jsx` — `whatsappOptIn: true` in `formData`** + checkbox rendered on the **final step only** (above the Back/Submit row), so it sits next to the commit action rather than buried mid-wizard. `MessageCircle` (lucide) icon, no emoji, dark-mode classes. `whatsappOptIn` added to `quotePayload`.
+- **`Profile.jsx` — notification-preference fallbacks flipped `true` → `false`** in both the `useState` initialiser and the post-load `mappedUser.notificationPreferences || {...}` fallback. These only apply when the customer has no stored preferences; leaving them `true` would have shown the toggle ON for someone the backend considers opted out. The existing toggle already PUTs `notificationPreferences` through the profile API, so it needed no other change — it is the opt-out surface.
+- **`RequestQuoteModal.jsx` — deliberately NOT changed**: it sends no `whatsappOptIn`, and the backend only writes the preference when an explicit boolean arrives. Omitting it leaves the customer's existing choice untouched, which is the correct behaviour for a secondary quote path — adding a default would have silently re-opted people in.
+- **Build verified**: `npm run build` passes.
+
 ### 14 May 2026 (Glass Supply Question — Hidden for Repair/Film, Replacement-only Gate)
 
 Fix for the customer-reported bug where the "Do you have replacement glass?" card appeared for Glass Repair and Anti-Smash and Grab Film quotes — service types that don't involve supplying any glass at all. The original gate at [NewQuote.jsx:1102](src/pages/dashboard/NewQuote.jsx) checked only `formData.glassTypes.length > 0`, which fires for every service type because all three (`replacement` / `repair` / `tinting`) populate the same `glassTypes` array. Repair injects resin into existing glass; Film applies onto existing glass — neither has a supply decision for the customer to make. Asking it confused customers and risked them picking "Yes, I already have the glass" (which routes the quote as `fitter_only` — labour only, no materials).

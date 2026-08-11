@@ -14,6 +14,7 @@ import {
   Truck,
   Building2,
   Phone,
+  MessageCircle,
 } from "lucide-react";
 import useDashboardStore from "../../store/useDashboardStore";
 import vehicleService from "../../services/vehicleService";
@@ -66,6 +67,9 @@ const NewQuote = () => {
     serviceTypes: [],
     glassTypes: [],
     supplyType: null, // "supply_install" | "fitter_only"
+    // WhatsApp updates opt-in (AUT-002). Checked by default; customer can untick
+    // here or change it later from Profile → Notification Preferences.
+    whatsappOptIn: true,
     serviceSelections: [],
     city: "",
     postcode: "",
@@ -701,6 +705,9 @@ const NewQuote = () => {
       }
 
       const quotePayload = {
+        // WhatsApp opt-in (AUT-002) — persisted onto the customer's
+        // notificationPreferences by the backend on quote creation.
+        whatsappOptIn: formData.whatsappOptIn,
         vehicle: {
           make: formData.vehicleMake,
           model: formData.vehicleModel,
@@ -1756,6 +1763,34 @@ const NewQuote = () => {
                 Multiple quotes
               </span>
             </div>
+          )}
+
+          {/* WhatsApp updates opt-in (AUT-002) — final step only */}
+          {currentStep === TOTAL_STEPS && (
+            <label
+              htmlFor="whatsappOptIn"
+              className="flex items-start gap-3 p-4 mb-4 bg-white dark:bg-slate-900 border-[1.5px] border-slate-200 dark:border-slate-700 rounded-[12px] cursor-pointer hover:border-primary-400 dark:hover:border-primary-500 transition-all"
+            >
+              <input
+                id="whatsappOptIn"
+                type="checkbox"
+                checked={formData.whatsappOptIn}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, whatsappOptIn: e.target.checked }))
+                }
+                className="mt-0.5 w-5 h-5 rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-2 focus:ring-primary-500/20 cursor-pointer flex-shrink-0"
+              />
+              <span className="min-w-0">
+                <span className="flex items-center gap-1.5 text-[14px] font-semibold text-slate-800 dark:text-slate-100">
+                  <MessageCircle size={14} className="text-slate-400 flex-shrink-0" />
+                  WhatsApp me updates about my quote and booking
+                </span>
+                <span className="block text-[12px] text-slate-500 dark:text-slate-400 mt-1">
+                  Get notified the moment a provider quotes you, so you don&apos;t miss it.
+                  You can opt out any time by replying STOP.
+                </span>
+              </span>
+            </label>
           )}
 
           <div className="flex justify-between items-center gap-3">

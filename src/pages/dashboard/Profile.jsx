@@ -144,7 +144,9 @@ const Profile = () => {
   const [notifications, setNotifications] = useState({
     email: true,
     sms: false,
-    whatsapp: true,
+    // AUT-002: WhatsApp is opt-in only (POPIA + Meta sender quality rating),
+    // so the pre-load fallback must default off to match the backend schema.
+    whatsapp: false,
   });
 
   // Password change state
@@ -181,7 +183,7 @@ const Profile = () => {
           mappedUser.notificationPreferences || {
             email: true,
             sms: false,
-            whatsapp: true,
+            whatsapp: false, // AUT-002 — opt-in only
           },
         );
       }
