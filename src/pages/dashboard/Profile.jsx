@@ -631,6 +631,23 @@ const Profile = () => {
 
   // Notification toggle
   const toggleNotification = async (key) => {
+    // WhatsApp needs a mobile number to send to (AUT-002). Without one the
+    // backend silently skips every send, so the toggle would read as ON while
+    // nothing is ever delivered. Block the opt-in and say why.
+    if (key === "whatsapp" && !notifications.whatsapp) {
+      // The SAVED number is what the sender uses — an unsaved edit-form value
+      // would let the toggle succeed against a number the backend can't see.
+      const phone = user?.phone;
+      if (!phone?.trim()) {
+        addToast({
+          type: "error",
+          message:
+            "Add your mobile number first — we need it to send WhatsApp updates.",
+        });
+        return;
+      }
+    }
+
     const newNotifications = { ...notifications, [key]: !notifications[key] };
     setNotifications(newNotifications);
 

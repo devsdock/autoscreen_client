@@ -1789,6 +1789,30 @@ const NewQuote = () => {
                   Get notified the moment a provider quotes you, so you don&apos;t miss it.
                   You can opt out any time by replying STOP.
                 </span>
+                {/*
+                  This form has no phone field — a signed-in customer's number
+                  comes from their profile. Without one the send is skipped, so
+                  say so rather than letting the tick look like it worked. The
+                  preference is still saved: it starts working the moment a
+                  number is added.
+                */}
+                {formData.whatsappOptIn && !user?.phone?.trim() && (
+                  <span className="block text-[12px] text-amber-600 dark:text-amber-500 font-medium mt-1.5">
+                    No mobile number on your profile —{" "}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigate("/dashboard/profile");
+                      }}
+                      className="underline underline-offset-2 font-semibold"
+                    >
+                      add one
+                    </button>{" "}
+                    so we can WhatsApp you.
+                  </span>
+                )}
               </span>
             </label>
           )}
