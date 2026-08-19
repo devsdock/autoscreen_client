@@ -144,8 +144,10 @@ const Profile = () => {
   const [notifications, setNotifications] = useState({
     email: true,
     sms: false,
-    // AUT-002: WhatsApp is opt-in only (POPIA + Meta sender quality rating),
-    // so the pre-load fallback must default off to match the backend schema.
+    // Pre-load placeholder only — the real value arrives from the profile API a
+    // moment later and replaces this. Deliberately false rather than matching the
+    // schema default (true as of AUT-003): showing the toggle ON before we know
+    // would tell the customer they are subscribed when we have not checked yet.
     whatsapp: false,
   });
 
@@ -183,7 +185,11 @@ const Profile = () => {
           mappedUser.notificationPreferences || {
             email: true,
             sms: false,
-            whatsapp: false, // AUT-002 — opt-in only
+            // Only reached if the API omits notificationPreferences entirely.
+            // Off is the safe reading: the sender resolves consent with .lean(),
+            // which does NOT apply schema defaults, so a record with no stored
+            // value is skipped on send. Showing OFF matches what actually happens.
+            whatsapp: false,
           },
         );
       }
