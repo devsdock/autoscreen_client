@@ -21,6 +21,7 @@ import vehicleService from "../../services/vehicleService";
 import geocodingService from "../../services/geocodingService";
 import publicSettingsService from "../../services/publicSettingsService";
 import insurerService from "../../services/insurerService";
+import profileService from "../../services/profileService";
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PremiumSelect from "../../components/ui/PremiumSelect";
@@ -67,8 +68,8 @@ const NewQuote = () => {
     serviceTypes: [],
     glassTypes: [],
     supplyType: null, // "supply_install" | "fitter_only"
-    // WhatsApp updates opt-in (AUT-002). Checked by default; customer can untick
-    // here or change it later from Profile → Notification Preferences.
+    // WhatsApp updates opt-in (AUT-002). Checked by default, then re-seeded from
+    // the account's stored preference once the profile loads (see effect below).
     whatsappOptIn: true,
     serviceSelections: [],
     city: "",
@@ -140,6 +141,29 @@ const NewQuote = () => {
       }));
     }
   }, [profile]);
+
+  // Seed the WhatsApp tick from what is actually STORED on the account
+  // (AS Feedback 14 Sep 2026 — mirrors autoscreen_web GetQuotePage). The box
+  // used to start ticked no matter what and was always sent as `true`, which
+  // silently re-opted-in anyone who had replied STOP or switched WhatsApp off.
+  // Fetched fresh rather than read from the persisted store, which can be stale.
+  // `!== false` treats a missing field as opted in (schema default); only an
+  // explicit false is honoured. A tick the customer has already changed wins.
+  const whatsappTouchedRef = React.useRef(false);
+  useEffect(() => {
+    let active = true;
+    profileService
+      .getProfile()
+      .then((res) => {
+        const stored = (res?.data?.data || res?.data)?.notificationPreferences?.whatsapp;
+        if (!active || whatsappTouchedRef.current) return;
+        setFormData((prev) => ({ ...prev, whatsappOptIn: stored !== false }));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Pre-fill vehicle on mount
   useEffect(() => {
@@ -1775,9 +1799,11 @@ const NewQuote = () => {
                 id="whatsappOptIn"
                 type="checkbox"
                 checked={formData.whatsappOptIn}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, whatsappOptIn: e.target.checked }))
-                }
+                onChange={(e) => {
+                  whatsappTouchedRef.current = true;
+                  const checked = e.target.checked;
+                  setFormData((prev) => ({ ...prev, whatsappOptIn: checked }));
+                }}
                 className="mt-0.5 w-5 h-5 rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-2 focus:ring-primary-500/20 cursor-pointer flex-shrink-0"
               />
               <span className="min-w-0">
@@ -1791,14 +1817,15 @@ const NewQuote = () => {
                 </span>
                 {/*
                   This form has no phone field — a signed-in customer's number
-                  comes from their profile. Without one the send is skipped, so
-                  say so rather than letting the tick look like it worked. The
-                  preference is still saved: it starts working the moment a
-                  number is added.
+                  comes from their profile. Without a valid one the backend
+                  saves WhatsApp as OFF (resolveWhatsAppOptIn), so say so rather
+                  than letting the tick look like it worked. Adding a number
+                  later does not switch it on by itself; the customer ticks
+                  again on their next quote.
                 */}
                 {formData.whatsappOptIn && !user?.phone?.trim() && (
                   <span className="block text-[12px] text-amber-600 dark:text-amber-500 font-medium mt-1.5">
-                    No mobile number on your profile —{" "}
+                    No mobile number on your profile, so WhatsApp can&apos;t be switched on yet.{" "}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -1808,9 +1835,9 @@ const NewQuote = () => {
                       }}
                       className="underline underline-offset-2 font-semibold"
                     >
-                      add one
+                      Add your number
                     </button>{" "}
-                    so we can WhatsApp you.
+                    first.
                   </span>
                 )}
               </span>

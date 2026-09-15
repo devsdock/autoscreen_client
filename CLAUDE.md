@@ -842,6 +842,25 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 15 September 2026 (AUT-015 — WhatsApp Tick Seeded From the Account, AS Feedback 14 Sep 2026)
+
+Feedback: the WhatsApp consent is auto-ticked; check the backend registers it. Backend audit + logging in
+`autoscreen_node` same-date entry. Branch `feature/AUT-015/AS-Feedback-14-Sep-2026`.
+
+- **`NewQuote.jsx` — tick seeded from the STORED preference**: the box started ticked and was always sent as
+  `true`, so a signed-in customer who had replied STOP or switched WhatsApp off was silently opted back in, and
+  the tick never reflected the real account state. Now fetches `profileService.getProfile()` on mount (fresh, not
+  the persisted store) and sets `whatsappOptIn = notificationPreferences.whatsapp !== false` (missing = opted in,
+  matching the schema default; explicit false honoured). A `whatsappTouchedRef` stops a late-arriving profile from
+  overriding a box the customer already changed. Mirrors `autoscreen_web` GetQuotePage (19 Aug 2026).
+- **`NewQuote.jsx` — no-phone note corrected**: it claimed the preference "is still saved" without a number. The
+  backend actually saves WhatsApp as OFF when there is no valid number, so the note now says WhatsApp can't be
+  switched on yet and links to the profile to add the number.
+- **Deliberately unchanged**: `RequestQuoteModal.jsx` (sends no `whatsappOptIn`, leaves the stored preference
+  alone, see 11 Aug 2026) and the Profile page's static "Notifications … On" row (not part of this feedback;
+  `toggleNotification` already exists if a WhatsApp toggle is wanted later).
+- **Build verified**: `npm run build` passes.
+
 ### 11 August 2026 (AUT-002 — WhatsApp Consent Checkbox + Opt-in Defaults)
 
 Consent capture for the WhatsApp notification channel (backend: `autoscreen_node` same-date entry).
