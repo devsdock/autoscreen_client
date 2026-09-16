@@ -376,7 +376,8 @@ const ProviderResponseCard = ({
               </div>
               {((provider.businessType !== "individual" && provider.vatNumber) ||
                 response.isInsuranceRegistered ||
-                provider.paymentOptions?.cashOnCompletion ||
+                (provider.paymentOptions?.cashOnCompletion &&
+                  !provider.paymentOptions?.cashDisabledByPlatform) ||
                 provider.paymentOptions?.cardOnCompletion) && (
                 <div className="flex items-center gap-1 flex-wrap">
                   {provider.businessType !== "individual" && provider.vatNumber && (
@@ -392,6 +393,7 @@ const ProviderResponseCard = ({
                   )}
                   {/* Flexible Payment Options v1.2 — Cash on Completion badge */}
                   {provider.paymentOptions?.cashOnCompletion &&
+                    !provider.paymentOptions?.cashDisabledByPlatform &&
                     (provider.enforcement?.stage || 0) < 3 && (
                       <span className="text-[0.5625rem] font-medium bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-px rounded-full dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
                         Cash Accepted
@@ -759,6 +761,7 @@ const ProviderResponseCard = ({
                   response?.isInsuranceRegistered;
                 const cashAvailable =
                   !!provider?.paymentOptions?.cashOnCompletion &&
+                  !provider?.paymentOptions?.cashDisabledByPlatform &&
                   (provider?.enforcement?.stage || 0) < 3;
                 const cardAfterAvailable =
                   !!provider?.paymentOptions?.cardOnCompletion;
@@ -946,6 +949,7 @@ const ProviderResponseCard = ({
                   // Provider offers cash/card-after → defer to payment-method picker
                   const cashAvailable =
                     !!response.provider?.paymentOptions?.cashOnCompletion &&
+                    !response.provider?.paymentOptions?.cashDisabledByPlatform &&
                     (response.provider?.enforcement?.stage || 0) < 3;
                   const cardAfterAvailable =
                     !!response.provider?.paymentOptions?.cardOnCompletion;

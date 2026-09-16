@@ -207,8 +207,11 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     const isR0Insurance = isInsuranceResponse && excess === 0;
 
     const providerOpts = response?.provider?.paymentOptions || {};
+    // cashDisabledByPlatform: platform-wide cash switch is off (AUT-017). The
+    // API already masks cashOnCompletion to false; this is defence in depth.
     const providerSupportsCash =
       !!providerOpts.cashOnCompletion &&
+      !providerOpts.cashDisabledByPlatform &&
       (response?.provider?.enforcement?.stage || 0) < 3;
     const providerSupportsCardAfter = !!providerOpts.cardOnCompletion;
 
@@ -387,6 +390,9 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
             err?.message ||
             "Failed to confirm cash booking",
         });
+        // Cash may have been switched off platform-wide while the picker was
+        // open (AUT-017) — refetch so the stale cash option disappears.
+        if (quote?.id) fetchQuoteDetails?.(quote.id);
       } finally {
         setIsProcessingCash(false);
         setPendingAcceptResponse(null);
@@ -1476,7 +1482,14 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
             vatRate > 0 ? Math.round(sub * (vatRate / 100) * 100) / 100 : 0;
           return sub + vatAmt;
         })()}
-        paymentOptions={pendingAcceptResponse?.provider?.paymentOptions}
+        paymentOptions={
+          pendingAcceptResponse?.provider?.paymentOptions?.cashDisabledByPlatform
+            ? {
+                ...pendingAcceptResponse.provider.paymentOptions,
+                cashOnCompletion: false,
+              }
+            : pendingAcceptResponse?.provider?.paymentOptions
+        }
       />
 
       {/* Payment Modal */}
