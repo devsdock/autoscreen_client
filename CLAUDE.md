@@ -858,6 +858,15 @@ same-date entry. Branch `feature/AUT-017/cash-payment-toggle`.
 - **Unchanged**: `PaymentMethodModal.jsx`, `dataMappers.js`, and every in-flight cash booking surface.
 - **Build verified**: `npm run build` passes.
 
+- **`PartialPaymentIntroModal.jsx` — only lists balance options that really exist (17 Sep 2026)**: the intro
+  used a hard-coded list (Cash / Pay-link / Automatic card charge), so with the platform cash switch OFF it still
+  promised "Cash — pay your technician at completion" while the next screen had no cash (found during AUT-017
+  manual testing). New props `cashAvailable` / `cardAfterAvailable` (both default `true`, so any other caller is
+  unchanged): Cash shows only when cash is really available, Pay-link + Automatic card charge only when the
+  provider offers card on completion, and when neither applies it shows "The remaining balance is due once your
+  service is complete." `QuoteDetailPanel.jsx` gained `getProviderBalanceOptions(response)`, now shared by
+  `continueAcceptAfterIntro` and the intro props so the two screens can't disagree (accept logic unchanged).
+
 ### 15 September 2026 (AUT-015 — WhatsApp Tick Seeded From the Account, AS Feedback 14 Sep 2026)
 
 Feedback: the WhatsApp consent is auto-ticked; check the backend registers it. Backend audit + logging in

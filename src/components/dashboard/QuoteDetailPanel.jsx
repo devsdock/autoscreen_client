@@ -191,6 +191,22 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   // Continuation of the accept flow after the partial intro modal (or
   // immediately when partial is inactive). Decides whether to open the
   // payment-method picker or jump straight to PaymentModal (prepayment).
+  // Which balance-settlement methods this provider actually offers. Shared by
+  // the accept flow below and the Partial Payment intro screen, so the intro
+  // never lists an option the next screen won't show.
+  // cashDisabledByPlatform: platform-wide cash switch is off (AUT-017). The
+  // API already masks cashOnCompletion to false; this is defence in depth.
+  const getProviderBalanceOptions = (response) => {
+    const providerOpts = response?.provider?.paymentOptions || {};
+    return {
+      cash:
+        !!providerOpts.cashOnCompletion &&
+        !providerOpts.cashDisabledByPlatform &&
+        (response?.provider?.enforcement?.stage || 0) < 3,
+      cardAfter: !!providerOpts.cardOnCompletion,
+    };
+  };
+
   const continueAcceptAfterIntro = async (response, selectedQuality = null) => {
     const isInsuranceResponse = response?.isInsuranceRegistered && quote?.hasInsurance;
     // Tier-aware excess — same fallback chain as handleAcceptAndPay. Without
@@ -206,14 +222,8 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
       0;
     const isR0Insurance = isInsuranceResponse && excess === 0;
 
-    const providerOpts = response?.provider?.paymentOptions || {};
-    // cashDisabledByPlatform: platform-wide cash switch is off (AUT-017). The
-    // API already masks cashOnCompletion to false; this is defence in depth.
-    const providerSupportsCash =
-      !!providerOpts.cashOnCompletion &&
-      !providerOpts.cashDisabledByPlatform &&
-      (response?.provider?.enforcement?.stage || 0) < 3;
-    const providerSupportsCardAfter = !!providerOpts.cardOnCompletion;
+    const { cash: providerSupportsCash, cardAfter: providerSupportsCardAfter } =
+      getProviderBalanceOptions(response);
 
     if (
       !isR0Insurance &&
@@ -1416,6 +1426,8 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
       {/* Partial Payment intro (Points 1-2, April 2026) — Step 1 when partial is active */}
       <PartialPaymentIntroModal
         isOpen={showPartialIntroModal}
+        cashAvailable={getProviderBalanceOptions(pendingAcceptResponse).cash}
+        cardAfterAvailable={getProviderBalanceOptions(pendingAcceptResponse).cardAfter}
         onCancel={() => {
           setShowPartialIntroModal(false);
           setPendingAcceptResponse(null);

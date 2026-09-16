@@ -18,6 +18,10 @@ import { Shield, ArrowRight, X, Wallet, CreditCard } from "lucide-react";
  *   depositPercentage — e.g. 40
  *   balancePercentage — e.g. 60
  *   providerName      — display name (optional)
+ *   cashAvailable     — provider offers cash on completion AND the platform
+ *                       cash switch is on (default true for other callers)
+ *   cardAfterAvailable— provider offers card on completion (pay-link / saved
+ *                       card); default true for other callers
  */
 const PartialPaymentIntroModal = ({
   isOpen,
@@ -27,6 +31,8 @@ const PartialPaymentIntroModal = ({
   depositPercentage = 40,
   balancePercentage = 60,
   providerName = "this provider",
+  cashAvailable = true,
+  cardAfterAvailable = true,
 }) => {
   // ESC closes the modal
   useEffect(() => {
@@ -166,32 +172,47 @@ const PartialPaymentIntroModal = ({
             </div>
 
             <div className="text-[0.75rem] text-slate-500 dark:text-slate-400 leading-relaxed">
-              <div className="mb-1.5">
-                On the next step, choose how to settle the balance after service:
-              </div>
-              <ul className="space-y-1 pl-1">
-                <li className="flex items-start gap-2">
-                  <span className="mt-1.5 w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-500 flex-shrink-0" />
-                  <span>
-                    <strong className="text-slate-700 dark:text-slate-200">Cash</strong>
-                    {" — "}pay your technician at completion.
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-1.5 w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-500 flex-shrink-0" />
-                  <span>
-                    <strong className="text-slate-700 dark:text-slate-200">Pay-link</strong>
-                    {" — "}we email a secure link after service.
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-1.5 w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-500 flex-shrink-0" />
-                  <span>
-                    <strong className="text-slate-700 dark:text-slate-200">Automatic card charge</strong>
-                    {" — "}we save your card and charge it after service.
-                  </span>
-                </li>
-              </ul>
+              {/* Only list the balance options the next screen will actually
+                  offer for this provider (cash hidden when the platform cash
+                  switch is off or the provider doesn't take cash). */}
+              {cashAvailable || cardAfterAvailable ? (
+                <>
+                  <div className="mb-1.5">
+                    On the next step, choose how to settle the balance after service:
+                  </div>
+                  <ul className="space-y-1 pl-1">
+                    {cashAvailable && (
+                      <li className="flex items-start gap-2">
+                        <span className="mt-1.5 w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-500 flex-shrink-0" />
+                        <span>
+                          <strong className="text-slate-700 dark:text-slate-200">Cash</strong>
+                          {" — "}pay your technician at completion.
+                        </span>
+                      </li>
+                    )}
+                    {cardAfterAvailable && (
+                      <>
+                        <li className="flex items-start gap-2">
+                          <span className="mt-1.5 w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-500 flex-shrink-0" />
+                          <span>
+                            <strong className="text-slate-700 dark:text-slate-200">Pay-link</strong>
+                            {" — "}we email a secure link after service.
+                          </span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="mt-1.5 w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-500 flex-shrink-0" />
+                          <span>
+                            <strong className="text-slate-700 dark:text-slate-200">Automatic card charge</strong>
+                            {" — "}we save your card and charge it after service.
+                          </span>
+                        </li>
+                      </>
+                    )}
+                  </ul>
+                </>
+              ) : (
+                <div>The remaining balance is due once your service is complete.</div>
+              )}
             </div>
           </div>
 
