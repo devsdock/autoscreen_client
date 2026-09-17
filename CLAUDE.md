@@ -842,6 +842,31 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 16 September 2026 (AUT-017 — Cash on Completion Platform Switch, AS Feedback 14 Sep 2026)
+
+Admin can now switch cash off platform-wide (default OFF). The backend already masks
+`provider.paymentOptions.cashOnCompletion` to `false` and adds `cashDisabledByPlatform: true` on the customer quote
+endpoints, so cash disappears without this deploy; these changes are defence in depth. Backend: `autoscreen_node`
+same-date entry. Branch `feature/AUT-017/cash-payment-toggle`.
+
+- **`QuoteDetailPanel.jsx`**: `providerSupportsCash` also requires `!cashDisabledByPlatform`; `PaymentMethodModal`
+  receives `cashOnCompletion: false` when the flag is set; when a cash accept fails (e.g. admin switched cash off
+  while the picker was open → 400 "Cash payments are currently unavailable…") the error toast shows and
+  `fetchQuoteDetails(quote.id)` refetches so the stale cash option disappears.
+- **`ProviderResponseCard.jsx`**: "Cash Accepted" badge, its badge-row condition, and both `cashAvailable`
+  button-label checks ignore cash when `cashDisabledByPlatform` is set. Card on Completion unchanged.
+- **Unchanged**: `PaymentMethodModal.jsx`, `dataMappers.js`, and every in-flight cash booking surface.
+- **Build verified**: `npm run build` passes.
+
+- **`PartialPaymentIntroModal.jsx` — only lists balance options that really exist (17 Sep 2026)**: the intro
+  used a hard-coded list (Cash / Pay-link / Automatic card charge), so with the platform cash switch OFF it still
+  promised "Cash — pay your technician at completion" while the next screen had no cash (found during AUT-017
+  manual testing). New props `cashAvailable` / `cardAfterAvailable` (both default `true`, so any other caller is
+  unchanged): Cash shows only when cash is really available, Pay-link + Automatic card charge only when the
+  provider offers card on completion, and when neither applies it shows "The remaining balance is due once your
+  service is complete." `QuoteDetailPanel.jsx` gained `getProviderBalanceOptions(response)`, now shared by
+  `continueAcceptAfterIntro` and the intro props so the two screens can't disagree (accept logic unchanged).
+
 ### 15 September 2026 (AUT-015 — WhatsApp Tick Seeded From the Account, AS Feedback 14 Sep 2026)
 
 Feedback: the WhatsApp consent is auto-ticked; check the backend registers it. Backend audit + logging in
