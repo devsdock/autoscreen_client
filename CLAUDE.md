@@ -842,6 +842,13 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 8 October 2026 (AUT-019 — Profile "Insurance Details" Card Opens the Insurance Page)
+
+- **`Profile.jsx`**: clicking the "Insurance Details" card showed a "Insurance management coming soon!" toast even
+  though the sidebar's Insurance page (`/dashboard/insurance`) already exists. It now navigates there
+  (`useNavigate`). Branch `bugfix/AUT-019/profile-insurance-link` (from `dev`).
+- **Build verified**: `npm run build` passes.
+
 ### 16 September 2026 (AUT-017 — Cash on Completion Platform Switch, AS Feedback 14 Sep 2026)
 
 Admin can now switch cash off platform-wide (default OFF). The backend already masks
