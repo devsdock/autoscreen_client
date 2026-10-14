@@ -114,6 +114,13 @@ const quoteService = {
       url,
     });
   },
+
+  getProviderBlockedDates: (providerId) => {
+    return request({
+      method: "GET",
+      url: `/customer/quotes/providers/${providerId}/blocked-dates`,
+    });
+  },
 };
 
 export default quoteService;
