@@ -925,6 +925,9 @@ const BookAppointment = () => {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [confirmedBookingRef, setConfirmedBookingRef] = useState("");
+  // Opened from "View My Bookings" so the customer lands on the booking they
+  // just scheduled instead of the top of the full list.
+  const [confirmedBookingId, setConfirmedBookingId] = useState("");
 
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
   const [paymentReference, setPaymentReference] = useState("");
@@ -1320,6 +1323,7 @@ const BookAppointment = () => {
           booking?.bookingNumber ||
           "";
         setConfirmedBookingRef(ref);
+        setConfirmedBookingId(String(bookingId));
         setIsConfirmed(true);
 
         // Refresh stores so Bookings page shows updated data
@@ -1517,7 +1521,13 @@ const BookAppointment = () => {
         bookingReference={confirmedBookingRef}
         selectedDate={selectedDate}
         selectedSlot={selectedSlot}
-        onViewBookings={() => navigate("/dashboard/bookings")}
+        onViewBookings={() =>
+          navigate(
+            confirmedBookingId
+              ? `/dashboard/bookings/${confirmedBookingId}`
+              : "/dashboard/bookings",
+          )
+        }
         slotsNeeded={slotsNeeded}
         isReschedule={isReschedule}
         isWorkshop={isWorkshop}

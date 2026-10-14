@@ -154,7 +154,6 @@ const Bookings = () => {
           type: "success",
           message: "Payment confirmed! Your booking is now scheduled.",
         });
-        fetchAllBookings();
         fetchQuotes().catch(() => {});
       }
     } catch (err) {
@@ -165,20 +164,27 @@ const Bookings = () => {
     } finally {
       setIsVerifying(false);
       isVerifyingRef.current = false;
+      // Load the list only once the payment check is done, so it never
+      // flashes the booking's pre-payment status first.
+      fetchAllBookings();
     }
   };
 
   useEffect(() => {
-    fetchAllBookings();
-
     const queryParams = new URLSearchParams(location.search);
     const reference = queryParams.get("reference");
     const trxref = queryParams.get("trxref");
 
     if (reference || trxref) {
+      // verifyPayment marks isVerifyingRef straight away, so the re-run of
+      // this effect caused by the URL clean-up below skips its own fetch;
+      // verifyPayment loads the list itself when the check is done.
       verifyPayment(reference || trxref);
-      navigate("/dashboard/bookings", { replace: true });
+      // Keep the booking open (pay-link returns land on /bookings/:id).
+      navigate(id ? `/dashboard/bookings/${id}` : "/dashboard/bookings", { replace: true });
+      return;
     }
+    if (!isVerifyingRef.current) fetchAllBookings();
   }, [location.search]);
 
   // All bookings flat list for deep-link lookup

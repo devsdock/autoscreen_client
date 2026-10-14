@@ -854,6 +854,12 @@ To verify the multi-select implementation in `BookingForm.jsx`:
   balance link behaves like the quote payment — Paystack returns to `/dashboard/bookings/:id` in the same tab, where
   `Bookings.jsx` verifies the reference.
 - **Build verified**: `npm run build` passes; checked on a local partial booking (banner reads "Pay R 1980.00").
+- **Land on the booking just made (14 Oct 2026)**: "View My Bookings" in the appointment-confirmed pop-up
+  (`BookAppointment.jsx`) and on `PaymentSuccess.jsx` (when a `bookingId` is known) now open
+  `/dashboard/bookings/:id`, so the list loads with that booking's drawer open instead of the top of the list (which
+  starts with older "Action Required" jobs). `Bookings.jsx`: on a Paystack return (`?reference=`) the payment is verified
+  first and the list loads once afterwards (no flash of the pre-payment status), and the booking id in the URL is kept
+  so the paid booking's drawer opens.
 
 ### 8 October 2026 (AUT-019 — Profile "Insurance Details" Card Opens the Insurance Page)
 
