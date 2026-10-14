@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
-const PremiumDatePicker = ({ label, value, onChange, placeholder, minDate, error, availableDates, disabledDates, required }) => {
+const PremiumDatePicker = ({ label, value, onChange, placeholder, minDate, error, availableDates, required }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => {
     if (value) {
@@ -57,10 +57,7 @@ const PremiumDatePicker = ({ label, value, onChange, placeholder, minDate, error
     const date = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
     const dateStr = formatLocalDate(date);
 
-    // Check blocklist
-    if (disabledDates && disabledDates.includes(dateStr)) return true;
-
-    // Check whitelist (availableDates)
+    // Check if date is in availableDates if provided
     if (availableDates && availableDates.length > 0) {
       if (!availableDates.includes(dateStr)) return true;
     }
