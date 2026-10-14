@@ -440,8 +440,6 @@ const BookingCard = ({
           {isPaymentPending && booking.paymentLink?.url && (
             <a
               href={booking.paymentLink.url}
-              target="_blank"
-              rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:shadow-md hover:-translate-y-px"
               style={{ background: "linear-gradient(135deg, #DC2626, #B91C1C)" }}
             >

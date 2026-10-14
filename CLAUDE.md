@@ -842,6 +842,19 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 14 October 2026 (AUT-020 — Pay Now in the Booking Details Drawer)
+
+- **`BookingDetailDrawer.jsx`**: a card-on-completion booking in `payment-pending` showed **Pay Now** on the
+  My Bookings card but only a "Payment Required" pill in the details drawer. The drawer now shows a red Payment
+  Required banner with a **Pay Now** link to `booking.paymentLink.url`, gated exactly like `BookingCard.jsx`
+  (`paymentOption === "card_on_completion"` + `payment-pending` + link present). The amount is the balance for
+  partial bookings (`partialPayment.isActive` + `balanceStatus: "pending"` + `balanceAmount > 0`), else the total.
+  Branch `bugfix/AUT-020/booking-drawer-pay-now` (from `dev`).
+- **Pay Now opens in the same tab** (`BookingCard.jsx` + `BookingDetailDrawer.jsx`): `target="_blank"` removed so the
+  balance link behaves like the quote payment — Paystack returns to `/dashboard/bookings/:id` in the same tab, where
+  `Bookings.jsx` verifies the reference.
+- **Build verified**: `npm run build` passes; checked on a local partial booking (banner reads "Pay R 1980.00").
+
 ### 8 October 2026 (AUT-019 — Profile "Insurance Details" Card Opens the Insurance Page)
 
 - **`Profile.jsx`**: clicking the "Insurance Details" card showed a "Insurance management coming soon!" toast even
