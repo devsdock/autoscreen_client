@@ -842,6 +842,14 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 15 October 2026 (Cancel Hidden Once the Technician Has Arrived)
+
+- **`BookingCard.jsx`**: the Cancel button showed on every Upcoming card, including `arrived`, `in-progress`,
+  `service-done` and `payment-pending`. The server (`cancelBooking`) refuses those, so the customer got "Failed to
+  cancel booking" after a cancellation pop-up that promised a refund. Cancel now shows only for the statuses the server
+  accepts (`searching`, `awaiting-customer-approval`, `accepted`, `awaiting-payment`, `pending`, `confirmed`). The
+  booking drawer's `canCancel` already excluded them. Build verified.
+
 ### 14 October 2026 (AUT-020 — Pay Now in the Booking Details Drawer)
 
 - **`BookingDetailDrawer.jsx`**: a card-on-completion booking in `payment-pending` showed **Pay Now** on the
