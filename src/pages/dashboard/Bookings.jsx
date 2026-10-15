@@ -18,6 +18,26 @@ import ReviewModal from "../../components/dashboard/ReviewModal";
 const INITIAL_LIMIT = 5;
 const EXPANDED_LIMIT = 50;
 
+// A balance pay link can be paid without the payment reaching us (customer
+// closed the tab before Paystack sent them back, missed webhook). When the
+// list shows such a booking, ask Paystack once; at most once a minute per link.
+const PAY_LINK_CHECK_INTERVAL_MS = 60 * 1000;
+const PAY_LINK_CHECK_KEY = "paylink_checked_";
+
+const payLinkToCheck = (booking) => {
+  const ref = booking?.paymentLink?.reference;
+  if (booking?.status?.toLowerCase() !== "payment-pending") return null;
+  if (typeof ref !== "string" || !ref.startsWith("PAYLINK-")) return null;
+  try {
+    const last = Number(sessionStorage.getItem(PAY_LINK_CHECK_KEY + ref)) || 0;
+    if (Date.now() - last < PAY_LINK_CHECK_INTERVAL_MS) return null;
+    sessionStorage.setItem(PAY_LINK_CHECK_KEY + ref, String(Date.now()));
+  } catch {
+    // Storage unavailable: still check, the server rate-limits.
+  }
+  return ref;
+};
+
 // Status groups for separate API calls
 const STATUS_GROUPS = {
   actionRequired: "awaiting-customer-approval,completed-by-fitter",
@@ -129,7 +149,24 @@ const Bookings = () => {
       cancelled: { ...cancelled, expanded: false },
     });
     setIsLoading(false);
+
+    const payLinkRefs = upcoming.items.map(payLinkToCheck).filter(Boolean);
+    if (payLinkRefs.length) {
+      const results = await Promise.allSettled(
+        payLinkRefs.map((ref) => paymentService.verifyPayLinkPublic(ref)),
+      );
+      if (results.some((r) => r.status === "fulfilled" && r.value?.paid)) {
+        addToast({
+          type: "success",
+          message: "Payment received. Your booking is complete.",
+        });
+        fetchQuotes().catch(() => {});
+        fetchAllBookingsRef.current?.();
+      }
+    }
   }, [fetchCategory]);
+  const fetchAllBookingsRef = useRef(null);
+  fetchAllBookingsRef.current = fetchAllBookings;
 
   // Expand a category to load all items
   const handleViewAll = async (category) => {

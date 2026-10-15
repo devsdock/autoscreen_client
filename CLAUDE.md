@@ -842,6 +842,15 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 15 October 2026 (Balance pay link checked with Paystack when My Bookings opens)
+
+- `Bookings.jsx`: after the list loads, each Upcoming booking in `payment-pending` with a `paymentLink.reference`
+  (`PAYLINK-…`) is checked via `paymentService.verifyPayLinkPublic` (`GET /public/booking-payments/verify/:ref`). If
+  Paystack says it was paid, the backend records it (same handler as the webhook, records once), a "Payment received"
+  toast shows and the list reloads, so Pay Now disappears. Covers payments the return page missed (tab closed before
+  Paystack redirected back, old web build on the magic-link page, missed webhook). At most once a minute per link
+  (`sessionStorage` key `paylink_checked_<ref>`); failures and unpaid links are silent. No backend change.
+
 ### 15 October 2026 (Pay-link payment recorded when the customer is signed out)
 
 - `ProtectedRoute.jsx`: when the URL carries a `PAYLINK-…` `reference` / `trxref` (return from paying the
