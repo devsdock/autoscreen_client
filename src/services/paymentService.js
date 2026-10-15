@@ -116,6 +116,18 @@ const paymentService = {
       url: `/customer/payments/verify-paystack/${reference}`,
     });
   },
+
+  /**
+   * Record an after-service pay-link payment without being signed in
+   * (customer paid the email link in a signed-out tab). Returns { paid }.
+   * @param {string} reference PAYLINK-… reference from the Paystack return URL
+   */
+  verifyPayLinkPublic: (reference) => {
+    return request({
+      method: "GET",
+      url: `/public/booking-payments/verify/${encodeURIComponent(reference)}`,
+    });
+  },
 };
 
 export default paymentService;

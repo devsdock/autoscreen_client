@@ -842,6 +842,14 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 15 October 2026 (Pay-link payment recorded when the customer is signed out)
+
+- `ProtectedRoute.jsx`: when the URL carries a `PAYLINK-…` `reference` / `trxref` (return from paying the
+  after-service link), it first calls `paymentService.verifyPayLinkPublic` → `GET /public/booking-payments/verify/:ref`,
+  before any sign-in redirect. The sign-in redirect dropped the reference, so a customer who paid from the email in a
+  signed-out tab never had the payment recorded. Errors are ignored; the signed-in Bookings check still runs after.
+  Backend pairing: `autoscreen_node` same date (pay links now return through a magic link as well).
+
 ### 15 October 2026 (Cancel Hidden Once the Technician Has Arrived)
 
 - **`BookingCard.jsx`**: the Cancel button showed on every Upcoming card, including `arrived`, `in-progress`,
