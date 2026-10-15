@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import useAuthStore from "../store/useAuthStore";
 import useDashboardStore from "../store/useDashboardStore";
 import { AUTH_WEB_URL, STORAGE_KEYS } from "../services/api";
+import paymentService from "../services/paymentService";
 
 /**
  * Protected Route wrapper component
@@ -25,6 +26,20 @@ const ProtectedRoute = ({ children }) => {
 
         // First, check if auth data is passed in URL (from cross-port redirect)
         const urlParams = new URLSearchParams(window.location.search);
+
+        // Returning from paying the after-service link from the email: record
+        // the payment before anything can send the customer to sign in, which
+        // drops the ?reference= and the signed-in check never runs. Safe to run
+        // twice (the signed-in Bookings page also verifies); never blocks login.
+        const payLinkRef =
+          urlParams.get("reference") || urlParams.get("trxref");
+        if (payLinkRef && payLinkRef.startsWith("PAYLINK-")) {
+          try {
+            await paymentService.verifyPayLinkPublic(payLinkRef);
+          } catch (e) {
+            console.warn("[ProtectedRoute] Pay-link check failed:", e?.message);
+          }
+        }
         const authDataStr = urlParams.get("authData");
 
         if (authDataStr) {
