@@ -842,6 +842,12 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 29 October 2026 (AUT-026 — AUT-019 reverted for the go-live without insurance changes)
+
+- **`Profile.jsx`**: the "Insurance Details" card shows the "Insurance management coming soon!" toast again, as before
+  AUT-019 (which made it open `/dashboard/insurance`). Branch `bugfix/AUT-026/current-issue-fixes` (from `dev`). Re-apply
+  AUT-019 (`f84cc2d`) when insurance changes go live.
+
 ### 15 October 2026 (Balance pay link checked with Paystack when My Bookings opens)
 
 - `Bookings.jsx`: after the list loads, each Upcoming booking in `payment-pending` with a `paymentLink.reference`
@@ -885,13 +891,6 @@ To verify the multi-select implementation in `BookingForm.jsx`:
   starts with older "Action Required" jobs). `Bookings.jsx`: on a Paystack return (`?reference=`) the payment is verified
   first and the list loads once afterwards (no flash of the pre-payment status), and the booking id in the URL is kept
   so the paid booking's drawer opens.
-
-### 8 October 2026 (AUT-019 — Profile "Insurance Details" Card Opens the Insurance Page)
-
-- **`Profile.jsx`**: clicking the "Insurance Details" card showed a "Insurance management coming soon!" toast even
-  though the sidebar's Insurance page (`/dashboard/insurance`) already exists. It now navigates there
-  (`useNavigate`). Branch `bugfix/AUT-019/profile-insurance-link` (from `dev`).
-- **Build verified**: `npm run build` passes.
 
 ### 16 September 2026 (AUT-017 — Cash on Completion Platform Switch, AS Feedback 14 Sep 2026)
 
