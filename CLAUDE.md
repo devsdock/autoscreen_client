@@ -842,6 +842,26 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 29 October 2026 (AUT-018 ADAS Recalibration service type)
+
+Branch `feature/AUT-018/adas-service-type`. Backend: `autoscreen_node` same branch (settings entry `adas`, Quote enum
+accepts `adas`).
+
+- **`NewQuote.jsx` + `RequestQuoteModal.jsx` Step 2**: "ADAS Recalibration" appears as a service card (from
+  `GET /public/settings`). It has no glass picker: its block shows one muted line, "No glass selection needed — we
+  recalibrate the windscreen camera.", and the selection gets `glassTypes: ["Windscreen"]` automatically (flat
+  `glassTypes` too), so validation passes and the payload carries `windscreen`. Removing ADAS drops that Windscreen
+  unless another service picked it. The toggle still prefers the settings `id`; the name fallback gained an
+  `adas` / `recalibration` branch before `tinting`.
+- **Payload `serviceTypes`**: prefers the settings id when it is `replacement` / `repair` / `tinting` / `adas`, else
+  the old name mapping plus an `adas` branch, so ADAS is sent as `adas`, not `other`.
+- **Card description**: cards that are not replacement / repair / film now show the settings `description` (was the
+  name again).
+- **Supply question** stays keyed on `serviceType === "replacement"` (NewQuote only), so ADAS-only quotes never see it.
+- `dataMappers.formatServiceType('adas')` → "ADAS Recalibration" (and `adas` treated as a raw type in
+  `formatServiceName`); ADAS added to the `publicSettingsService.js` fallback and `data/serviceConstants.js`.
+- Build passes.
+
 ### 15 October 2026 (Balance pay link checked with Paystack when My Bookings opens)
 
 - `Bookings.jsx`: after the list loads, each Upcoming booking in `payment-pending` with a `paymentLink.reference`
