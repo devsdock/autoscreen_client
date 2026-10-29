@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   User,
   Mail,
@@ -53,7 +52,6 @@ import { addressLabels } from "../../data/addresses";
 import { CITIES as cities } from "../../data/cities";
 
 const Profile = () => {
-  const navigate = useNavigate();
   const {
     user: storeUser,
     vehicles: storeVehicles,
@@ -1001,7 +999,7 @@ const Profile = () => {
       {/* Insurance Details Section */}
       <div
         className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
-        onClick={() => navigate("/dashboard/insurance")}
+        onClick={() => addToast({ type: "info", message: "Insurance management coming soon!" })}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
           <h3 className="text-[15px] font-bold text-slate-900 dark:text-white">
