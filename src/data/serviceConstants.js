@@ -16,6 +16,11 @@ export const SERVICE_TYPES = [
     label: "Anti-Smash and Grab Film",
     description: "Anti-Smash and Grab Film application",
   },
+  {
+    id: "adas",
+    label: "ADAS Recalibration",
+    description: "Camera and sensor recalibration after glass work",
+  },
 ];
 
 // Glass Types - Which glass is affected (matches backend schema enum)

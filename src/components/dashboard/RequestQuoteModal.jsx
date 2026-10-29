@@ -29,6 +29,12 @@ import { CITIES } from "../../data/cities";
 
 const TOTAL_STEPS = 3;
 
+// AUT-018 ADAS Recalibration: the camera sits behind the windscreen, so the
+// service has one implicit glass type and no glass picker.
+const ADAS_SERVICE_ID = "adas";
+const ADAS_IMPLICIT_GLASS = "Windscreen";
+const KNOWN_SERVICE_IDS = ["replacement", "repair", "tinting", ADAS_SERVICE_ID];
+
 const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
   const { createQuote, user, vehicles, addresses, quotes } =
     useDashboardStore();
@@ -334,6 +340,9 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
         : [...currentServices, serviceName];
 
       let newServiceSelections = [...(prev.serviceSelections || [])];
+      const removedSelection = isSelected
+        ? newServiceSelections.find((s) => s.serviceName === serviceName)
+        : null;
       if (isSelected) {
         newServiceSelections = newServiceSelections.filter(
           (s) => s.serviceName !== serviceName,
@@ -342,18 +351,22 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
         const matchingDef = adminServiceTypes.find(
           (st) => st.name === serviceName,
         );
+        const lowerName = serviceName.toLowerCase();
         const stType =
           matchingDef?.id ||
-          (serviceName.toLowerCase().includes("repair")
+          (lowerName.includes("repair")
             ? "repair"
-            : serviceName.toLowerCase().includes("replacement")
+            : lowerName.includes("replacement")
               ? "replacement"
-              : "tinting");
+              : lowerName.includes("adas") || lowerName.includes("recalibration")
+                ? ADAS_SERVICE_ID
+                : "tinting");
 
         newServiceSelections.push({
           serviceName,
           serviceType: stType,
-          glassTypes: [],
+          // ADAS has no glass picker: the windscreen is set for the customer
+          glassTypes: stType === ADAS_SERVICE_ID ? [ADAS_IMPLICIT_GLASS] : [],
         });
       }
 
@@ -366,9 +379,23 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
         }
       });
 
-      const newGlassTypes = (prev.glassTypes || []).filter((g) =>
+      let newGlassTypes = (prev.glassTypes || []).filter((g) =>
         validGlassTypes.has(g),
       );
+
+      // ADAS carries the windscreen implicitly: keep it in the flat list while
+      // ADAS is selected, and drop it with ADAS unless another service picked it.
+      if (newServiceSelections.some((s) => s.serviceType === ADAS_SERVICE_ID)) {
+        if (!newGlassTypes.includes(ADAS_IMPLICIT_GLASS))
+          newGlassTypes = [...newGlassTypes, ADAS_IMPLICIT_GLASS].sort();
+      } else if (
+        removedSelection?.serviceType === ADAS_SERVICE_ID &&
+        !newServiceSelections.some((s) =>
+          (s.glassTypes || []).includes(ADAS_IMPLICIT_GLASS),
+        )
+      ) {
+        newGlassTypes = newGlassTypes.filter((g) => g !== ADAS_IMPLICIT_GLASS);
+      }
 
       return {
         ...prev,
@@ -487,6 +514,15 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
         newErrors.serviceType = "Service type is required";
       if (!formData.glassTypes || formData.glassTypes.length === 0)
         newErrors.glassType = "Glass type is required";
+      // ADAS carries the windscreen, so the combined glass list is never empty with it:
+      // every other selected service still needs its own glass.
+      if (
+        (formData.serviceSelections || []).some((s) => s.serviceType === "adas") &&
+        (formData.serviceSelections || []).some(
+          (s) => s.serviceType !== "adas" && !(s.glassTypes || []).length,
+        )
+      )
+        newErrors.glassType = "Glass type is required";
       if (!formData.vehicleImages.frontView) newErrors.frontView = "Front of vehicle photo is required";
       if (!formData.vehicleImages.vinLicenceDisc) newErrors.vinLicenceDisc = "VIN / Licence disc photo is required";
       if (!formData.vehicleImages.damagePhotos.length) newErrors.damagePhotos = "At least one damage photo is required";
@@ -519,6 +555,15 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
     if (!formData.serviceTypes || formData.serviceTypes.length === 0)
       newErrors.serviceType = "Service type is required";
     if (!formData.glassTypes || formData.glassTypes.length === 0)
+      newErrors.glassType = "Glass type is required";
+    // ADAS carries the windscreen, so the combined glass list is never empty with it:
+    // every other selected service still needs its own glass.
+    if (
+      (formData.serviceSelections || []).some((s) => s.serviceType === "adas") &&
+      (formData.serviceSelections || []).some(
+        (s) => s.serviceType !== "adas" && !(s.glassTypes || []).length,
+      )
+    )
       newErrors.glassType = "Glass type is required";
     if (!formData.city) newErrors.city = "City is required";
     if (!formData.vehicleImages.frontView) newErrors.frontView = "Front of vehicle photo is required";
@@ -629,10 +674,17 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
           const mappedServices = new Set();
           formData.serviceTypes.forEach((service) => {
             const st = service.toLowerCase();
-            if (st.includes("replacement")) mappedServices.add("replacement");
+            const settingsId = adminServiceTypes.find(
+              (def) => def.name === service,
+            )?.id;
+            if (KNOWN_SERVICE_IDS.includes(settingsId))
+              mappedServices.add(settingsId);
+            else if (st.includes("replacement")) mappedServices.add("replacement");
             else if (st.includes("repair")) mappedServices.add("repair");
             else if (st.includes("smash") || st.includes("tint"))
               mappedServices.add("tinting");
+            else if (st.includes("adas") || st.includes("recalibration"))
+              mappedServices.add(ADAS_SERVICE_ID);
             else mappedServices.add("other");
           });
           return Array.from(mappedServices);
@@ -1011,7 +1063,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                             ? "Chip and crack repair services"
                             : st.name.toLowerCase().includes("smash")
                               ? "Anti-Smash and Grab Film application"
-                              : st.name}
+                              : st.description || st.name}
                       </div>
                     </button>
                   );
@@ -1052,6 +1104,11 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                             </h4>
                           </div>
 
+                          {selection.serviceType === ADAS_SERVICE_ID ? (
+                            <p className="text-[13px] text-slate-500 dark:text-slate-400">
+                              No glass selection needed — we recalibrate the windscreen camera.
+                            </p>
+                          ) : (
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                             {validGlassForThisService.map((glassName) => {
                               const isSelected =
@@ -1077,6 +1134,7 @@ const RequestQuoteModal = ({ isOpen, onClose, prefillVehicle = null }) => {
                               );
                             })}
                           </div>
+                          )}
                         </div>
                       );
                     })}

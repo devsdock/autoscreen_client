@@ -31,6 +31,7 @@ export const formatServiceType = (serviceType) => {
   if (st === "replacement") return "Glass Replacement";
   if (st === "repair") return "Glass Repair";
   if (st === "tinting") return "Anti-Smash and Grab Film";
+  if (st === "adas") return "ADAS Recalibration";
 
   // Fallback for simple capitalization
   return st.charAt(0).toUpperCase() + st.slice(1);
@@ -174,7 +175,8 @@ export const mapBooking = (booking) => {
       if (
         lowerService !== "replacement" &&
         lowerService !== "repair" &&
-        lowerService !== "tinting"
+        lowerService !== "tinting" &&
+        lowerService !== "adas"
       ) {
         return booking.service;
       }

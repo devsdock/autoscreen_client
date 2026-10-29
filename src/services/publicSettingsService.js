@@ -122,6 +122,12 @@ export const getPublicSettings = async () => {
             { glassType: "Full Car Package", price: 2500 },
           ],
         },
+        {
+          id: "adas",
+          name: "ADAS Recalibration",
+          description: "Camera and sensor recalibration after glass work",
+          pricing: [{ glassType: "Windscreen", price: 1500 }],
+        },
       ],
       supportEmail: "support@autoscreen.co.za",
       supportPhone: "078 965 9317",
