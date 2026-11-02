@@ -144,7 +144,9 @@ const ProviderResponseCard = ({
 
   const isBest = response._bestValue;
   const quoteServiceMode = quoteData?.serviceLocation?.type;
-  const isWorkshopService = quoteServiceMode === "workshop" || serviceType === "workshop";
+  // A mobile fitter on a workshop request comes to the customer, so this quote is mobile (client Q9 / Q10)
+  const isWorkshopService =
+    !response.mobileOnWorkshopRequest && (quoteServiceMode === "workshop" || serviceType === "workshop");
   const locType = isWorkshopService ? "Workshop" : "Mobile";
   const locShort = isWorkshopService ? "WS" : "MOB";
 
@@ -380,6 +382,7 @@ const ProviderResponseCard = ({
               {((provider.businessType !== "individual" && provider.vatNumber) ||
                 serviceMode ||
                 offersAdas ||
+                response.mobileOnWorkshopRequest ||
                 response.isInsuranceRegistered ||
                 (provider.paymentOptions?.cashOnCompletion &&
                   !provider.paymentOptions?.cashDisabledByPlatform) ||
@@ -394,6 +397,12 @@ const ProviderResponseCard = ({
                   {serviceMode && (
                     <span className="text-[0.5625rem] font-medium bg-slate-50 text-slate-700 border border-slate-200 px-1.5 py-px rounded-full dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700">
                       {SERVICE_MODE_LABEL[serviceMode]}
+                    </span>
+                  )}
+                  {/* Mobile fitter on a workshop request: the job is at the customer's address (client Q9 / Q10) */}
+                  {response.mobileOnWorkshopRequest && (
+                    <span className="text-[0.5625rem] font-medium bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-px rounded-full dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800">
+                      Comes to your address
                     </span>
                   )}
                   {/* Fitter offers ADAS Recalibration (client answer Q6, 2 Nov 2026) */}

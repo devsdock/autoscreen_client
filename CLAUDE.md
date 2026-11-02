@@ -842,6 +842,24 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 3 November 2026 (AUT-018 — Mobile fitter on a workshop request: address step)
+
+Client answers Q9 / Q10 (backend: `autoscreen_node` same-date entry). A workshop request can now get quotes from mobile
+fitters; their responses carry `mobileOnWorkshopRequest: true`.
+
+- `ProviderResponseCard.jsx`: such a quote is shown as **Mobile** (middle pill, MOB type, service-area location) with an amber
+  "Comes to your address" pill.
+- `QuoteDetailPanel.jsx`: `handleAcceptAndPay` opens the new `ServiceAddressModal.jsx` ("Where should the fitter come?":
+  street required, suburb, postal code; the city is the request's city, read-only, "Fitters quoted for this city"; prefilled
+  from that quote's saved `customerAddress`) before the usual accept flow (`handleAcceptAndPayAfterAddress`). Saving calls
+  `quoteService.setServiceAddress` (PUT `/customer/quotes/:id/service-address`, stored on that fitter's quote only,
+  coordinates from `geocodingService`), then the flow carries on with the same response and glass tier. `addressSavedFor`
+  skips the step if the customer cancels payment and accepts again.
+- `BookAppointment.jsx`: a booking with `mobileOnWorkshopRequest` is treated as mobile; every other booking keeps the old
+  rule (booking or request type "workshop").
+- Checked in the browser against a local backend: card, address step (empty street refused), cash accept, booking shown as
+  Mobile at the typed street. Build passes.
+
 ### 2 November 2026 (AUT-018 — Mobile / Workshop badge on quotations)
 
 - `ProviderResponseCard.jsx` shows a slate "Mobile", "Workshop" or "Mobile & Workshop" badge next to VAT Registered,

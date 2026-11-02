@@ -1113,9 +1113,11 @@ const BookAppointment = () => {
   const serviceStr = serviceLines[0] || "Auto Glass Service";
   const locationStr = (() => {
     const src = booking || quote || {};
+    // A mobile fitter on a workshop request comes to the customer (client Q9 / Q10); otherwise as before
     const isWorkshop =
-      src.serviceLocationType === "workshop" ||
-      quote?.serviceLocation?.type === "workshop";
+      !booking?.mobileOnWorkshopRequest &&
+      (src.serviceLocationType === "workshop" ||
+        quote?.serviceLocation?.type === "workshop");
 
     if (isWorkshop) {
       // Show provider workshop address for workshop bookings
@@ -1160,8 +1162,11 @@ const BookAppointment = () => {
   const estimatedDuration = booking?.estimatedDuration || 60;
 
   // Workshop mode — includes 30min buffer (15 before + 15 after)
-  const isWorkshop = booking?.serviceLocationType === "workshop" ||
-    quote?.serviceLocation?.type === "workshop";
+  // A mobile fitter on a workshop request comes to the customer (client Q9 / Q10); otherwise as before
+  const isWorkshop =
+    !booking?.mobileOnWorkshopRequest &&
+    (booking?.serviceLocationType === "workshop" ||
+      quote?.serviceLocation?.type === "workshop");
 
   // Workshop: add 1 extra slot for 30min buffer (setup/cleanup)
   const slotsNeeded = Math.ceil(estimatedDuration / 30) + (isWorkshop ? 1 : 0);

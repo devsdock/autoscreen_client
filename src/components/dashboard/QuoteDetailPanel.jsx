@@ -33,6 +33,7 @@ import Modal from "../ui/Modal";
 import PaymentModal from "./PaymentModal";
 import PaymentMethodModal from "./PaymentMethodModal";
 import PartialPaymentIntroModal from "./PartialPaymentIntroModal";
+import ServiceAddressModal from "./ServiceAddressModal";
 import GlassTypesExplainedModal from "./GlassTypesExplainedModal";
 import Tooltip from "../ui/Tooltip";
 import { useSettingsStore } from "../../store/useSettingsStore";
@@ -83,6 +84,11 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   // accept flow when admin has enabled partial payment. Explains the
   // deposit/balance split before the customer picks a payment method.
   const [showPartialIntroModal, setShowPartialIntroModal] = useState(false);
+  // Address step for a mobile fitter on a workshop request (client Q10). Holds
+  // { response, selectedQuality } while open; addressSavedFor = the response
+  // whose address the customer has just confirmed.
+  const [addressStep, setAddressStep] = useState(null);
+  const [addressSavedFor, setAddressSavedFor] = useState(null);
   const [partialConfig, setPartialConfig] = useState({
     isActive: false,
     depositPercentage: 100,
@@ -158,6 +164,15 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   // customer picks a payment method. The actual flow that follows is the
   // same as without partial — only an extra explainer step is inserted.
   const handleAcceptAndPay = async (response, selectedQuality = null) => {
+    // A mobile fitter on a workshop request comes to the customer: ask where first (client Q10)
+    if (response?.mobileOnWorkshopRequest && addressSavedFor !== response._id) {
+      setAddressStep({ response, selectedQuality });
+      return;
+    }
+    return handleAcceptAndPayAfterAddress(response, selectedQuality);
+  };
+
+  const handleAcceptAndPayAfterAddress = async (response, selectedQuality = null) => {
     const isInsuranceResponse = response?.isInsuranceRegistered && quote?.hasInsurance;
     // Tier-aware excess — when the customer picked a glass-quality tier,
     // use THAT tier's customerExcess for R0 detection. Otherwise fall
@@ -1422,6 +1437,22 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
 
         {/* Request Date — removed per design request */}
       </div>
+
+      {/* Address step before accepting a mobile fitter on a workshop request (client Q10) */}
+      <ServiceAddressModal
+        isOpen={!!addressStep}
+        quote={quote}
+        response={addressStep?.response}
+        onCancel={() => setAddressStep(null)}
+        onSaved={() => {
+          const step = addressStep;
+          setAddressStep(null);
+          setAddressSavedFor(step.response._id);
+          fetchQuotes?.().catch(() => {});
+          // Carry on with the normal accept flow for the same quote and glass tier
+          handleAcceptAndPayAfterAddress(step.response, step.selectedQuality);
+        }}
+      />
 
       {/* Partial Payment intro (Points 1-2, April 2026) — Step 1 when partial is active */}
       <PartialPaymentIntroModal
