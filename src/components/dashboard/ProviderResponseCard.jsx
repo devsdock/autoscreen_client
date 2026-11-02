@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "../../store/useDashboardStore";
 import { formatDuration } from "../../utils/formatDuration";
+import { providerServiceMode, providerOffersAdas, SERVICE_MODE_LABEL } from "../../utils/providerServiceMode";
 import { NodeURL } from "../../services/api";
 import Tooltip from "../ui/Tooltip";
 
@@ -88,6 +89,8 @@ const ProviderResponseCard = ({
 
   // Handle deleted/missing provider — show disabled card
   const isProviderDeleted = !provider || provider.isDeleted;
+  const serviceMode = isProviderDeleted ? null : providerServiceMode(provider);
+  const offersAdas = !isProviderDeleted && providerOffersAdas(provider);
 
   const initials = isProviderDeleted
     ? "NA"
@@ -375,6 +378,8 @@ const ProviderResponseCard = ({
                 )}
               </div>
               {((provider.businessType !== "individual" && provider.vatNumber) ||
+                serviceMode ||
+                offersAdas ||
                 response.isInsuranceRegistered ||
                 (provider.paymentOptions?.cashOnCompletion &&
                   !provider.paymentOptions?.cashDisabledByPlatform) ||
@@ -383,6 +388,18 @@ const ProviderResponseCard = ({
                   {provider.businessType !== "individual" && provider.vatNumber && (
                     <span className="text-[0.5625rem] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-px rounded-full dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
                       VAT Registered
+                    </span>
+                  )}
+                  {/* Where the fitter works, from their profile (client feedback, 31 Oct 2026) */}
+                  {serviceMode && (
+                    <span className="text-[0.5625rem] font-medium bg-slate-50 text-slate-700 border border-slate-200 px-1.5 py-px rounded-full dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700">
+                      {SERVICE_MODE_LABEL[serviceMode]}
+                    </span>
+                  )}
+                  {/* Fitter offers ADAS Recalibration (client answer Q6, 2 Nov 2026) */}
+                  {offersAdas && (
+                    <span className="text-[0.5625rem] font-medium bg-slate-50 text-slate-700 border border-slate-200 px-1.5 py-px rounded-full dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700">
+                      ADAS Recalibration
                     </span>
                   )}
                   {response.isInsuranceRegistered && (

@@ -842,6 +842,16 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 2 November 2026 (AUT-018 — Mobile / Workshop badge on quotations)
+
+- `ProviderResponseCard.jsx` shows a slate "Mobile", "Workshop" or "Mobile & Workshop" badge next to VAT Registered,
+  from the fitter's profile (`utils/providerServiceMode.js`, copy of `autoscreen_node/utils/providerServiceMode.js`:
+  workshop needs a company / franchise, the workshop switch and a workshop city, as in matching). No backend change:
+  the quote endpoints already return `provider.serviceArea`. Client feedback 31 Oct 2026, point 6. Build passes.
+- Same card, client answer Q6 (2 Nov 2026): a slate "ADAS Recalibration" badge when the fitter has an active `adas`
+  service (`providerOffersAdas` in `utils/providerServiceMode.js`). The quote endpoints now send
+  `provider.servicesOffered` with `serviceType` and `isActive` only; an older backend sends none, so no badge.
+
 ### 29 October 2026 (AUT-018 ADAS Recalibration service type)
 
 Branch `feature/AUT-018/adas-service-type`. Backend: `autoscreen_node` same branch (settings entry `adas`, Quote enum
