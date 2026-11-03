@@ -645,7 +645,8 @@ export const mapBooking = (booking) => {
     providerEmail: booking.provider?.email || booking.providerEmail,
     providerBusinessType: booking.provider?.businessType || null,
     providerVatNumber: booking.provider?.vatNumber || null,
-    providerInsuranceApproved: booking.provider?.insurancePartnerships?.some(p => p.isActive) || false,
+    // Only links AutoScreen has checked count (client Q4, 3 Nov 2026); links from before have no status
+    providerInsuranceApproved: booking.provider?.insurancePartnerships?.some(p => p.isActive && p.status !== "pending" && p.status !== "rejected") || false,
     isInsuranceClaim: booking.isInsuranceClaim || false,
     insuranceDetails: booking.insuranceDetails || null,
     serviceLocationType: booking.serviceLocationType || booking.quote?.serviceLocation?.type || "mobile",

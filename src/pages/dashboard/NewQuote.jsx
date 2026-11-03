@@ -15,6 +15,7 @@ import {
   Building2,
   Phone,
   MessageCircle,
+  Hash,
 } from "lucide-react";
 import useDashboardStore from "../../store/useDashboardStore";
 import vehicleService from "../../services/vehicleService";
@@ -26,6 +27,12 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PremiumSelect from "../../components/ui/PremiumSelect";
 import ImageUploadSlot from "../../components/ui/ImageUploadSlot";
+import LicenceDiscScan from "../../components/dashboard/LicenceDiscScan";
+import {
+  cleanVin,
+  matchVehicleName,
+  titleCaseVehicleName,
+} from "../../utils/licenceDisc";
 import { BsCarFrontFill } from "react-icons/bs";
 import { HiIdentification } from "react-icons/hi2";
 import { MdPhotoCamera } from "react-icons/md";
@@ -71,6 +78,8 @@ const NewQuote = () => {
     vehicleMake: "",
     vehicleModel: "",
     vehicleYear: new Date().getFullYear().toString(),
+    // VIN, typed or read from the licence disc barcode (3 Nov 2026). Optional.
+    vinNumber: "",
     serviceTypes: [],
     glassTypes: [],
     supplyType: null, // "supply_install" | "fitter_only"
@@ -349,6 +358,61 @@ const NewQuote = () => {
         }
       }
     }
+  };
+
+  // "Scan licence disc" (3 Nov 2026): fill make, model and VIN from the disc
+  // barcode. Database names win (case-insensitive); otherwise the disc value is
+  // title-cased and saved as a custom entry, as the creatable selects do for typed
+  // values. Year and registration are never filled from the disc, so this does
+  // not go through handleChange("vehicleMake"), which resets the year.
+  const handleLicenceDiscResult = async ({ make, model, vin }) => {
+    let makeName = matchVehicleName(make, availableMakes);
+    let makeIdOrName = makeName ? makeLookup[makeName] || makeName : null;
+    if (!makeName) {
+      makeName = titleCaseVehicleName(make);
+      makeIdOrName = makeName;
+      try {
+        const created = await vehicleService.createMake(makeName);
+        if (created?.name) {
+          makeName = created.name;
+          makeIdOrName = created._id || created.name;
+          if (created._id) {
+            setMakeLookup((prev) => ({ ...prev, [created.name]: created._id }));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to create vehicle make:", err);
+      }
+      setAvailableMakes((prev) => [...new Set([...prev, makeName])].sort());
+    }
+
+    // Load this make's models before choosing the model.
+    let models = [];
+    try {
+      models = (await vehicleService.getModelsByMake(makeIdOrName)).map((m) => m.name);
+    } catch {
+      models = [];
+    }
+    let modelName = matchVehicleName(model, models, { allowPrefix: true });
+    if (!modelName) {
+      modelName = titleCaseVehicleName(model);
+      models = [...new Set([...models, modelName])].sort();
+      vehicleService.createModel(makeIdOrName, modelName).catch((err) => {
+        console.error("Failed to create vehicle model:", err);
+      });
+    }
+
+    setAvailableModels(models);
+    setModelSearchQuery("");
+    setSuggestedField(null);
+    setFormData((prev) => ({
+      ...prev,
+      vehicleMake: makeName,
+      vehicleModel: modelName,
+      // A re-scan replaces the VIN: a disc with no readable VIN clears the previous one
+      vinNumber: vin ? cleanVin(vin) : "",
+    }));
+    setErrors((prev) => ({ ...prev, vehicleMake: null, vehicleModel: null }));
   };
 
   // Match a raw city name from Nominatim to the nearest option in the cities list
@@ -786,6 +850,7 @@ const NewQuote = () => {
           ...(matchedVehicle?.registrationNumber && {
             registrationNumber: matchedVehicle.registrationNumber,
           }),
+          ...(formData.vinNumber && { vinNumber: formData.vinNumber }),
         },
         serviceTypes: (() => {
           const mappedServices = new Set();
@@ -1001,6 +1066,8 @@ const NewQuote = () => {
                 Tell us about your vehicle
               </p>
 
+              <LicenceDiscScan onResult={handleLicenceDiscResult} />
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <PremiumSelect
                   label="Vehicle Make"
@@ -1042,7 +1109,7 @@ const NewQuote = () => {
                 />
               </div>
 
-              <div className="sm:w-1/2 sm:pr-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <PremiumSelect
                   label="Year"
                   value={formData.vehicleYear}
@@ -1052,6 +1119,28 @@ const NewQuote = () => {
                   isSearchable
                   hideArrow
                 />
+
+                <div className="flex flex-col gap-1.5">
+                  <label
+                    htmlFor="quote-vin"
+                    className="text-sm font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1.5"
+                  >
+                    <Hash size={14} className="text-slate-400" />
+                    VIN (optional)
+                  </label>
+                  <input
+                    id="quote-vin"
+                    type="text"
+                    value={formData.vinNumber}
+                    onChange={(e) => handleChange("vinNumber", cleanVin(e.target.value))}
+                    placeholder="17 letters and numbers"
+                    maxLength={17}
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    className="w-full px-4 h-[40px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-slate-300 rounded-[8px] text-sm font-medium uppercase placeholder:normal-case placeholder:font-normal placeholder:text-slate-400 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-colors"
+                  />
+                </div>
               </div>
             </div>
           )}

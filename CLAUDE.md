@@ -842,6 +842,29 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 3 November 2026 (AUT-018 — "Insurance Approved" only for confirmed supplier numbers, client Q4)
+
+- `utils/dataMappers.js` (`providerInsuranceApproved`) and `components/dashboard/QuoteDetailPanel.jsx`: the badge needs
+  an active link whose `status` is not pending or rejected. Links from before the check have no status and still count.
+  Backend: `autoscreen_node` same-date entry.
+
+### 3 November 2026 (AUT-018 — Scan licence disc on the quote form)
+
+Client answers Q16-Q18 (2 Nov 2026). Same feature as `autoscreen_web` GetQuotePage (same-date entry there).
+
+- `NewQuote.jsx` Step 1: "Scan licence disc" card (`components/dashboard/LicenceDiscScan.jsx`, camera on phones via
+  `capture="environment"`, photo picker on desktop, privacy line, loading state, failure message) above the make/model
+  fields, and a new "VIN (optional)" input beside Year (upper case, letters and digits, max 17). The VIN is sent as
+  `vehicle.vinNumber` only when filled; the "VIN / Licence disc" photo slot is unchanged.
+- `utils/licenceDiscScanner.js` lazy-loads `zxing-wasm` 3.1.6 (approved, exact) and its self-hosted `.wasm`
+  (`/customer/assets/zxing_reader-*.wasm`, Vite `?url`), PDF417 only. `utils/licenceDisc.js` parses the disc (make, model,
+  VIN; never year or registration) and matches names. Keep both files in step with `autoscreen_web`.
+- A re-scan always replaces the VIN (a disc with no readable VIN clears the previous one), so a second car never keeps
+  the first car's VIN (review fix, same day).
+- The scan fills make and model without going through `handleChange("vehicleMake")`, which resets the year, so the
+  customer's year is kept. Unmatched names are title-cased and saved with `createMake` / `createModel`.
+- Build passes. Not checked in the browser (no local server for this portal was running).
+
 ### 3 November 2026 (AUT-018 — Mobile fitter on a workshop request: address step)
 
 Client answers Q9 / Q10 (backend: `autoscreen_node` same-date entry). A workshop request can now get quotes from mobile
