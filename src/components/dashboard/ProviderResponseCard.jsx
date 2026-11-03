@@ -150,6 +150,22 @@ const ProviderResponseCard = ({
   const locType = isWorkshopService ? "Workshop" : "Mobile";
   const locShort = isWorkshopService ? "WS" : "MOB";
 
+  // Where the customer wants the work (the mapper sets location to { city: "N/A" } when there is none)
+  const requestAddress = quoteData?.serviceLocation?.address || quoteData?.location || {};
+  const requestCity = requestAddress.city && requestAddress.city !== "N/A" ? requestAddress.city : "";
+  // Same test as workshop matching in the backend: the request's city or suburb appears in the workshop's
+  // city or suburb, ignoring case ("Pretoria" matches "Pretoria (Tshwane)")
+  const contains = (text, term) =>
+    Boolean(text && term) && String(text).toLowerCase().includes(String(term).trim().toLowerCase());
+  // "Mobile & Workshop" only when the workshop is in the customer's area. A workshop in another city is no
+  // use to this customer, so the badge says "Mobile" (3 Nov 2026). A workshop quote proves the workshop matched.
+  const workshopInRequestArea = (() => {
+    const ws = provider?.serviceArea?.workshopAddress || {};
+    return [requestCity, requestAddress.suburb].some((p) => contains(ws.city, p) || contains(ws.suburb, p));
+  })();
+  const badgeMode =
+    serviceMode === "both" && requestCity && !isWorkshopService && !workshopInRequestArea ? "mobile" : serviceMode;
+
   // Service lines from glass details or customer quote
   const svcLines = [];
   if (glassDetails?.brand) {
@@ -394,9 +410,9 @@ const ProviderResponseCard = ({
                     </span>
                   )}
                   {/* Where the fitter works, from their profile (client feedback, 31 Oct 2026) */}
-                  {serviceMode && (
+                  {badgeMode && (
                     <span className="text-[0.5625rem] font-medium bg-slate-50 text-slate-700 border border-slate-200 px-1.5 py-px rounded-full dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700">
-                      {SERVICE_MODE_LABEL[serviceMode]}
+                      {SERVICE_MODE_LABEL[badgeMode]}
                     </span>
                   )}
                   {/* Mobile fitter on a workshop request: the job is at the customer's address (client Q9 / Q10) */}
@@ -1103,6 +1119,10 @@ const ProviderResponseCard = ({
                 const parts = [ws.addressLine1, ws.city, ws.province].filter(Boolean);
                 if (parts.length > 0) return parts.join(", ");
               }
+              // Mobile: the fitter comes to the customer, so show the customer's city, not the fitter's base
+              // city (a Sandton fitter coming to Durban read "Sandton", 3 Nov 2026). A mobile fitter only gets
+              // the request because its area matched that place.
+              if (!isWorkshopService && requestCity) return requestCity;
               // Mobile / fallback — show service area
               if (Array.isArray(provider.serviceAreas) && provider.serviceAreas.length > 0)
                 return provider.serviceAreas.join(", ");

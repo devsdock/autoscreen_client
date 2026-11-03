@@ -842,6 +842,21 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 3 November 2026 (AUT-018 — Quote card: customer's city and the right service badge)
+
+- `ProviderResponseCard.jsx`: a Sandton fitter that quoted as a mobile fitter on a Durban workshop request showed
+  "Sandton" in the footer and "Mobile & Workshop" although its workshop is in another city.
+  - Footer (mobile quotes): the request's city (the fitter comes to the customer and was matched to that place);
+    the old fallback (base city, first city) only when the request has no city. Workshop quotes still show the
+    workshop address.
+  - Badge: "Mobile & Workshop" becomes "Mobile" when the request has a city, the quote is not a workshop quote, and the
+    request's city / suburb does not appear in the workshop's city / suburb (case-insensitive "contains", the same test
+    as backend workshop matching, so "Pretoria" still matches "Pretoria (Tshwane)").
+- Display only; no API change. Code review (same day): the first version compared names exactly and could hide a usable
+  workshop or still show the base city; fixed as above. Build passes. Checked on the local portal with the real quote
+  (Glasstech: Mobile, Durban; the Durban workshop fitter: Mobile & Workshop, workshop address).
+- Not changed: the Broker Desk fitter rows still show the profile badge ("Mobile & Workshop").
+
 ### 3 November 2026 (AUT-018 — "Insurance Approved" only for confirmed supplier numbers, client Q4)
 
 - `utils/dataMappers.js` (`providerInsuranceApproved`) and `components/dashboard/QuoteDetailPanel.jsx`: the badge needs
