@@ -842,6 +842,17 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 3 November 2026 (AUT-018 — Customers pick their insurer from the list)
+
+- Decided 3 Nov 2026: only fitters, brokers and admins add insurers. `NewQuote.jsx`, `RequestQuoteModal.jsx` (both
+  insurer dropdowns) and `Insurance.jsx` no longer pass `isCreatable`, so there is no "+ Add"; placeholders read
+  "Select your insurer" / "Search your insurer". Vehicle make / model dropdowns still allow typing. A customer whose
+  insurer is not listed picks Private Pay. Backend safety net for older pages: a typed name waits for an admin
+  (`autoscreen_node` same-date entry). Build passes; checked in the browser (Insurance pop-up: "No options found", no
+  "+ Add").
+- `Insurance.jsx`: a saved insurer that is not on the public list (one waiting for AutoScreen) is added to the
+  dropdown options by name, so the Edit pop-up shows its name instead of a bare id (review fix, checked in the browser).
+
 ### 3 November 2026 (AUT-018 — Quote card: customer's city and the right service badge)
 
 - `ProviderResponseCard.jsx`: a Sandton fitter that quoted as a mobile fitter on a Durban workshop request showed

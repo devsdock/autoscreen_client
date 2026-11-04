@@ -72,6 +72,12 @@ const Insurance = () => {
   const policyHolder = insurance?.policyHolderName || (user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "") || "—";
 
   const insurerOptions = insurers.map((ins) => ({ label: ins.name, value: String(ins._id) }));
+  // The saved insurer may not be on the public list (e.g. one still waiting for AutoScreen): keep it
+  // selectable by name so the edit pop-up never shows a bare id
+  const savedInsurerId = String(insurance?.insurer?._id || insurance?.insurerId || "");
+  if (savedInsurerId && !insurerOptions.some((o) => o.value === savedInsurerId)) {
+    insurerOptions.push({ label: insurerName === "—" ? "Your insurer" : insurerName, value: savedInsurerId });
+  }
 
   const filteredBookings = useMemo(() => {
     if (!searchQuery.trim()) return bookings;
@@ -401,7 +407,7 @@ const Insurance = () => {
           {/* Insurer */}
           <PremiumSelect
             label="Insurer"
-            placeholder="Search or type your insurer name"
+            placeholder="Search your insurer"
             value={modalData.insurerId}
             options={insurerOptions}
             onChange={(val) => {
@@ -416,7 +422,6 @@ const Insurance = () => {
             }}
             error={modalErrors.insurerId}
             searchable
-            isCreatable
             required
             icon={Building2}
           />

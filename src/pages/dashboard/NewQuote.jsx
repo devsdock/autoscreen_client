@@ -1566,10 +1566,9 @@ const NewQuote = () => {
                           }));
                           if (errors.insurerId) setErrors((prev) => ({ ...prev, insurerId: null }));
                         }}
-                        placeholder="Select or type insurer name"
+                        placeholder="Select your insurer"
                         error={errors.insurerId}
                         isSearchable
-                        isCreatable
                         isClearable
                       />
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1681,10 +1680,9 @@ const NewQuote = () => {
                           }));
                           if (errors.insurerId) setErrors((prev) => ({ ...prev, insurerId: null }));
                         }}
-                        placeholder="Select or type insurer name"
+                        placeholder="Select your insurer"
                         error={errors.insurerId}
                         isSearchable
-                        isCreatable
                         isClearable
                       />
                       {(() => {
