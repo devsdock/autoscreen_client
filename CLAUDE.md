@@ -842,6 +842,16 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 4 November 2026 (Workshop requests send no street)
+
+- `NewQuote.jsx`: a Workshop request sends `addressLine1: ""`. The street field is hidden in Workshop mode, but a
+  street filled earlier (saved-address autofill, or typed before switching modes) was still sent. City, suburb,
+  postcode and the map point are still sent (matching uses them). `RequestQuoteModal.jsx` only sends Mobile requests,
+  so it is unchanged. Build passes.
+- Saved addresses (checked, no change): the backend `createQuote` already saves a signed-in customer's request
+  street + city to `Customer.addresses` when it is new (first one becomes the default, "Home"); broker requests and
+  guest quotes are excluded. With this fix a Workshop request no longer adds an address.
+
 ### 4 November 2026 (Quote page: one Accept at a time)
 
 - `QuoteDetailPanel.jsx`: from an Accept click until that fitter's pop-up is closed (address step, partial

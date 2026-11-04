@@ -891,7 +891,8 @@ const NewQuote = () => {
         serviceLocation: {
           type: formData.serviceMode || "mobile",
           address: {
-            addressLine1: formData.addressLine1,
+            // Workshop: the street field is hidden, so never send a street filled earlier (4 Nov 2026)
+            addressLine1: formData.serviceMode === "workshop" ? "" : formData.addressLine1,
             suburb: formData.suburb,
             city: formData.city,
             postalCode: formData.postcode,
