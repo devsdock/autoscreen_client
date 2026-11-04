@@ -27,6 +27,13 @@ const ProviderResponseCard = ({
   isAccepted = false,
   isRejected = false,
   disabled = false,
+  // Another fitter's Accept is starting (4 Nov 2026): the button stays visible but cannot be pressed
+  acceptBusy = false,
+  // One chosen quote for the whole list (4 Nov 2026), owned by the page: only the chosen card shows
+  // a selected glass type and Accept. Without onChoose the card keeps its own choice (old behaviour).
+  isChosen = true,
+  selectedQuality: chosenQuality = null,
+  onChoose,
   bookingConfirmed = false,
   quoteData = null,
 }) => {
@@ -57,8 +64,11 @@ const ProviderResponseCard = ({
         .filter(Boolean)
     : [];
 
-  // Selected tier state (local — committed only on Accept & Pay)
-  const [selectedQuality, setSelectedQuality] = useState(null);
+  // Selected tier state (committed only on Accept & Pay). The page owns it when it passes onChoose,
+  // so picking a glass type here clears the choice on every other card.
+  const [localQuality, setLocalQuality] = useState(null);
+  const selectedQuality = onChoose ? chosenQuality : localQuality;
+  const setSelectedQuality = (q) => (onChoose ? onChoose(q) : setLocalQuality(q));
 
   // Per-tier first-view pulse on info icon (one-shot per browser, per tier).
   // localStorage keys: autoscreen-glass-tier-{quality}-seen. Each tier's pulse
@@ -760,14 +770,31 @@ const ProviderResponseCard = ({
             )}
           </div>
 
-          {/* Accept Button — hide in tier mode (moves to tier-picker section below) */}
-          {!isTierMode && !isAccepted && !isRejected && !disabled && !isProviderDeleted && (
+          {/* Not the chosen quote: a quiet "Choose" instead of a second Accept button */}
+          {!isTierMode && !isChosen && !isAccepted && !isRejected && !disabled && !isProviderDeleted && (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                onChoose?.(null);
+              }}
+              className="w-full flex items-center justify-center px-3.5 py-[.5625rem] rounded-xl text-sm font-semibold whitespace-nowrap border-[1.5px] border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 bg-white dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+            >
+              Choose this quote
+            </button>
+          )}
+
+          {/* Accept Button — hide in tier mode (moves to tier-picker section below) */}
+          {!isTierMode && isChosen && !isAccepted && !isRejected && !disabled && !isProviderDeleted && (
+            <button
+              disabled={acceptBusy}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (acceptBusy) return;
                 onAccept();
               }}
               style={{
+                ...(acceptBusy && { opacity: 0.55, pointerEvents: "none" }),
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -960,11 +987,14 @@ const ProviderResponseCard = ({
             <div className="flex sm:justify-end">
               <button
                 type="button"
+                disabled={acceptBusy}
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (acceptBusy) return;
                   onAccept(selectedQuality);
                 }}
                 style={{
+                  ...(acceptBusy && { opacity: 0.55, pointerEvents: "none" }),
                   padding: ".625rem 1.25rem",
                   borderRadius: ".75rem",
                   background: "linear-gradient(135deg, #2563EB, #1D4ED8)",

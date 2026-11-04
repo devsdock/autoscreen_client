@@ -842,6 +842,27 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 4 November 2026 (Quote page: one Accept at a time)
+
+- `QuoteDetailPanel.jsx`: from an Accept click until that fitter's pop-up is closed (address step, partial
+  intro, payment method, payment, cash processing) or the page leaves for Paystack, every Accept button is
+  disabled (`acceptLockRef` + `acceptBusy`; a ref, so two clicks in the same instant cannot both start). No
+  pop-up opened (an error) → unlocked after the render. Back from Paystack (`pageshow` from the browser cache)
+  → unlocked. Cancelling a pop-up unlocks, so the customer can still switch fitters.
+- `ProviderResponseCard.jsx`: new `acceptBusy` prop; both Accept buttons (single price and glass-tier) get
+  `disabled`, dimmed, no pointer events. Buttons stay visible.
+- One chosen quote for the whole list (same day, client request): `QuoteDetailPanel` keeps `chosenQuote
+  { responseId, quality }`; `ProviderResponseCard` gets `isChosen`, `selectedQuality`, `onChoose` (without
+  `onChoose` it keeps its own choice, as before). Picking a glass type on one card clears it on the others,
+  so only one card shows "Selected" and Accept & Pay. A single-price card that is not chosen shows an outline
+  "Choose this quote" button instead of Accept; a page with one quote has it chosen already.
+- Review fixes (same day): the lock hooks sit above the panel's early return (the Quotes page renders it with
+  no quote first); every Paystack redirect on the page sets `redirectingRef`; the step after the address
+  pop-up runs through `runAcceptStep`, so Accept stays locked until it finishes.
+- A payment from an older Paystack page is handled on the backend (`autoscreen_node` same-date entry).
+- Build passes. Checked in the browser on the test backend: two clicks in the same instant opened only the
+  first fitter's address step with both buttons disabled; Cancel re-enabled them and the other fitter opened.
+
 ### 3 November 2026 (AUT-018 — Customers pick their insurer from the list)
 
 - Decided 3 Nov 2026: only fitters, brokers and admins add insurers. `NewQuote.jsx`, `RequestQuoteModal.jsx` (both
