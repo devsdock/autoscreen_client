@@ -1135,7 +1135,8 @@ const NewQuote = () => {
                     value={formData.vinNumber}
                     onChange={(e) => handleChange("vinNumber", cleanVin(e.target.value))}
                     placeholder="17 letters and numbers"
-                    maxLength={17}
+                    // no maxLength: the browser would cut a pasted "aav-zzz 6sz.eu/…" at 17 raw characters
+                    // before cleanVin; cleanVin already keeps 17 letters and digits (4 Nov 2026)
                     autoComplete="off"
                     autoCapitalize="characters"
                     spellCheck={false}

@@ -842,6 +842,13 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 4 November 2026 (Pasted VIN no longer cut short)
+
+- `NewQuote.jsx` VIN input: `maxLength={17}` removed. The browser applied it to the raw pasted text before `cleanVin`,
+  so "aav-zzz 6sz.eu/015329" (21 characters) was cut to "aav-zzz 6sz.eu/01" and showed AAVZZZ6SZEU01.
+  `cleanVin` already keeps the first 17 letters and digits. Checked in the browser (paste): AAVZZZ6SZEU015329; a
+  longer value still stops at 17. A typed or pasted VIN fills only the VIN (make and model come from the disc scan).
+
 ### 4 November 2026 (Workshop requests send no street)
 
 - `NewQuote.jsx`: a Workshop request sends `addressLine1: ""`. The street field is hidden in Workshop mode, but a
