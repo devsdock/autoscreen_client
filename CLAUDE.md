@@ -842,6 +842,15 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 9 November 2026 (AUT-029 — Disc scan leaves the year blank)
+
+- `NewQuote.jsx`: a licence disc scan now clears the year, so the customer picks it (the field defaulted to the current
+  year, which read as if the scan had set it; scanners often get the model year wrong, client 9 Nov 2026). The existing
+  "Vehicle year is required" check now shows under the field (`error` prop), and the Year field has the line "Please
+  check that the selected year is correct for your vehicle." Changing the make now empties the year too (it used to
+  refill the current year, which looked scanned). A year picked while the disc is still being read is kept. Same change as `autoscreen_web` GetQuotePage. Branch
+  `bugfix/AUT-029/as-feedback-09-nov-2026`. Build passes; the scan itself was checked on the website form.
+
 ### 4 November 2026 (Pasted VIN no longer cut short)
 
 - `NewQuote.jsx` VIN input: `maxLength={17}` removed. The browser applied it to the raw pasted text before `cleanVin`,
