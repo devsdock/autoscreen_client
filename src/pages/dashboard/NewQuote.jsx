@@ -307,7 +307,8 @@ const NewQuote = () => {
         ...prev,
         vehicleMake: value,
         vehicleModel: "",
-        vehicleYear: new Date().getFullYear().toString(),
+        // Picked by the customer again (AS feedback 9 Nov 2026), not refilled with this year.
+        vehicleYear: "",
       }));
       setAvailableModels([]);
       setModelSearchQuery("");
@@ -363,9 +364,11 @@ const NewQuote = () => {
   // "Scan licence disc" (3 Nov 2026): fill make, model and VIN from the disc
   // barcode. Database names win (case-insensitive); otherwise the disc value is
   // title-cased and saved as a custom entry, as the creatable selects do for typed
-  // values. Year and registration are never filled from the disc, so this does
-  // not go through handleChange("vehicleMake"), which resets the year.
+  // values. Registration is never filled from the disc. The year is cleared so the
+  // customer picks it (AS feedback 9 Nov 2026: scanned years were often wrong and
+  // the default current year looked filled in by the scan).
   const handleLicenceDiscResult = async ({ make, model, vin }) => {
+    const yearAtStart = formData.vehicleYear;
     let makeName = matchVehicleName(make, availableMakes);
     let makeIdOrName = makeName ? makeLookup[makeName] || makeName : null;
     if (!makeName) {
@@ -409,6 +412,8 @@ const NewQuote = () => {
       ...prev,
       vehicleMake: makeName,
       vehicleModel: modelName,
+      // Cleared unless the customer picked a year while the disc was being read.
+      vehicleYear: prev.vehicleYear === yearAtStart ? "" : prev.vehicleYear,
       // A re-scan replaces the VIN: a disc with no readable VIN clears the previous one
       vinNumber: vin ? cleanVin(vin) : "",
     }));
@@ -1111,15 +1116,23 @@ const NewQuote = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <PremiumSelect
-                  label="Year"
-                  value={formData.vehicleYear}
-                  options={years.map(String)}
-                  onChange={(val) => handleChange("vehicleYear", val)}
-                  placeholder="Search year"
-                  isSearchable
-                  hideArrow
-                />
+                <div className="flex flex-col gap-1.5">
+                  <PremiumSelect
+                    label="Year"
+                    value={formData.vehicleYear}
+                    options={years.map(String)}
+                    onChange={(val) => handleChange("vehicleYear", val)}
+                    placeholder="Search year"
+                    error={errors.vehicleYear}
+                    isSearchable
+                    hideArrow
+                  />
+                  {!errors.vehicleYear && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 ml-1">
+                      Please check that the selected year is correct for your vehicle.
+                    </p>
+                  )}
+                </div>
 
                 <div className="flex flex-col gap-1.5">
                   <label
