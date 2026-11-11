@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "../../store/useDashboardStore";
 import { formatDuration } from "../../utils/formatDuration";
+import { providerServiceMode, providerOffersAdas, SERVICE_MODE_LABEL } from "../../utils/providerServiceMode";
 import { NodeURL } from "../../services/api";
 import Tooltip from "../ui/Tooltip";
 
@@ -26,6 +27,13 @@ const ProviderResponseCard = ({
   isAccepted = false,
   isRejected = false,
   disabled = false,
+  // Another fitter's Accept is starting (4 Nov 2026): the button stays visible but cannot be pressed
+  acceptBusy = false,
+  // One chosen quote for the whole list (4 Nov 2026), owned by the page: only the chosen card shows
+  // a selected glass type and Accept. Without onChoose the card keeps its own choice (old behaviour).
+  isChosen = true,
+  selectedQuality: chosenQuality = null,
+  onChoose,
   bookingConfirmed = false,
   quoteData = null,
 }) => {
@@ -56,8 +64,11 @@ const ProviderResponseCard = ({
         .filter(Boolean)
     : [];
 
-  // Selected tier state (local — committed only on Accept & Pay)
-  const [selectedQuality, setSelectedQuality] = useState(null);
+  // Selected tier state (committed only on Accept & Pay). The page owns it when it passes onChoose,
+  // so picking a glass type here clears the choice on every other card.
+  const [localQuality, setLocalQuality] = useState(null);
+  const selectedQuality = onChoose ? chosenQuality : localQuality;
+  const setSelectedQuality = (q) => (onChoose ? onChoose(q) : setLocalQuality(q));
 
   // Per-tier first-view pulse on info icon (one-shot per browser, per tier).
   // localStorage keys: autoscreen-glass-tier-{quality}-seen. Each tier's pulse
@@ -88,6 +99,8 @@ const ProviderResponseCard = ({
 
   // Handle deleted/missing provider — show disabled card
   const isProviderDeleted = !provider || provider.isDeleted;
+  const serviceMode = isProviderDeleted ? null : providerServiceMode(provider);
+  const offersAdas = !isProviderDeleted && providerOffersAdas(provider);
 
   const initials = isProviderDeleted
     ? "NA"
@@ -141,9 +154,27 @@ const ProviderResponseCard = ({
 
   const isBest = response._bestValue;
   const quoteServiceMode = quoteData?.serviceLocation?.type;
-  const isWorkshopService = quoteServiceMode === "workshop" || serviceType === "workshop";
+  // A mobile fitter on a workshop request comes to the customer, so this quote is mobile (client Q9 / Q10)
+  const isWorkshopService =
+    !response.mobileOnWorkshopRequest && (quoteServiceMode === "workshop" || serviceType === "workshop");
   const locType = isWorkshopService ? "Workshop" : "Mobile";
   const locShort = isWorkshopService ? "WS" : "MOB";
+
+  // Where the customer wants the work (the mapper sets location to { city: "N/A" } when there is none)
+  const requestAddress = quoteData?.serviceLocation?.address || quoteData?.location || {};
+  const requestCity = requestAddress.city && requestAddress.city !== "N/A" ? requestAddress.city : "";
+  // Same test as workshop matching in the backend: the request's city or suburb appears in the workshop's
+  // city or suburb, ignoring case ("Pretoria" matches "Pretoria (Tshwane)")
+  const contains = (text, term) =>
+    Boolean(text && term) && String(text).toLowerCase().includes(String(term).trim().toLowerCase());
+  // "Mobile & Workshop" only when the workshop is in the customer's area. A workshop in another city is no
+  // use to this customer, so the badge says "Mobile" (3 Nov 2026). A workshop quote proves the workshop matched.
+  const workshopInRequestArea = (() => {
+    const ws = provider?.serviceArea?.workshopAddress || {};
+    return [requestCity, requestAddress.suburb].some((p) => contains(ws.city, p) || contains(ws.suburb, p));
+  })();
+  const badgeMode =
+    serviceMode === "both" && requestCity && !isWorkshopService && !workshopInRequestArea ? "mobile" : serviceMode;
 
   // Service lines from glass details or customer quote
   const svcLines = [];
@@ -375,6 +406,9 @@ const ProviderResponseCard = ({
                 )}
               </div>
               {((provider.businessType !== "individual" && provider.vatNumber) ||
+                serviceMode ||
+                offersAdas ||
+                response.mobileOnWorkshopRequest ||
                 response.isInsuranceRegistered ||
                 (provider.paymentOptions?.cashOnCompletion &&
                   !provider.paymentOptions?.cashDisabledByPlatform) ||
@@ -383,6 +417,24 @@ const ProviderResponseCard = ({
                   {provider.businessType !== "individual" && provider.vatNumber && (
                     <span className="text-[0.5625rem] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-px rounded-full dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
                       VAT Registered
+                    </span>
+                  )}
+                  {/* Where the fitter works, from their profile (client feedback, 31 Oct 2026) */}
+                  {badgeMode && (
+                    <span className="text-[0.5625rem] font-medium bg-slate-50 text-slate-700 border border-slate-200 px-1.5 py-px rounded-full dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700">
+                      {SERVICE_MODE_LABEL[badgeMode]}
+                    </span>
+                  )}
+                  {/* Mobile fitter on a workshop request: the job is at the customer's address (client Q9 / Q10) */}
+                  {response.mobileOnWorkshopRequest && (
+                    <span className="text-[0.5625rem] font-medium bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-px rounded-full dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800">
+                      Comes to your address
+                    </span>
+                  )}
+                  {/* Fitter offers ADAS Recalibration (client answer Q6, 2 Nov 2026) */}
+                  {offersAdas && (
+                    <span className="text-[0.5625rem] font-medium bg-slate-50 text-slate-700 border border-slate-200 px-1.5 py-px rounded-full dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700">
+                      ADAS Recalibration
                     </span>
                   )}
                   {response.isInsuranceRegistered && (
@@ -718,14 +770,31 @@ const ProviderResponseCard = ({
             )}
           </div>
 
-          {/* Accept Button — hide in tier mode (moves to tier-picker section below) */}
-          {!isTierMode && !isAccepted && !isRejected && !disabled && !isProviderDeleted && (
+          {/* Not the chosen quote: a quiet "Choose" instead of a second Accept button */}
+          {!isTierMode && !isChosen && !isAccepted && !isRejected && !disabled && !isProviderDeleted && (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                onChoose?.(null);
+              }}
+              className="w-full flex items-center justify-center px-3.5 py-[.5625rem] rounded-xl text-sm font-semibold whitespace-nowrap border-[1.5px] border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 bg-white dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+            >
+              Choose this quote
+            </button>
+          )}
+
+          {/* Accept Button — hide in tier mode (moves to tier-picker section below) */}
+          {!isTierMode && isChosen && !isAccepted && !isRejected && !disabled && !isProviderDeleted && (
+            <button
+              disabled={acceptBusy}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (acceptBusy) return;
                 onAccept();
               }}
               style={{
+                ...(acceptBusy && { opacity: 0.55, pointerEvents: "none" }),
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -918,11 +987,14 @@ const ProviderResponseCard = ({
             <div className="flex sm:justify-end">
               <button
                 type="button"
+                disabled={acceptBusy}
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (acceptBusy) return;
                   onAccept(selectedQuality);
                 }}
                 style={{
+                  ...(acceptBusy && { opacity: 0.55, pointerEvents: "none" }),
                   padding: ".625rem 1.25rem",
                   borderRadius: ".75rem",
                   background: "linear-gradient(135deg, #2563EB, #1D4ED8)",
@@ -1077,6 +1149,10 @@ const ProviderResponseCard = ({
                 const parts = [ws.addressLine1, ws.city, ws.province].filter(Boolean);
                 if (parts.length > 0) return parts.join(", ");
               }
+              // Mobile: the fitter comes to the customer, so show the customer's city, not the fitter's base
+              // city (a Sandton fitter coming to Durban read "Sandton", 3 Nov 2026). A mobile fitter only gets
+              // the request because its area matched that place.
+              if (!isWorkshopService && requestCity) return requestCity;
               // Mobile / fallback — show service area
               if (Array.isArray(provider.serviceAreas) && provider.serviceAreas.length > 0)
                 return provider.serviceAreas.join(", ");

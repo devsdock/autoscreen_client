@@ -31,6 +31,7 @@ export const formatServiceType = (serviceType) => {
   if (st === "replacement") return "Glass Replacement";
   if (st === "repair") return "Glass Repair";
   if (st === "tinting") return "Anti-Smash and Grab Film";
+  if (st === "adas" || st === "adas recalibration") return "ADAS Recalibration";
 
   // Fallback for simple capitalization
   return st.charAt(0).toUpperCase() + st.slice(1);
@@ -174,7 +175,8 @@ export const mapBooking = (booking) => {
       if (
         lowerService !== "replacement" &&
         lowerService !== "repair" &&
-        lowerService !== "tinting"
+        lowerService !== "tinting" &&
+        lowerService !== "adas"
       ) {
         return booking.service;
       }
@@ -643,7 +645,8 @@ export const mapBooking = (booking) => {
     providerEmail: booking.provider?.email || booking.providerEmail,
     providerBusinessType: booking.provider?.businessType || null,
     providerVatNumber: booking.provider?.vatNumber || null,
-    providerInsuranceApproved: booking.provider?.insurancePartnerships?.some(p => p.isActive) || false,
+    // Only links AutoScreen has checked count (client Q4, 3 Nov 2026); links from before have no status
+    providerInsuranceApproved: booking.provider?.insurancePartnerships?.some(p => p.isActive && p.status !== "pending" && p.status !== "rejected") || false,
     isInsuranceClaim: booking.isInsuranceClaim || false,
     insuranceDetails: booking.insuranceDetails || null,
     serviceLocationType: booking.serviceLocationType || booking.quote?.serviceLocation?.type || "mobile",

@@ -18,6 +18,26 @@ import ReviewModal from "../../components/dashboard/ReviewModal";
 const INITIAL_LIMIT = 5;
 const EXPANDED_LIMIT = 50;
 
+// A balance pay link can be paid without the payment reaching us (customer
+// closed the tab before Paystack sent them back, missed webhook). When the
+// list shows such a booking, ask Paystack once; at most once a minute per link.
+const PAY_LINK_CHECK_INTERVAL_MS = 60 * 1000;
+const PAY_LINK_CHECK_KEY = "paylink_checked_";
+
+const payLinkToCheck = (booking) => {
+  const ref = booking?.paymentLink?.reference;
+  if (booking?.status?.toLowerCase() !== "payment-pending") return null;
+  if (typeof ref !== "string" || !ref.startsWith("PAYLINK-")) return null;
+  try {
+    const last = Number(sessionStorage.getItem(PAY_LINK_CHECK_KEY + ref)) || 0;
+    if (Date.now() - last < PAY_LINK_CHECK_INTERVAL_MS) return null;
+    sessionStorage.setItem(PAY_LINK_CHECK_KEY + ref, String(Date.now()));
+  } catch {
+    // Storage unavailable: still check, the server rate-limits.
+  }
+  return ref;
+};
+
 // Status groups for separate API calls
 const STATUS_GROUPS = {
   actionRequired: "awaiting-customer-approval,completed-by-fitter",
@@ -129,7 +149,24 @@ const Bookings = () => {
       cancelled: { ...cancelled, expanded: false },
     });
     setIsLoading(false);
+
+    const payLinkRefs = upcoming.items.map(payLinkToCheck).filter(Boolean);
+    if (payLinkRefs.length) {
+      const results = await Promise.allSettled(
+        payLinkRefs.map((ref) => paymentService.verifyPayLinkPublic(ref)),
+      );
+      if (results.some((r) => r.status === "fulfilled" && r.value?.paid)) {
+        addToast({
+          type: "success",
+          message: "Payment received. Your booking is complete.",
+        });
+        fetchQuotes().catch(() => {});
+        fetchAllBookingsRef.current?.();
+      }
+    }
   }, [fetchCategory]);
+  const fetchAllBookingsRef = useRef(null);
+  fetchAllBookingsRef.current = fetchAllBookings;
 
   // Expand a category to load all items
   const handleViewAll = async (category) => {
@@ -154,7 +191,6 @@ const Bookings = () => {
           type: "success",
           message: "Payment confirmed! Your booking is now scheduled.",
         });
-        fetchAllBookings();
         fetchQuotes().catch(() => {});
       }
     } catch (err) {
@@ -165,20 +201,27 @@ const Bookings = () => {
     } finally {
       setIsVerifying(false);
       isVerifyingRef.current = false;
+      // Load the list only once the payment check is done, so it never
+      // flashes the booking's pre-payment status first.
+      fetchAllBookings();
     }
   };
 
   useEffect(() => {
-    fetchAllBookings();
-
     const queryParams = new URLSearchParams(location.search);
     const reference = queryParams.get("reference");
     const trxref = queryParams.get("trxref");
 
     if (reference || trxref) {
+      // verifyPayment marks isVerifyingRef straight away, so the re-run of
+      // this effect caused by the URL clean-up below skips its own fetch;
+      // verifyPayment loads the list itself when the check is done.
       verifyPayment(reference || trxref);
-      navigate("/dashboard/bookings", { replace: true });
+      // Keep the booking open (pay-link returns land on /bookings/:id).
+      navigate(id ? `/dashboard/bookings/${id}` : "/dashboard/bookings", { replace: true });
+      return;
     }
+    if (!isVerifyingRef.current) fetchAllBookings();
   }, [location.search]);
 
   // All bookings flat list for deep-link lookup

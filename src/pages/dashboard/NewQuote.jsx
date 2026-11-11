@@ -15,6 +15,7 @@ import {
   Building2,
   Phone,
   MessageCircle,
+  Hash,
 } from "lucide-react";
 import useDashboardStore from "../../store/useDashboardStore";
 import vehicleService from "../../services/vehicleService";
@@ -26,6 +27,12 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PremiumSelect from "../../components/ui/PremiumSelect";
 import ImageUploadSlot from "../../components/ui/ImageUploadSlot";
+import LicenceDiscScan from "../../components/dashboard/LicenceDiscScan";
+import {
+  cleanVin,
+  matchVehicleName,
+  titleCaseVehicleName,
+} from "../../utils/licenceDisc";
 import { BsCarFrontFill } from "react-icons/bs";
 import { HiIdentification } from "react-icons/hi2";
 import { MdPhotoCamera } from "react-icons/md";
@@ -52,6 +59,12 @@ const geocodeAddress = async (address) => {
 
 const TOTAL_STEPS = 4;
 
+// AUT-018 ADAS Recalibration: the camera sits behind the windscreen, so the
+// service has one implicit glass type and no glass picker.
+const ADAS_SERVICE_ID = "adas";
+const ADAS_IMPLICIT_GLASS = "Windscreen";
+const KNOWN_SERVICE_IDS = ["replacement", "repair", "tinting", ADAS_SERVICE_ID];
+
 const NewQuote = () => {
   const { createQuote, user, vehicles, addresses } = useDashboardStore();
   const location = useLocation();
@@ -65,6 +78,8 @@ const NewQuote = () => {
     vehicleMake: "",
     vehicleModel: "",
     vehicleYear: new Date().getFullYear().toString(),
+    // VIN, typed or read from the licence disc barcode (3 Nov 2026). Optional.
+    vinNumber: "",
     serviceTypes: [],
     glassTypes: [],
     supplyType: null, // "supply_install" | "fitter_only"
@@ -292,7 +307,8 @@ const NewQuote = () => {
         ...prev,
         vehicleMake: value,
         vehicleModel: "",
-        vehicleYear: new Date().getFullYear().toString(),
+        // Picked by the customer again (AS feedback 9 Nov 2026), not refilled with this year.
+        vehicleYear: "",
       }));
       setAvailableModels([]);
       setModelSearchQuery("");
@@ -343,6 +359,65 @@ const NewQuote = () => {
         }
       }
     }
+  };
+
+  // "Scan licence disc" (3 Nov 2026): fill make, model and VIN from the disc
+  // barcode. Database names win (case-insensitive); otherwise the disc value is
+  // title-cased and saved as a custom entry, as the creatable selects do for typed
+  // values. Registration is never filled from the disc. The year is cleared so the
+  // customer picks it (AS feedback 9 Nov 2026: scanned years were often wrong and
+  // the default current year looked filled in by the scan).
+  const handleLicenceDiscResult = async ({ make, model, vin }) => {
+    const yearAtStart = formData.vehicleYear;
+    let makeName = matchVehicleName(make, availableMakes);
+    let makeIdOrName = makeName ? makeLookup[makeName] || makeName : null;
+    if (!makeName) {
+      makeName = titleCaseVehicleName(make);
+      makeIdOrName = makeName;
+      try {
+        const created = await vehicleService.createMake(makeName);
+        if (created?.name) {
+          makeName = created.name;
+          makeIdOrName = created._id || created.name;
+          if (created._id) {
+            setMakeLookup((prev) => ({ ...prev, [created.name]: created._id }));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to create vehicle make:", err);
+      }
+      setAvailableMakes((prev) => [...new Set([...prev, makeName])].sort());
+    }
+
+    // Load this make's models before choosing the model.
+    let models = [];
+    try {
+      models = (await vehicleService.getModelsByMake(makeIdOrName)).map((m) => m.name);
+    } catch {
+      models = [];
+    }
+    let modelName = matchVehicleName(model, models, { allowPrefix: true });
+    if (!modelName) {
+      modelName = titleCaseVehicleName(model);
+      models = [...new Set([...models, modelName])].sort();
+      vehicleService.createModel(makeIdOrName, modelName).catch((err) => {
+        console.error("Failed to create vehicle model:", err);
+      });
+    }
+
+    setAvailableModels(models);
+    setModelSearchQuery("");
+    setSuggestedField(null);
+    setFormData((prev) => ({
+      ...prev,
+      vehicleMake: makeName,
+      vehicleModel: modelName,
+      // Cleared unless the customer picked a year while the disc was being read.
+      vehicleYear: prev.vehicleYear === yearAtStart ? "" : prev.vehicleYear,
+      // A re-scan replaces the VIN: a disc with no readable VIN clears the previous one
+      vinNumber: vin ? cleanVin(vin) : "",
+    }));
+    setErrors((prev) => ({ ...prev, vehicleMake: null, vehicleModel: null }));
   };
 
   // Match a raw city name from Nominatim to the nearest option in the cities list
@@ -421,6 +496,9 @@ const NewQuote = () => {
         : [...currentServices, serviceName];
 
       let newServiceSelections = [...(prev.serviceSelections || [])];
+      const removedSelection = isSelected
+        ? newServiceSelections.find((s) => s.serviceName === serviceName)
+        : null;
       if (isSelected) {
         newServiceSelections = newServiceSelections.filter(
           (s) => s.serviceName !== serviceName,
@@ -429,18 +507,22 @@ const NewQuote = () => {
         const matchingDef = adminServiceTypes.find(
           (st) => st.name === serviceName,
         );
+        const lowerName = serviceName.toLowerCase();
         const stType =
           matchingDef?.id ||
-          (serviceName.toLowerCase().includes("repair")
+          (lowerName.includes("repair")
             ? "repair"
-            : serviceName.toLowerCase().includes("replacement")
+            : lowerName.includes("replacement")
               ? "replacement"
-              : "tinting");
+              : lowerName.includes("adas") || lowerName.includes("recalibration")
+                ? ADAS_SERVICE_ID
+                : "tinting");
 
         newServiceSelections.push({
           serviceName,
           serviceType: stType,
-          glassTypes: [],
+          // ADAS has no glass picker: the windscreen is set for the customer
+          glassTypes: stType === ADAS_SERVICE_ID ? [ADAS_IMPLICIT_GLASS] : [],
         });
       }
 
@@ -453,9 +535,23 @@ const NewQuote = () => {
         }
       });
 
-      const newGlassTypes = (prev.glassTypes || []).filter((g) =>
+      let newGlassTypes = (prev.glassTypes || []).filter((g) =>
         validGlassTypes.has(g),
       );
+
+      // ADAS carries the windscreen implicitly: keep it in the flat list while
+      // ADAS is selected, and drop it with ADAS unless another service picked it.
+      if (newServiceSelections.some((s) => s.serviceType === ADAS_SERVICE_ID)) {
+        if (!newGlassTypes.includes(ADAS_IMPLICIT_GLASS))
+          newGlassTypes = [...newGlassTypes, ADAS_IMPLICIT_GLASS].sort();
+      } else if (
+        removedSelection?.serviceType === ADAS_SERVICE_ID &&
+        !newServiceSelections.some((s) =>
+          (s.glassTypes || []).includes(ADAS_IMPLICIT_GLASS),
+        )
+      ) {
+        newGlassTypes = newGlassTypes.filter((g) => g !== ADAS_IMPLICIT_GLASS);
+      }
 
       return {
         ...prev,
@@ -574,6 +670,15 @@ const NewQuote = () => {
         newErrors.serviceType = "Service type is required";
       if (!formData.glassTypes || formData.glassTypes.length === 0)
         newErrors.glassType = "Glass type is required";
+      // ADAS carries the windscreen, so the combined glass list is never empty with it:
+      // every other selected service still needs its own glass.
+      if (
+        (formData.serviceSelections || []).some((s) => s.serviceType === "adas") &&
+        (formData.serviceSelections || []).some(
+          (s) => s.serviceType !== "adas" && !(s.glassTypes || []).length,
+        )
+      )
+        newErrors.glassType = "Glass type is required";
       const hasReplacementService = (formData.serviceSelections || []).some(
         (s) => s.serviceType === "replacement",
       );
@@ -623,6 +728,15 @@ const NewQuote = () => {
     if (!formData.serviceTypes || formData.serviceTypes.length === 0)
       newErrors.serviceType = "Service type is required";
     if (!formData.glassTypes || formData.glassTypes.length === 0)
+      newErrors.glassType = "Glass type is required";
+    // ADAS carries the windscreen, so the combined glass list is never empty with it:
+    // every other selected service still needs its own glass.
+    if (
+      (formData.serviceSelections || []).some((s) => s.serviceType === "adas") &&
+      (formData.serviceSelections || []).some(
+        (s) => s.serviceType !== "adas" && !(s.glassTypes || []).length,
+      )
+    )
       newErrors.glassType = "Glass type is required";
     const hasReplacementService = (formData.serviceSelections || []).some(
       (s) => s.serviceType === "replacement",
@@ -741,15 +855,23 @@ const NewQuote = () => {
           ...(matchedVehicle?.registrationNumber && {
             registrationNumber: matchedVehicle.registrationNumber,
           }),
+          ...(formData.vinNumber && { vinNumber: formData.vinNumber }),
         },
         serviceTypes: (() => {
           const mappedServices = new Set();
           formData.serviceTypes.forEach((service) => {
             const st = service.toLowerCase();
-            if (st.includes("replacement")) mappedServices.add("replacement");
+            const settingsId = adminServiceTypes.find(
+              (def) => def.name === service,
+            )?.id;
+            if (KNOWN_SERVICE_IDS.includes(settingsId))
+              mappedServices.add(settingsId);
+            else if (st.includes("replacement")) mappedServices.add("replacement");
             else if (st.includes("repair")) mappedServices.add("repair");
             else if (st.includes("smash") || st.includes("tint"))
               mappedServices.add("tinting");
+            else if (st.includes("adas") || st.includes("recalibration"))
+              mappedServices.add(ADAS_SERVICE_ID);
             else mappedServices.add("other");
           });
           return Array.from(mappedServices);
@@ -774,7 +896,8 @@ const NewQuote = () => {
         serviceLocation: {
           type: formData.serviceMode || "mobile",
           address: {
-            addressLine1: formData.addressLine1,
+            // Workshop: the street field is hidden, so never send a street filled earlier (4 Nov 2026)
+            addressLine1: formData.serviceMode === "workshop" ? "" : formData.addressLine1,
             suburb: formData.suburb,
             city: formData.city,
             postalCode: formData.postcode,
@@ -949,6 +1072,8 @@ const NewQuote = () => {
                 Tell us about your vehicle
               </p>
 
+              <LicenceDiscScan onResult={handleLicenceDiscResult} />
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <PremiumSelect
                   label="Vehicle Make"
@@ -990,16 +1115,47 @@ const NewQuote = () => {
                 />
               </div>
 
-              <div className="sm:w-1/2 sm:pr-2">
-                <PremiumSelect
-                  label="Year"
-                  value={formData.vehicleYear}
-                  options={years.map(String)}
-                  onChange={(val) => handleChange("vehicleYear", val)}
-                  placeholder="Search year"
-                  isSearchable
-                  hideArrow
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <PremiumSelect
+                    label="Year"
+                    value={formData.vehicleYear}
+                    options={years.map(String)}
+                    onChange={(val) => handleChange("vehicleYear", val)}
+                    placeholder="Search year"
+                    error={errors.vehicleYear}
+                    isSearchable
+                    hideArrow
+                  />
+                  {!errors.vehicleYear && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 ml-1">
+                      Please check that the selected year is correct for your vehicle.
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label
+                    htmlFor="quote-vin"
+                    className="text-sm font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1.5"
+                  >
+                    <Hash size={14} className="text-slate-400" />
+                    VIN (optional)
+                  </label>
+                  <input
+                    id="quote-vin"
+                    type="text"
+                    value={formData.vinNumber}
+                    onChange={(e) => handleChange("vinNumber", cleanVin(e.target.value))}
+                    placeholder="17 letters and numbers"
+                    // no maxLength: the browser would cut a pasted "aav-zzz 6sz.eu/…" at 17 raw characters
+                    // before cleanVin; cleanVin already keeps 17 letters and digits (4 Nov 2026)
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    className="w-full px-4 h-[40px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-slate-300 rounded-[8px] text-sm font-medium uppercase placeholder:normal-case placeholder:font-normal placeholder:text-slate-400 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-colors"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -1059,7 +1215,7 @@ const NewQuote = () => {
                             ? "Chip and crack repair services"
                             : st.name.toLowerCase().includes("smash")
                               ? "Anti-Smash and Grab Film application"
-                              : st.name}
+                              : st.description || st.name}
                       </div>
                     </button>
                   );
@@ -1099,6 +1255,11 @@ const NewQuote = () => {
                             </h4>
                           </div>
 
+                          {selection.serviceType === ADAS_SERVICE_ID ? (
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              No glass selection needed — we recalibrate the windscreen camera.
+                            </p>
+                          ) : (
                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                             {validGlassForThisService.map((glassName) => {
                               const isSelected =
@@ -1129,6 +1290,7 @@ const NewQuote = () => {
                               );
                             })}
                           </div>
+                          )}
                         </div>
                       );
                     })}
@@ -1419,10 +1581,9 @@ const NewQuote = () => {
                           }));
                           if (errors.insurerId) setErrors((prev) => ({ ...prev, insurerId: null }));
                         }}
-                        placeholder="Select or type insurer name"
+                        placeholder="Select your insurer"
                         error={errors.insurerId}
                         isSearchable
-                        isCreatable
                         isClearable
                       />
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1534,10 +1695,9 @@ const NewQuote = () => {
                           }));
                           if (errors.insurerId) setErrors((prev) => ({ ...prev, insurerId: null }));
                         }}
-                        placeholder="Select or type insurer name"
+                        placeholder="Select your insurer"
                         error={errors.insurerId}
                         isSearchable
-                        isCreatable
                         isClearable
                       />
                       {(() => {

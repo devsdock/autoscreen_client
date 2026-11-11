@@ -77,6 +77,16 @@ const BookingCard = ({
     Number(booking.balanceAmount) > 0;
   const hasSchedule = !!booking.scheduledDate;
   const isCompletedByFitter = booking.status?.toLowerCase() === "completed-by-fitter";
+  // Same statuses the server accepts on PUT /bookings/:id/cancel. Once the
+  // technician has arrived the work is underway and the server refuses.
+  const canCancel = [
+    "searching",
+    "awaiting-customer-approval",
+    "accepted",
+    "awaiting-payment",
+    "pending",
+    "confirmed",
+  ].includes(booking.status?.toLowerCase());
   const isCompleted = booking.status?.toLowerCase() === "completed";
   // Flexible Payment Options v1.2 — cash bookings are "confirmed" without prepayment
   const isCashBooking = booking.paymentOption === "cash";
@@ -440,8 +450,6 @@ const BookingCard = ({
           {isPaymentPending && booking.paymentLink?.url && (
             <a
               href={booking.paymentLink.url}
-              target="_blank"
-              rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:shadow-md hover:-translate-y-px"
               style={{ background: "linear-gradient(135deg, #DC2626, #B91C1C)" }}
             >
@@ -501,7 +509,7 @@ const BookingCard = ({
           )}
 
           {/* Upcoming — Cancel */}
-          {category === "upcoming" && !isCompletedByFitter && onCancel && (
+          {category === "upcoming" && canCancel && onCancel && (
             <button
               onClick={() => onCancel(booking)}
               className="inline-flex items-center justify-center gap-1 w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-semibold hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"

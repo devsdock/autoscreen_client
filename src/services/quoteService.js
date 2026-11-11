@@ -86,6 +86,18 @@ const quoteService = {
   },
 
   /**
+   * Save where the work should be done, before accepting a mobile fitter's
+   * quote on a workshop request (client answer Q10, 2 Nov 2026)
+   */
+  setServiceAddress: (quoteId, { responseId, address }) => {
+    return request({
+      method: "PUT",
+      url: `/customer/quotes/${quoteId}/service-address`,
+      data: { responseId, address },
+    });
+  },
+
+  /**
    * Cancel a quote
    */
   cancelQuote: (quoteId) => {

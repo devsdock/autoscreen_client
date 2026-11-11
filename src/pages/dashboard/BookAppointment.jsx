@@ -925,6 +925,9 @@ const BookAppointment = () => {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [confirmedBookingRef, setConfirmedBookingRef] = useState("");
+  // Opened from "View My Bookings" so the customer lands on the booking they
+  // just scheduled instead of the top of the full list.
+  const [confirmedBookingId, setConfirmedBookingId] = useState("");
 
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
   const [paymentReference, setPaymentReference] = useState("");
@@ -1110,9 +1113,11 @@ const BookAppointment = () => {
   const serviceStr = serviceLines[0] || "Auto Glass Service";
   const locationStr = (() => {
     const src = booking || quote || {};
+    // A mobile fitter on a workshop request comes to the customer (client Q9 / Q10); otherwise as before
     const isWorkshop =
-      src.serviceLocationType === "workshop" ||
-      quote?.serviceLocation?.type === "workshop";
+      !booking?.mobileOnWorkshopRequest &&
+      (src.serviceLocationType === "workshop" ||
+        quote?.serviceLocation?.type === "workshop");
 
     if (isWorkshop) {
       // Show provider workshop address for workshop bookings
@@ -1157,8 +1162,11 @@ const BookAppointment = () => {
   const estimatedDuration = booking?.estimatedDuration || 60;
 
   // Workshop mode — includes 30min buffer (15 before + 15 after)
-  const isWorkshop = booking?.serviceLocationType === "workshop" ||
-    quote?.serviceLocation?.type === "workshop";
+  // A mobile fitter on a workshop request comes to the customer (client Q9 / Q10); otherwise as before
+  const isWorkshop =
+    !booking?.mobileOnWorkshopRequest &&
+    (booking?.serviceLocationType === "workshop" ||
+      quote?.serviceLocation?.type === "workshop");
 
   // Workshop: add 1 extra slot for 30min buffer (setup/cleanup)
   const slotsNeeded = Math.ceil(estimatedDuration / 30) + (isWorkshop ? 1 : 0);
@@ -1320,6 +1328,7 @@ const BookAppointment = () => {
           booking?.bookingNumber ||
           "";
         setConfirmedBookingRef(ref);
+        setConfirmedBookingId(String(bookingId));
         setIsConfirmed(true);
 
         // Refresh stores so Bookings page shows updated data
@@ -1517,7 +1526,13 @@ const BookAppointment = () => {
         bookingReference={confirmedBookingRef}
         selectedDate={selectedDate}
         selectedSlot={selectedSlot}
-        onViewBookings={() => navigate("/dashboard/bookings")}
+        onViewBookings={() =>
+          navigate(
+            confirmedBookingId
+              ? `/dashboard/bookings/${confirmedBookingId}`
+              : "/dashboard/bookings",
+          )
+        }
         slotsNeeded={slotsNeeded}
         isReschedule={isReschedule}
         isWorkshop={isWorkshop}

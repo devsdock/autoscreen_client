@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Car,
@@ -33,6 +33,7 @@ import Modal from "../ui/Modal";
 import PaymentModal from "./PaymentModal";
 import PaymentMethodModal from "./PaymentMethodModal";
 import PartialPaymentIntroModal from "./PartialPaymentIntroModal";
+import ServiceAddressModal from "./ServiceAddressModal";
 import GlassTypesExplainedModal from "./GlassTypesExplainedModal";
 import Tooltip from "../ui/Tooltip";
 import { useSettingsStore } from "../../store/useSettingsStore";
@@ -83,6 +84,11 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   // accept flow when admin has enabled partial payment. Explains the
   // deposit/balance split before the customer picks a payment method.
   const [showPartialIntroModal, setShowPartialIntroModal] = useState(false);
+  // Address step for a mobile fitter on a workshop request (client Q10). Holds
+  // { response, selectedQuality } while open; addressSavedFor = the response
+  // whose address the customer has just confirmed.
+  const [addressStep, setAddressStep] = useState(null);
+  const [addressSavedFor, setAddressSavedFor] = useState(null);
   const [partialConfig, setPartialConfig] = useState({
     isActive: false,
     depositPercentage: 100,
@@ -106,6 +112,53 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     }
   }, [quote?.id, fetchQuoteDetails]);
 
+
+  // Accept lock + chosen quote (4 Nov 2026). Hooks: kept above the early return below.
+  const acceptLockRef = useRef(false);
+  const redirectingRef = useRef(false);
+  // The quote (and glass type) the customer chose; only that card shows Accept & Pay
+  const [chosenQuote, setChosenQuote] = useState(null);
+  const [acceptBusy, setAcceptBusy] = useState(false);
+  const acceptPopupOpen =
+    !!addressStep || showPartialIntroModal || showPaymentMethodModal || showPaymentModal || isProcessingCash;
+  const acceptPopupOpenRef = useRef(false);
+  acceptPopupOpenRef.current = acceptPopupOpen;
+  // A step of the flow is still running with no pop-up open (e.g. the R0 insurance request after the
+  // address step): stay locked until it finishes
+  const flowPendingRef = useRef(false);
+  const runAcceptStep = async (step) => {
+    flowPendingRef.current = true;
+    try {
+      return await step();
+    } finally {
+      flowPendingRef.current = false;
+      // No pop-up opened (an error, or the step finished): unlock once React has rendered
+      setTimeout(() => {
+        if (!acceptPopupOpenRef.current) releaseAcceptLock();
+      }, 0);
+    }
+  };
+  const releaseAcceptLock = () => {
+    if (redirectingRef.current || flowPendingRef.current) return; // leaving for Paystack / still running
+    acceptLockRef.current = false;
+    setAcceptBusy(false);
+  };
+  // The fitter's pop-up was closed (cancelled, or the flow ended without leaving the page)
+  useEffect(() => {
+    if (!acceptPopupOpen && acceptLockRef.current) releaseAcceptLock();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acceptPopupOpen]);
+  // Back from Paystack (page restored from the browser cache): unlock again
+  useEffect(() => {
+    const onPageShow = (e) => {
+      if (!e.persisted) return;
+      redirectingRef.current = false;
+      acceptLockRef.current = false;
+      setAcceptBusy(false);
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
 
   if (!quote) {
     return (
@@ -157,7 +210,24 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
   // a friendly intro modal explains the deposit/balance split BEFORE the
   // customer picks a payment method. The actual flow that follows is the
   // same as without partial — only an extra explainer step is inserted.
+  // Only one Accept at a time (4 Nov 2026): from the click until that fitter's pop-up is closed (or
+  // the page moves to Paystack), every Accept button is disabled. A ref, so two clicks in the same
+  // moment cannot both pass before React re-renders.
   const handleAcceptAndPay = async (response, selectedQuality = null) => {
+    if (acceptLockRef.current) return;
+    acceptLockRef.current = true;
+    setAcceptBusy(true);
+    return runAcceptStep(async () => {
+      // A mobile fitter on a workshop request comes to the customer: ask where first (client Q10)
+      if (response?.mobileOnWorkshopRequest && addressSavedFor !== response._id) {
+        setAddressStep({ response, selectedQuality });
+        return;
+      }
+      return handleAcceptAndPayAfterAddress(response, selectedQuality);
+    });
+  };
+
+  const handleAcceptAndPayAfterAddress = async (response, selectedQuality = null) => {
     const isInsuranceResponse = response?.isInsuranceRegistered && quote?.hasInsurance;
     // Tier-aware excess — when the customer picked a glass-quality tier,
     // use THAT tier's customerExcess for R0 detection. Otherwise fall
@@ -301,6 +371,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           false,
         );
         if (res.success && res.redirect_url) {
+          redirectingRef.current = true;
           window.location.href = res.redirect_url;
           return;
         }
@@ -367,6 +438,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           // Paystack authorization_url when partial is active. Customer must
           // pay the deposit% upfront before the booking is committed.
           if (res.authorization_url) {
+            redirectingRef.current = true; // leaving for Paystack: keep Accept locked
             window.location.href = res.authorization_url;
             return;
           }
@@ -375,6 +447,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
             message: "Booking confirmed — cash on completion",
           });
           if (res.redirect_url) {
+            redirectingRef.current = true; // leaving for Paystack: keep Accept locked
             window.location.href = res.redirect_url;
             return;
           }
@@ -429,6 +502,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
           // both return a Paystack authorization_url that the customer must
           // visit. Tokenize: card-save R1 hold. Partial: deposit% charge.
           if (res.authorization_url) {
+            redirectingRef.current = true; // leaving for Paystack: keep Accept locked
             window.location.href = res.authorization_url;
             return;
           }
@@ -445,6 +519,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
             message: "Booking confirmed — you'll receive a payment link after service",
           });
           if (res.redirect_url) {
+            redirectingRef.current = true; // leaving for Paystack: keep Accept locked
             window.location.href = res.redirect_url;
             return;
           }
@@ -487,6 +562,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
     try {
       const res = await paymentService.retryCardTokenize(bookingId);
       if (res?.success && res.authorization_url) {
+        redirectingRef.current = true; // leaving for Paystack: keep Accept locked
         window.location.href = res.authorization_url;
         return;
       }
@@ -1068,7 +1144,7 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                         VAT Registered
                       </span>
                     )}
-                    {quote?.hasInsurance && acceptedResp?.provider?.insurancePartnerships?.some(p => p.isActive) && (
+                    {quote?.hasInsurance && acceptedResp?.provider?.insurancePartnerships?.some(p => p.isActive && p.status !== "pending" && p.status !== "rejected") && (
                       <span className="inline-flex items-center gap-0.5 text-[0.625rem] font-medium bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
                         <ShieldCheck size={9} />
                         Insurance Approved
@@ -1354,6 +1430,12 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
                   isAccepted={thisAccepted}
                   isRejected={thisRejected}
                   disabled={bookingIsConfirmed || isClosed}
+                  acceptBusy={acceptBusy}
+                  // One chosen quote for the whole list (4 Nov 2026): only that card shows a selected
+                  // glass type and the Accept button. A single quote on the page is chosen already.
+                  isChosen={chosenQuote?.responseId === response.id || (!chosenQuote && responses.length === 1)}
+                  selectedQuality={chosenQuote?.responseId === response.id ? chosenQuote.quality : null}
+                  onChoose={(quality = null) => setChosenQuote({ responseId: response.id, quality })}
                   bookingConfirmed={bookingIsConfirmed}
                   quoteData={quote}
                   onAccept={(selectedQuality = null) => handleAcceptAndPay(response, selectedQuality)}
@@ -1422,6 +1504,22 @@ const QuoteDetailPanel = ({ quote, onClose }) => {
 
         {/* Request Date — removed per design request */}
       </div>
+
+      {/* Address step before accepting a mobile fitter on a workshop request (client Q10) */}
+      <ServiceAddressModal
+        isOpen={!!addressStep}
+        quote={quote}
+        response={addressStep?.response}
+        onCancel={() => setAddressStep(null)}
+        onSaved={() => {
+          const step = addressStep;
+          setAddressStep(null);
+          setAddressSavedFor(step.response._id);
+          fetchQuotes?.().catch(() => {});
+          // Carry on with the normal accept flow for the same quote and glass tier (Accept stays locked)
+          runAcceptStep(() => handleAcceptAndPayAfterAddress(step.response, step.selectedQuality));
+        }}
+      />
 
       {/* Partial Payment intro (Points 1-2, April 2026) — Step 1 when partial is active */}
       <PartialPaymentIntroModal

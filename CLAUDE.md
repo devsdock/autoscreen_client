@@ -842,6 +842,194 @@ To verify the multi-select implementation in `BookingForm.jsx`:
 
 ## Changelog
 
+### 9 November 2026 (AUT-029 — Disc scan leaves the year blank)
+
+- `NewQuote.jsx`: a licence disc scan now clears the year, so the customer picks it (the field defaulted to the current
+  year, which read as if the scan had set it; scanners often get the model year wrong, client 9 Nov 2026). The existing
+  "Vehicle year is required" check now shows under the field (`error` prop), and the Year field has the line "Please
+  check that the selected year is correct for your vehicle." Changing the make now empties the year too (it used to
+  refill the current year, which looked scanned). A year picked while the disc is still being read is kept. Same change as `autoscreen_web` GetQuotePage. Branch
+  `bugfix/AUT-029/as-feedback-09-nov-2026`. Build passes; the scan itself was checked on the website form.
+
+### 4 November 2026 (Pasted VIN no longer cut short)
+
+- `NewQuote.jsx` VIN input: `maxLength={17}` removed. The browser applied it to the raw pasted text before `cleanVin`,
+  so "aav-zzz 6sz.eu/015329" (21 characters) was cut to "aav-zzz 6sz.eu/01" and showed AAVZZZ6SZEU01.
+  `cleanVin` already keeps the first 17 letters and digits. Checked in the browser (paste): AAVZZZ6SZEU015329; a
+  longer value still stops at 17. A typed or pasted VIN fills only the VIN (make and model come from the disc scan).
+
+### 4 November 2026 (Workshop requests send no street)
+
+- `NewQuote.jsx`: a Workshop request sends `addressLine1: ""`. The street field is hidden in Workshop mode, but a
+  street filled earlier (saved-address autofill, or typed before switching modes) was still sent. City, suburb,
+  postcode and the map point are still sent (matching uses them). `RequestQuoteModal.jsx` only sends Mobile requests,
+  so it is unchanged. Build passes.
+- Saved addresses (checked, no change): the backend `createQuote` already saves a signed-in customer's request
+  street + city to `Customer.addresses` when it is new (first one becomes the default, "Home"); broker requests and
+  guest quotes are excluded. With this fix a Workshop request no longer adds an address.
+
+### 4 November 2026 (Quote page: one Accept at a time)
+
+- `QuoteDetailPanel.jsx`: from an Accept click until that fitter's pop-up is closed (address step, partial
+  intro, payment method, payment, cash processing) or the page leaves for Paystack, every Accept button is
+  disabled (`acceptLockRef` + `acceptBusy`; a ref, so two clicks in the same instant cannot both start). No
+  pop-up opened (an error) → unlocked after the render. Back from Paystack (`pageshow` from the browser cache)
+  → unlocked. Cancelling a pop-up unlocks, so the customer can still switch fitters.
+- `ProviderResponseCard.jsx`: new `acceptBusy` prop; both Accept buttons (single price and glass-tier) get
+  `disabled`, dimmed, no pointer events. Buttons stay visible.
+- One chosen quote for the whole list (same day, client request): `QuoteDetailPanel` keeps `chosenQuote
+  { responseId, quality }`; `ProviderResponseCard` gets `isChosen`, `selectedQuality`, `onChoose` (without
+  `onChoose` it keeps its own choice, as before). Picking a glass type on one card clears it on the others,
+  so only one card shows "Selected" and Accept & Pay. A single-price card that is not chosen shows an outline
+  "Choose this quote" button instead of Accept; a page with one quote has it chosen already.
+- Review fixes (same day): the lock hooks sit above the panel's early return (the Quotes page renders it with
+  no quote first); every Paystack redirect on the page sets `redirectingRef`; the step after the address
+  pop-up runs through `runAcceptStep`, so Accept stays locked until it finishes.
+- A payment from an older Paystack page is handled on the backend (`autoscreen_node` same-date entry).
+- Build passes. Checked in the browser on the test backend: two clicks in the same instant opened only the
+  first fitter's address step with both buttons disabled; Cancel re-enabled them and the other fitter opened.
+
+### 3 November 2026 (AUT-018 — Customers pick their insurer from the list)
+
+- Decided 3 Nov 2026: only fitters, brokers and admins add insurers. `NewQuote.jsx`, `RequestQuoteModal.jsx` (both
+  insurer dropdowns) and `Insurance.jsx` no longer pass `isCreatable`, so there is no "+ Add"; placeholders read
+  "Select your insurer" / "Search your insurer". Vehicle make / model dropdowns still allow typing. A customer whose
+  insurer is not listed picks Private Pay. Backend safety net for older pages: a typed name waits for an admin
+  (`autoscreen_node` same-date entry). Build passes; checked in the browser (Insurance pop-up: "No options found", no
+  "+ Add").
+- `Insurance.jsx`: a saved insurer that is not on the public list (one waiting for AutoScreen) is added to the
+  dropdown options by name, so the Edit pop-up shows its name instead of a bare id (review fix, checked in the browser).
+
+### 3 November 2026 (AUT-018 — Quote card: customer's city and the right service badge)
+
+- `ProviderResponseCard.jsx`: a Sandton fitter that quoted as a mobile fitter on a Durban workshop request showed
+  "Sandton" in the footer and "Mobile & Workshop" although its workshop is in another city.
+  - Footer (mobile quotes): the request's city (the fitter comes to the customer and was matched to that place);
+    the old fallback (base city, first city) only when the request has no city. Workshop quotes still show the
+    workshop address.
+  - Badge: "Mobile & Workshop" becomes "Mobile" when the request has a city, the quote is not a workshop quote, and the
+    request's city / suburb does not appear in the workshop's city / suburb (case-insensitive "contains", the same test
+    as backend workshop matching, so "Pretoria" still matches "Pretoria (Tshwane)").
+- Display only; no API change. Code review (same day): the first version compared names exactly and could hide a usable
+  workshop or still show the base city; fixed as above. Build passes. Checked on the local portal with the real quote
+  (Glasstech: Mobile, Durban; the Durban workshop fitter: Mobile & Workshop, workshop address).
+- Not changed: the Broker Desk fitter rows still show the profile badge ("Mobile & Workshop").
+
+### 3 November 2026 (AUT-018 — "Insurance Approved" only for confirmed supplier numbers, client Q4)
+
+- `utils/dataMappers.js` (`providerInsuranceApproved`) and `components/dashboard/QuoteDetailPanel.jsx`: the badge needs
+  an active link whose `status` is not pending or rejected. Links from before the check have no status and still count.
+  Backend: `autoscreen_node` same-date entry.
+
+### 3 November 2026 (AUT-018 — Scan licence disc on the quote form)
+
+Client answers Q16-Q18 (2 Nov 2026). Same feature as `autoscreen_web` GetQuotePage (same-date entry there).
+
+- `NewQuote.jsx` Step 1: "Scan licence disc" card (`components/dashboard/LicenceDiscScan.jsx`, camera on phones via
+  `capture="environment"`, photo picker on desktop, privacy line, loading state, failure message) above the make/model
+  fields, and a new "VIN (optional)" input beside Year (upper case, letters and digits, max 17). The VIN is sent as
+  `vehicle.vinNumber` only when filled; the "VIN / Licence disc" photo slot is unchanged.
+- `utils/licenceDiscScanner.js` lazy-loads `zxing-wasm` 3.1.6 (approved, exact) and its self-hosted `.wasm`
+  (`/customer/assets/zxing_reader-*.wasm`, Vite `?url`), PDF417 only. `utils/licenceDisc.js` parses the disc (make, model,
+  VIN; never year or registration) and matches names. Keep both files in step with `autoscreen_web`.
+- A re-scan always replaces the VIN (a disc with no readable VIN clears the previous one), so a second car never keeps
+  the first car's VIN (review fix, same day).
+- The scan fills make and model without going through `handleChange("vehicleMake")`, which resets the year, so the
+  customer's year is kept. Unmatched names are title-cased and saved with `createMake` / `createModel`.
+- Build passes. Not checked in the browser (no local server for this portal was running).
+
+### 3 November 2026 (AUT-018 — Mobile fitter on a workshop request: address step)
+
+Client answers Q9 / Q10 (backend: `autoscreen_node` same-date entry). A workshop request can now get quotes from mobile
+fitters; their responses carry `mobileOnWorkshopRequest: true`.
+
+- `ProviderResponseCard.jsx`: such a quote is shown as **Mobile** (middle pill, MOB type, service-area location) with an amber
+  "Comes to your address" pill.
+- `QuoteDetailPanel.jsx`: `handleAcceptAndPay` opens the new `ServiceAddressModal.jsx` ("Where should the fitter come?":
+  street required, suburb, postal code; the city is the request's city, read-only, "Fitters quoted for this city"; prefilled
+  from that quote's saved `customerAddress`) before the usual accept flow (`handleAcceptAndPayAfterAddress`). Saving calls
+  `quoteService.setServiceAddress` (PUT `/customer/quotes/:id/service-address`, stored on that fitter's quote only,
+  coordinates from `geocodingService`), then the flow carries on with the same response and glass tier. `addressSavedFor`
+  skips the step if the customer cancels payment and accepts again.
+- `BookAppointment.jsx`: a booking with `mobileOnWorkshopRequest` is treated as mobile; every other booking keeps the old
+  rule (booking or request type "workshop").
+- Checked in the browser against a local backend: card, address step (empty street refused), cash accept, booking shown as
+  Mobile at the typed street. Build passes.
+
+### 2 November 2026 (AUT-018 — Mobile / Workshop badge on quotations)
+
+- `ProviderResponseCard.jsx` shows a slate "Mobile", "Workshop" or "Mobile & Workshop" badge next to VAT Registered,
+  from the fitter's profile (`utils/providerServiceMode.js`, copy of `autoscreen_node/utils/providerServiceMode.js`:
+  workshop needs a company / franchise, the workshop switch and a workshop city, as in matching). No backend change:
+  the quote endpoints already return `provider.serviceArea`. Client feedback 31 Oct 2026, point 6. Build passes.
+- Same card, client answer Q6 (2 Nov 2026): a slate "ADAS Recalibration" badge when the fitter has an active `adas`
+  service (`providerOffersAdas` in `utils/providerServiceMode.js`). The quote endpoints now send
+  `provider.servicesOffered` with `serviceType` and `isActive` only; an older backend sends none, so no badge.
+
+### 29 October 2026 (AUT-018 ADAS Recalibration service type)
+
+Branch `feature/AUT-018/adas-service-type`. Backend: `autoscreen_node` same branch (settings entry `adas`, Quote enum
+accepts `adas`).
+
+- **`NewQuote.jsx` + `RequestQuoteModal.jsx` Step 2**: "ADAS Recalibration" appears as a service card (from
+  `GET /public/settings`). It has no glass picker: its block shows one muted line, "No glass selection needed — we
+  recalibrate the windscreen camera.", and the selection gets `glassTypes: ["Windscreen"]` automatically (flat
+  `glassTypes` too), so validation passes and the payload carries `windscreen`. Removing ADAS drops that Windscreen
+  unless another service picked it. The toggle still prefers the settings `id`; the name fallback gained an
+  `adas` / `recalibration` branch before `tinting`.
+- **Payload `serviceTypes`**: prefers the settings id when it is `replacement` / `repair` / `tinting` / `adas`, else
+  the old name mapping plus an `adas` branch, so ADAS is sent as `adas`, not `other`.
+- **Card description**: cards that are not replacement / repair / film now show the settings `description` (was the
+  name again).
+- **Supply question** stays keyed on `serviceType === "replacement"` (NewQuote only), so ADAS-only quotes never see it.
+- `dataMappers.formatServiceType('adas')` → "ADAS Recalibration" (and `adas` treated as a raw type in
+  `formatServiceName`); ADAS added to the `publicSettingsService.js` fallback and `data/serviceConstants.js`.
+- Build passes.
+
+### 15 October 2026 (Balance pay link checked with Paystack when My Bookings opens)
+
+- `Bookings.jsx`: after the list loads, each Upcoming booking in `payment-pending` with a `paymentLink.reference`
+  (`PAYLINK-…`) is checked via `paymentService.verifyPayLinkPublic` (`GET /public/booking-payments/verify/:ref`). If
+  Paystack says it was paid, the backend records it (same handler as the webhook, records once), a "Payment received"
+  toast shows and the list reloads, so Pay Now disappears. Covers payments the return page missed (tab closed before
+  Paystack redirected back, old web build on the magic-link page, missed webhook). At most once a minute per link
+  (`sessionStorage` key `paylink_checked_<ref>`); failures and unpaid links are silent. No backend change.
+
+### 15 October 2026 (Pay-link payment recorded when the customer is signed out)
+
+- `ProtectedRoute.jsx`: when the URL carries a `PAYLINK-…` `reference` / `trxref` (return from paying the
+  after-service link), it first calls `paymentService.verifyPayLinkPublic` → `GET /public/booking-payments/verify/:ref`,
+  before any sign-in redirect. The sign-in redirect dropped the reference, so a customer who paid from the email in a
+  signed-out tab never had the payment recorded. Errors are ignored; the signed-in Bookings check still runs after.
+  Backend pairing: `autoscreen_node` same date (pay links now return through a magic link as well).
+
+### 15 October 2026 (Cancel Hidden Once the Technician Has Arrived)
+
+- **`BookingCard.jsx`**: the Cancel button showed on every Upcoming card, including `arrived`, `in-progress`,
+  `service-done` and `payment-pending`. The server (`cancelBooking`) refuses those, so the customer got "Failed to
+  cancel booking" after a cancellation pop-up that promised a refund. Cancel now shows only for the statuses the server
+  accepts (`searching`, `awaiting-customer-approval`, `accepted`, `awaiting-payment`, `pending`, `confirmed`). The
+  booking drawer's `canCancel` already excluded them. Build verified.
+
+### 14 October 2026 (AUT-020 — Pay Now in the Booking Details Drawer)
+
+- **`BookingDetailDrawer.jsx`**: a card-on-completion booking in `payment-pending` showed **Pay Now** on the
+  My Bookings card but only a "Payment Required" pill in the details drawer. The drawer now shows a red Payment
+  Required banner with a **Pay Now** link to `booking.paymentLink.url`, gated exactly like `BookingCard.jsx`
+  (`paymentOption === "card_on_completion"` + `payment-pending` + link present). The amount is the balance for
+  partial bookings (`partialPayment.isActive` + `balanceStatus: "pending"` + `balanceAmount > 0`), else the total.
+  Branch `bugfix/AUT-020/booking-drawer-pay-now` (from `dev`).
+- **Pay Now opens in the same tab** (`BookingCard.jsx` + `BookingDetailDrawer.jsx`): `target="_blank"` removed so the
+  balance link behaves like the quote payment — Paystack returns to `/dashboard/bookings/:id` in the same tab, where
+  `Bookings.jsx` verifies the reference.
+- **Build verified**: `npm run build` passes; checked on a local partial booking (banner reads "Pay R 1980.00").
+- **Land on the booking just made (14 Oct 2026)**: "View My Bookings" in the appointment-confirmed pop-up
+  (`BookAppointment.jsx`) and on `PaymentSuccess.jsx` (when a `bookingId` is known) now open
+  `/dashboard/bookings/:id`, so the list loads with that booking's drawer open instead of the top of the list (which
+  starts with older "Action Required" jobs). `Bookings.jsx`: on a Paystack return (`?reference=`) the payment is verified
+  first and the list loads once afterwards (no flash of the pre-payment status), and the booking id in the URL is kept
+  so the paid booking's drawer opens.
+
 ### 8 October 2026 (AUT-019 — Profile "Insurance Details" Card Opens the Insurance Page)
 
 - **`Profile.jsx`**: clicking the "Insurance Details" card showed a "Insurance management coming soon!" toast even

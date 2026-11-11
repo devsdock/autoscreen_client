@@ -581,6 +581,43 @@ const BookingDetailDrawer = ({
             </div>
           )}
 
+          {/* Pay Now — Card on Completion Path B after service-done (same gate
+              as the BookingCard Pay Now). Partial bookings owe only the balance. */}
+          {booking.paymentOption === "card_on_completion" &&
+            currentStatus === "payment-pending" &&
+            booking.paymentLink?.url && (
+            <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+              <CreditCard
+                size={20}
+                className="text-red-600 dark:text-red-400 flex-shrink-0"
+              />
+              <div className="flex-1">
+                <p className="font-semibold text-red-800 dark:text-red-200">
+                  Payment Required
+                </p>
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  Your service is complete. Pay{" "}
+                  {formatCurrency(
+                    booking.partialPayment?.isActive === true &&
+                      booking.balanceStatus === "pending" &&
+                      Number(booking.balanceAmount) > 0
+                      ? Number(booking.balanceAmount)
+                      : booking.price?.total || 0,
+                  )}{" "}
+                  to finish your booking.
+                </p>
+              </div>
+              <a
+                href={booking.paymentLink.url}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold text-white whitespace-nowrap transition-all hover:shadow-md hover:-translate-y-px"
+                style={{ background: "linear-gradient(135deg, #DC2626, #B91C1C)" }}
+              >
+                Pay Now
+                <ArrowRight size={14} />
+              </a>
+            </div>
+          )}
+
           {/* Service Completed Banner inline — acknowledge handled via BookingCard modal */}
           {currentStatus === "completed-by-fitter" && (
             <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4 flex items-start gap-4">
